@@ -2,7 +2,7 @@
 
 ## Статус
 
-READY
+REPORT_READY
 
 ## Цель
 

@@ -1,0 +1,4 @@
+series,n_platforms,coverage,med_duration,p_n,p_cov,p_meddur
+ADA_real,58,0.885,11.5,,,
+N1_shuffle,60.4,0.871,11.9,0.685,0.25,0.62
+N2_block_boot,52.7,0.893,13.4,0.215,0.68,0.92
