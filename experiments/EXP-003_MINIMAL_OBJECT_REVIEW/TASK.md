@@ -2,7 +2,7 @@
 
 ## Статус
 
-ACTIVE / READY
+ACTIVE / REPORT_READY
 
 ## Контекст
 
