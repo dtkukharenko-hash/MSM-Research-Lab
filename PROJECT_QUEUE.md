@@ -14,9 +14,19 @@
 
 ## ACTIVE
 
+Пока нет.
+
+---
+
+## DONE / REPORT_READY
+
 ### EXP-004_MARCH_FEATURES
 
-Статус: ACTIVE / READY
+Статус: DONE / REPORT_READY
+
+Вердикт: REJECT — H-MARCH-001 не подтверждена в строгом виде. На 50 сильных направленных движениях ADA 4H
+за доступную часть 2023 полный признак стартовой сильной свечи найден в 12/50 случаев; 38/50 движений не
+имели такого старта. Детали: `experiments/EXP-004_MARCH_FEATURES/REPORT.md`.
 
 Цель:
 Провести практический визуальный эксперимент по наблюдаемым признакам участка, который человек называет
@@ -26,11 +36,9 @@
 Claude Code
 
 Результат:
-Ожидается `experiments/EXP-004_MARCH_FEATURES/REPORT.md`.
+REPORT.md создан.
 
 ---
-
-## DONE / REPORT_READY
 
 ### EXP-003_MINIMAL_OBJECT_REVIEW
 

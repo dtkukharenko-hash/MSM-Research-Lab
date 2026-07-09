@@ -1,0 +1,51 @@
+{
+  "experiment": "EXP-004_MARCH_FEATURES",
+  "source": "/home/nnv/Irobot/logs/msm/features/ada4h_features_v1.csv",
+  "source_mode": "read-only",
+  "asset": "ADA/USDT",
+  "timeframe": "4H",
+  "requested_period": "2023",
+  "available_period": {
+    "start": "2023-07-01 00:00",
+    "end": "2023-12-31 20:00",
+    "bars": 1104
+  },
+  "selection": {
+    "window_bars": "3..8",
+    "criterion": "top non-overlapping windows by abs(net return)*sqrt(duration), with majority same-direction candles and close-to-close steps",
+    "selected_movements": 50,
+    "candidate_windows": 3747,
+    "overlap_buffer_bars": 2,
+    "uses_zigzag": false,
+    "selection_depends_on_march": false
+  },
+  "h_march_001_definition": {
+    "start_body_directional": "start candle body direction equals movement direction",
+    "start_body_large": "start body >= 1.5 * mean body of previous 10 candles",
+    "close_near_direction": "UP close_position_in_range >= 0.70; DOWN <= 0.30",
+    "continuation": "at least 2 of next 3 close-to-close steps continue movement direction"
+  },
+  "counts": {
+    "h_not_observed": 38,
+    "start_body_not_large_vs_prev10": 29,
+    "start_body_directional": 47,
+    "start_body_not_large": 29,
+    "close_near_direction": 34,
+    "continuation_2of3": 36,
+    "no_2_of_next_3_continuation": 14,
+    "start_body_large": 21,
+    "continuation_not_2of3": 14,
+    "start_close_not_near_direction": 16,
+    "close_not_near_direction": 16,
+    "h_observed": 12,
+    "start_body_opposite_or_neutral": 3,
+    "start_body_not_directional": 3
+  },
+  "result": {
+    "checked_movements": 50,
+    "with_start_strong_candle": 12,
+    "without_start_strong_candle": 38,
+    "share_with_start_strong_candle": 0.24,
+    "verdict": "REJECT"
+  }
+}
