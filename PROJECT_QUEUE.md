@@ -14,9 +14,26 @@
 
 ## ACTIVE
 
+### EXP-003_MINIMAL_OBJECT_REVIEW
+
+Статус: READY
+
+Цель:
+Провести методологическую ревизию кандидатов минимального объекта после REJECT площадки в EXP-002.
+
+Исполнитель:
+Claude Code
+
+Результат:
+Ожидается `experiments/EXP-003_MINIMAL_OBJECT_REVIEW/REPORT.md`.
+
+---
+
+## DONE / REJECT
+
 ### EXP-002_PLATFORM_EXISTENCE
 
-Статус: REPORT_READY
+Статус: DONE / REJECT
 
 Вердикт: ❌ REJECT — площадки статистически НЕ отличаются от null-моделей (shuffle/block-boot, p=0.22–0.92);
 объект близок к вырожденному (покрытие 0.88 и на реале, и на шуме), UNKNOWN(live)=0.38. Площадка не принята
