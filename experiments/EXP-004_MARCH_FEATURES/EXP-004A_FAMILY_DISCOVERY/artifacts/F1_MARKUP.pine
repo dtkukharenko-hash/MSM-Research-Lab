@@ -7,6 +7,7 @@ showPrototype = input.bool(true, "showPrototype")
 showConfirmed = input.bool(true, "showConfirmed")
 showQuestionable = input.bool(true, "showQuestionable")
 showLabels = input.bool(true, "showLabels")
+showCase29Tempo = input.bool(true, "showCase29Tempo")
 
 var int[] starts = array.from(timestamp("Etc/UTC", 2023, 12, 8, 0, 0), timestamp("Etc/UTC", 2023, 12, 13, 4, 0), timestamp("Etc/UTC", 2023, 12, 5, 8, 0), timestamp("Etc/UTC", 2023, 11, 1, 12, 0), timestamp("Etc/UTC", 2023, 11, 15, 4, 0), timestamp("Etc/UTC", 2023, 11, 12, 16, 0), timestamp("Etc/UTC", 2023, 11, 5, 16, 0), timestamp("Etc/UTC", 2023, 11, 18, 12, 0), timestamp("Etc/UTC", 2023, 12, 21, 0, 0), timestamp("Etc/UTC", 2023, 10, 25, 0, 0), timestamp("Etc/UTC", 2023, 12, 15, 0, 0), timestamp("Etc/UTC", 2023, 11, 8, 4, 0), timestamp("Etc/UTC", 2023, 9, 30, 16, 0), timestamp("Etc/UTC", 2023, 11, 26, 8, 0), timestamp("Etc/UTC", 2023, 8, 2, 0, 0), timestamp("Etc/UTC", 2023, 7, 17, 4, 0), timestamp("Etc/UTC", 2023, 7, 4, 12, 0), timestamp("Etc/UTC", 2023, 7, 23, 8, 0), timestamp("Etc/UTC", 2023, 9, 28, 8, 0), timestamp("Etc/UTC", 2023, 8, 29, 20, 0), timestamp("Etc/UTC", 2023, 10, 27, 8, 0), timestamp("Etc/UTC", 2023, 7, 7, 8, 0))
 var int[] ends = array.from(timestamp("Etc/UTC", 2023, 12, 9, 4, 0), timestamp("Etc/UTC", 2023, 12, 14, 8, 0), timestamp("Etc/UTC", 2023, 12, 6, 12, 0), timestamp("Etc/UTC", 2023, 11, 2, 16, 0), timestamp("Etc/UTC", 2023, 11, 16, 4, 0), timestamp("Etc/UTC", 2023, 11, 13, 20, 0), timestamp("Etc/UTC", 2023, 11, 6, 16, 0), timestamp("Etc/UTC", 2023, 11, 19, 16, 0), timestamp("Etc/UTC", 2023, 12, 21, 20, 0), timestamp("Etc/UTC", 2023, 10, 26, 4, 0), timestamp("Etc/UTC", 2023, 12, 15, 20, 0), timestamp("Etc/UTC", 2023, 11, 9, 8, 0), timestamp("Etc/UTC", 2023, 10, 1, 20, 0), timestamp("Etc/UTC", 2023, 11, 27, 12, 0), timestamp("Etc/UTC", 2023, 8, 3, 4, 0), timestamp("Etc/UTC", 2023, 7, 18, 8, 0), timestamp("Etc/UTC", 2023, 7, 5, 12, 0), timestamp("Etc/UTC", 2023, 7, 24, 12, 0), timestamp("Etc/UTC", 2023, 9, 29, 12, 0), timestamp("Etc/UTC", 2023, 8, 31, 0, 0), timestamp("Etc/UTC", 2023, 10, 28, 0, 0), timestamp("Etc/UTC", 2023, 7, 8, 12, 0))
@@ -41,5 +42,35 @@ for i = 0 to array.size(starts) - 1
         if showLabels
             label.new(time, low, "end #" + id, xloc=xloc.bar_time, style=label.style_label_up, textcolor=color.black, color=color.new(c, 20), size=size.tiny)
 bgcolor(bg)
+
+// Case 29 tempo overlap test. Visual research markup only; original case #29 start/end is unchanged.
+var int[] c29TempoTimes = array.from(timestamp("Etc/UTC", 2023, 8, 2, 0, 0), timestamp("Etc/UTC", 2023, 8, 2, 12, 0), timestamp("Etc/UTC", 2023, 8, 3, 4, 0), timestamp("Etc/UTC", 2023, 8, 3, 20, 0))
+var int[] c29TempoLineEnds = array.from(timestamp("Etc/UTC", 2023, 8, 2, 12, 0), timestamp("Etc/UTC", 2023, 8, 3, 4, 0), timestamp("Etc/UTC", 2023, 8, 3, 20, 0), timestamp("Etc/UTC", 2023, 8, 4, 16, 0))
+var float[] c29TempoHalf = array.from(0.30875, 0.30530, 0.29735, 0.29375)
+var string[] c29TempoIds = array.from("T1", "T2", "T3", "T4")
+
+var int[] c29OverlapTimes = array.from(timestamp("Etc/UTC", 2023, 8, 3, 12, 0), timestamp("Etc/UTC", 2023, 8, 4, 0, 0), timestamp("Etc/UTC", 2023, 8, 4, 8, 0), timestamp("Etc/UTC", 2023, 8, 4, 12, 0))
+var string[] c29OverlapLabels = array.from("wick >50 T3", "wick/close/body >50 T4", "wick >50 T4", "SPECIAL >50 T4")
+var bool[] c29OverlapSpecial = array.from(false, false, false, true)
+
+if showCase29Tempo
+    for j = 0 to array.size(c29TempoTimes) - 1
+        int tt = array.get(c29TempoTimes, j)
+        int te = array.get(c29TempoLineEnds, j)
+        float lvl = array.get(c29TempoHalf, j)
+        string tid = array.get(c29TempoIds, j)
+        if time == tt
+            line.new(tt, low, tt, high, xloc=xloc.bar_time, extend=extend.both, color=color.new(color.fuchsia, 0), width=2, style=line.style_solid)
+            line.new(tt, lvl, te, lvl, xloc=xloc.bar_time, color=color.new(color.fuchsia, 0), width=2, style=line.style_dashed)
+            if showLabels
+                label.new(tt, high, "tempo " + tid + " 50%", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.fuchsia, 0), textcolor=color.white, size=size.tiny)
+    for j = 0 to array.size(c29OverlapTimes) - 1
+        int ot = array.get(c29OverlapTimes, j)
+        string ol = array.get(c29OverlapLabels, j)
+        bool special = array.get(c29OverlapSpecial, j)
+        if time == ot
+            line.new(ot, low, ot, high, xloc=xloc.bar_time, extend=extend.both, color=special ? color.new(color.red, 0) : color.new(color.purple, 0), width=special ? 3 : 2, style=special ? line.style_solid : line.style_dashed)
+            if showLabels
+                label.new(ot, special ? high : low, ol, xloc=xloc.bar_time, style=special ? label.style_label_down : label.style_label_up, color=special ? color.new(color.red, 0) : color.new(color.purple, 0), textcolor=color.white, size=size.tiny)
 
 // Legend: prototype = yellow, confirmed = teal, questionable = orange dashed start line.
