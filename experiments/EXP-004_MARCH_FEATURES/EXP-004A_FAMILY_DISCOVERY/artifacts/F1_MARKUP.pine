@@ -48,9 +48,14 @@ var int[] c29TempoTimes = array.from(timestamp("Etc/UTC", 2023, 8, 2, 0, 0), tim
 var int[] c29TempoLineEnds = array.from(timestamp("Etc/UTC", 2023, 8, 2, 12, 0), timestamp("Etc/UTC", 2023, 8, 3, 4, 0), timestamp("Etc/UTC", 2023, 8, 3, 20, 0), timestamp("Etc/UTC", 2023, 8, 4, 16, 0))
 var float[] c29TempoHalf = array.from(0.30875, 0.30530, 0.29735, 0.29375)
 var string[] c29TempoIds = array.from("T1", "T2", "T3", "T4")
+int c29T4Start = timestamp("Etc/UTC", 2023, 8, 3, 20, 0)
+int c29T4End = timestamp("Etc/UTC", 2023, 8, 4, 16, 0)
+float c29T4Open = 0.29530
+float c29T4Mid = 0.29375
+float c29T4High = 0.29670
 
 var int[] c29OverlapTimes = array.from(timestamp("Etc/UTC", 2023, 8, 3, 12, 0), timestamp("Etc/UTC", 2023, 8, 4, 0, 0), timestamp("Etc/UTC", 2023, 8, 4, 8, 0), timestamp("Etc/UTC", 2023, 8, 4, 12, 0))
-var string[] c29OverlapLabels = array.from("wick >50 T3", "wick/close/body >50 T4", "wick >50 T4", "SPECIAL >50 T4")
+var string[] c29OverlapLabels = array.from("wick >50 T3", "EARLY OVERLAP", "wick >50 T4", "EXPERT END")
 var bool[] c29OverlapSpecial = array.from(false, false, false, true)
 
 if showCase29Tempo
@@ -64,6 +69,14 @@ if showCase29Tempo
             line.new(tt, lvl, te, lvl, xloc=xloc.bar_time, color=color.new(color.fuchsia, 0), width=2, style=line.style_dashed)
             if showLabels
                 label.new(tt, high, "tempo " + tid + " 50%", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.fuchsia, 0), textcolor=color.white, size=size.tiny)
+    if time == c29T4Start
+        line.new(c29T4Start, c29T4Open, c29T4End, c29T4Open, xloc=xloc.bar_time, color=color.new(color.red, 0), width=2, style=line.style_solid)
+        line.new(c29T4Start, c29T4Mid, c29T4End, c29T4Mid, xloc=xloc.bar_time, color=color.new(color.fuchsia, 0), width=2, style=line.style_dashed)
+        line.new(c29T4Start, c29T4High, c29T4End, c29T4High, xloc=xloc.bar_time, color=color.new(color.gray, 0), width=1, style=line.style_dotted)
+        if showLabels
+            label.new(c29T4End, c29T4Open, "T4 open", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
+            label.new(c29T4End, c29T4Mid, "T4 mid", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.fuchsia, 0), textcolor=color.white, size=size.tiny)
+            label.new(c29T4End, c29T4High, "T4 high", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.gray, 0), textcolor=color.white, size=size.tiny)
     for j = 0 to array.size(c29OverlapTimes) - 1
         int ot = array.get(c29OverlapTimes, j)
         string ol = array.get(c29OverlapLabels, j)
