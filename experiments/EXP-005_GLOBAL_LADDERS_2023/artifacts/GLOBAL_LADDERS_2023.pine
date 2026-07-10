@@ -1,0 +1,39 @@
+//@version=6
+indicator("EXP-005 Global ADA 2023 Ladders", overlay=true, max_lines_count=100, max_labels_count=100)
+
+// Retrospective candidate map only. Not a live detector, not a signal.
+// Use on ADAUSDT 4H. Recommended TradingView ticker for Bybit linear data: BYBIT:ADAUSDT.P; fallback: BINANCE:ADAUSDT.
+showLadders = input.bool(true, "showLadders")
+showLabels = input.bool(true, "showLabels")
+showBackground = input.bool(true, "showBackground")
+
+var int[] ladderStarts = array.from(timestamp("Etc/UTC", 2023, 7, 6, 12, 0), timestamp("Etc/UTC", 2023, 7, 14, 0, 0), timestamp("Etc/UTC", 2023, 8, 17, 20, 0), timestamp("Etc/UTC", 2023, 10, 2, 8, 0), timestamp("Etc/UTC", 2023, 10, 19, 0, 0), timestamp("Etc/UTC", 2023, 11, 16, 8, 0), timestamp("Etc/UTC", 2023, 11, 28, 8, 0))
+var int[] ladderEnds = array.from(timestamp("Etc/UTC", 2023, 7, 14, 0, 0), timestamp("Etc/UTC", 2023, 8, 17, 20, 0), timestamp("Etc/UTC", 2023, 10, 2, 8, 0), timestamp("Etc/UTC", 2023, 10, 19, 0, 0), timestamp("Etc/UTC", 2023, 11, 16, 8, 0), timestamp("Etc/UTC", 2023, 11, 28, 8, 0), timestamp("Etc/UTC", 2024, 1, 8, 0, 0))
+var string[] ladderIds = array.from("L1", "L2", "L3", "L4", "L5", "L6", "L7")
+var string[] ladderDirs = array.from("UP", "DOWN", "UP", "DOWN", "UP", "DOWN", "UP")
+
+f_ladder_color(dir, i) =>
+    dir == "UP" ? (i % 2 == 0 ? color.rgb(0, 166, 118) : color.rgb(23, 128, 96)) : (i % 2 == 0 ? color.rgb(210, 70, 70) : color.rgb(170, 55, 55))
+
+var color bg = na
+bg := na
+
+if showLadders
+    for i = 0 to array.size(ladderStarts) - 1
+        int st = array.get(ladderStarts, i)
+        int en = array.get(ladderEnds, i)
+        string lid = array.get(ladderIds, i)
+        string dir = array.get(ladderDirs, i)
+        color c = f_ladder_color(dir, i)
+        if showBackground and time >= st and time <= en
+            bg := color.new(c, 90)
+        if time == st
+            line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=c, width=2)
+            if showLabels
+                label.new(time, high, lid + " " + dir, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(c, 0), textcolor=color.white, size=size.small)
+        if time == en
+            line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=color.new(c, 30), width=1, style=line.style_dotted)
+            if showLabels
+                label.new(time, low, "end " + lid, xloc=xloc.bar_time, style=label.style_label_up, color=color.new(c, 30), textcolor=color.white, size=size.tiny)
+
+bgcolor(bg)
