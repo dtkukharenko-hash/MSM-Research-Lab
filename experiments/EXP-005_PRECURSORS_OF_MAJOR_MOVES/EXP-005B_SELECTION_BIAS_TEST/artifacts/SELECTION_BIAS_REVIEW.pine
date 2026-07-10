@@ -1,0 +1,44 @@
+//@version=6
+indicator("EXP-005B Selection Bias Review", overlay=true, max_lines_count=300, max_labels_count=300)
+
+// Retrospective OHLC-only review markup. No EMA, no signal, no strategy.
+showLong = input.bool(true, "showLong")
+showShort = input.bool(true, "showShort")
+showPrecursorWindows = input.bool(true, "showPrecursorWindows")
+showLabels = input.bool(true, "showLabels")
+showHoldout = input.bool(true, "showHoldout")
+showMajor = input.bool(true, "showMajor")
+showFailed = input.bool(true, "showFailed")
+
+var int[] times = array.from(timestamp("Etc/UTC", 2023, 7, 14, 8, 0), timestamp("Etc/UTC", 2023, 7, 14, 12, 0), timestamp("Etc/UTC", 2023, 7, 14, 16, 0), timestamp("Etc/UTC", 2023, 7, 18, 20, 0), timestamp("Etc/UTC", 2023, 8, 4, 8, 0), timestamp("Etc/UTC", 2023, 8, 15, 20, 0), timestamp("Etc/UTC", 2023, 8, 16, 16, 0), timestamp("Etc/UTC", 2023, 8, 17, 0, 0), timestamp("Etc/UTC", 2023, 9, 11, 16, 0), timestamp("Etc/UTC", 2023, 12, 13, 20, 0), timestamp("Etc/UTC", 2024, 1, 23, 8, 0), timestamp("Etc/UTC", 2024, 3, 14, 8, 0), timestamp("Etc/UTC", 2024, 7, 5, 0, 0), timestamp("Etc/UTC", 2024, 7, 16, 0, 0), timestamp("Etc/UTC", 2024, 8, 5, 8, 0), timestamp("Etc/UTC", 2024, 8, 26, 4, 0), timestamp("Etc/UTC", 2024, 8, 28, 0, 0), timestamp("Etc/UTC", 2024, 8, 28, 8, 0), timestamp("Etc/UTC", 2024, 8, 28, 16, 0), timestamp("Etc/UTC", 2024, 8, 29, 0, 0), timestamp("Etc/UTC", 2024, 9, 6, 16, 0), timestamp("Etc/UTC", 2024, 9, 27, 4, 0), timestamp("Etc/UTC", 2024, 9, 28, 4, 0), timestamp("Etc/UTC", 2024, 9, 28, 16, 0), timestamp("Etc/UTC", 2024, 9, 28, 20, 0), timestamp("Etc/UTC", 2024, 9, 29, 0, 0), timestamp("Etc/UTC", 2024, 9, 29, 4, 0), timestamp("Etc/UTC", 2024, 10, 2, 0, 0), timestamp("Etc/UTC", 2024, 10, 2, 12, 0), timestamp("Etc/UTC", 2024, 10, 2, 20, 0), timestamp("Etc/UTC", 2024, 10, 3, 16, 0), timestamp("Etc/UTC", 2024, 10, 3, 20, 0), timestamp("Etc/UTC", 2024, 10, 4, 0, 0), timestamp("Etc/UTC", 2024, 10, 4, 16, 0), timestamp("Etc/UTC", 2024, 10, 6, 4, 0), timestamp("Etc/UTC", 2024, 10, 7, 16, 0), timestamp("Etc/UTC", 2024, 10, 26, 12, 0), timestamp("Etc/UTC", 2024, 12, 3, 0, 0), timestamp("Etc/UTC", 2024, 12, 20, 8, 0), timestamp("Etc/UTC", 2025, 1, 17, 16, 0), timestamp("Etc/UTC", 2025, 2, 28, 4, 0), timestamp("Etc/UTC", 2025, 3, 2, 20, 0), timestamp("Etc/UTC", 2025, 4, 7, 4, 0), timestamp("Etc/UTC", 2025, 5, 11, 0, 0), timestamp("Etc/UTC", 2025, 5, 11, 4, 0), timestamp("Etc/UTC", 2025, 5, 11, 12, 0), timestamp("Etc/UTC", 2025, 5, 11, 20, 0), timestamp("Etc/UTC", 2025, 5, 12, 16, 0), timestamp("Etc/UTC", 2025, 5, 13, 0, 0), timestamp("Etc/UTC", 2025, 5, 14, 0, 0), timestamp("Etc/UTC", 2025, 5, 18, 4, 0), timestamp("Etc/UTC", 2025, 5, 18, 12, 0), timestamp("Etc/UTC", 2025, 5, 18, 20, 0), timestamp("Etc/UTC", 2025, 5, 19, 8, 0), timestamp("Etc/UTC", 2025, 5, 27, 4, 0), timestamp("Etc/UTC", 2025, 5, 30, 8, 0), timestamp("Etc/UTC", 2025, 5, 30, 16, 0), timestamp("Etc/UTC", 2025, 5, 31, 4, 0), timestamp("Etc/UTC", 2025, 6, 1, 12, 0), timestamp("Etc/UTC", 2025, 6, 3, 12, 0))
+var string[] ids = array.from("F042", "F041", "F030", "F033", "F009", "F002", "F001", "F003", "M01", "M02", "M03", "M04", "M05", "M06", "M07", "F011", "F026", "F008", "F025", "F027", "M08", "F018", "F016", "F017", "F035", "F036", "F012", "F020", "F039", "F038", "F019", "F044", "F043", "F031", "F007", "F010", "M09", "M10", "M11", "M12", "M13", "M14", "M15", "F040", "F028", "F006", "F005", "F029", "F004", "F034", "F023", "F024", "F032", "F045", "F014", "F013", "F022", "F021", "F037", "F015")
+var string[] dirs = array.from("SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "SHORT", "LONG", "SHORT", "LONG", "SHORT", "LONG", "SHORT", "LONG", "LONG", "LONG", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "SHORT", "LONG", "SHORT", "LONG", "SHORT", "LONG", "SHORT", "LONG", "SHORT", "SHORT", "SHORT", "SHORT", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG")
+var string[] states = array.from("OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "TRANSITION", "OPPOSITE_TREND", "OPPOSITE_TREND", "CHOP", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "CHOP", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "CHOP", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "CHOP", "OPPOSITE_TREND", "CHOP", "OPPOSITE_TREND", "OPPOSITE_TREND", "TRANSITION", "TRANSITION", "CHOP", "OPPOSITE_TREND", "OPPOSITE_TREND", "CHOP")
+var string[] labels = array.from("FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "MAJOR", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED", "FAILED")
+int holdoutStart = timestamp("Etc/UTC", 2025, 7, 1, 4, 0)
+int holdoutEnd = timestamp("Etc/UTC", 2026, 7, 1, 0, 0)
+
+var color bg = na
+bg := na
+if showHoldout and time >= holdoutStart and time <= holdoutEnd
+    bg := color.new(color.gray, 82)
+    if time == holdoutStart and showLabels
+        label.new(time, high, "HOLDOUT - NOT USED", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.gray, 0), textcolor=color.white, size=size.small)
+
+for i = 0 to array.size(times) - 1
+    int t = array.get(times, i)
+    string id = array.get(ids, i)
+    string dir = array.get(dirs, i)
+    string state = array.get(states, i)
+    string lab = array.get(labels, i)
+    bool visible = (dir == "LONG" ? showLong : showShort) and (lab == "MAJOR" ? showMajor : showFailed)
+    color c = lab == "MAJOR" ? (dir == "LONG" ? color.rgb(0, 170, 120) : color.rgb(210, 70, 70)) : color.rgb(230, 150, 0)
+    int pre = t - 30 * 4 * 60 * 60 * 1000
+    if visible and showPrecursorWindows and time >= pre and time < t
+        bg := color.new(c, lab == "MAJOR" ? 89 : 92)
+    if visible and time == t
+        line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=c, width=lab == "MAJOR" ? 2 : 1, style=lab == "MAJOR" ? line.style_solid : line.style_dashed)
+        if showLabels
+            label.new(time, high, id + " " + lab + " " + dir + " " + state, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(c, 0), textcolor=color.white, size=size.tiny)
+
+bgcolor(bg)

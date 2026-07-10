@@ -20,6 +20,28 @@
 
 ## DONE / REPORT_READY
 
+### EXP-005B_SELECTION_BIAS_TEST
+
+Статус: DONE / REPORT_READY
+
+Вердикт: OPPOSITE_STATE_IS_SELECTION_ARTIFACT — matched-turn контроль нашёл 45 failed turns, по 3 на каждый
+major start EXP-005A. На основном 30-барном окне OPPOSITE_TREND встречается у 12/15 major starts и у 38/45
+failed turns, то есть преимущество не сохраняется. Нужен дополнительный OHLC-признак перед использованием
+holdout. Детали:
+`experiments/EXP-005_PRECURSORS_OF_MAJOR_MOVES/EXP-005B_SELECTION_BIAS_TEST/REPORT.md`.
+
+Цель:
+Проверить, является ли OPPOSITE_TREND реальным предвестником крупных движений или артефактом ретроспективного
+выбора start_time около локального разворота.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан.
+
+---
+
 ### EXP-005A_PRICE_STATE_BEFORE_MAJOR_MOVES
 
 Статус: DONE / REPORT_READY
