@@ -1,0 +1,52 @@
+//@version=6
+indicator("EXP-004B F1 Start Structure", overlay=true, max_lines_count=120, max_labels_count=120)
+
+// Fixed visual markup for EXP-004B confirmed F1 start cases. Not an auto-detector, not a signal.
+// Use on ADAUSDT 4H. Recommended TradingView ticker for Bybit linear data: BYBIT:ADAUSDT.P; fallback: BINANCE:ADAUSDT.
+showWindows = input.bool(true, "showWindows")
+showStarts = input.bool(true, "showStarts")
+showPrev10Extreme = input.bool(true, "showPrev10Extreme")
+showFirstExtremeUpdate = input.bool(true, "showFirstExtremeUpdate")
+showLabels = input.bool(true, "showLabels")
+
+var int[] starts = array.from(timestamp("Etc/UTC", 2023, 12, 8, 0, 0), timestamp("Etc/UTC", 2023, 12, 5, 8, 0), timestamp("Etc/UTC", 2023, 11, 1, 12, 0), timestamp("Etc/UTC", 2023, 11, 15, 4, 0), timestamp("Etc/UTC", 2023, 12, 21, 0, 0), timestamp("Etc/UTC", 2023, 10, 25, 0, 0), timestamp("Etc/UTC", 2023, 8, 2, 0, 0))
+var int[] windowStarts = array.from(timestamp("Etc/UTC", 2023, 12, 6, 8, 0), timestamp("Etc/UTC", 2023, 12, 3, 16, 0), timestamp("Etc/UTC", 2023, 10, 30, 20, 0), timestamp("Etc/UTC", 2023, 11, 13, 12, 0), timestamp("Etc/UTC", 2023, 12, 19, 8, 0), timestamp("Etc/UTC", 2023, 10, 23, 8, 0), timestamp("Etc/UTC", 2023, 7, 31, 8, 0))
+var int[] windowEnds = array.from(timestamp("Etc/UTC", 2023, 12, 9, 12, 0), timestamp("Etc/UTC", 2023, 12, 6, 20, 0), timestamp("Etc/UTC", 2023, 11, 3, 0, 0), timestamp("Etc/UTC", 2023, 11, 16, 16, 0), timestamp("Etc/UTC", 2023, 12, 22, 12, 0), timestamp("Etc/UTC", 2023, 10, 26, 12, 0), timestamp("Etc/UTC", 2023, 8, 3, 12, 0))
+var string[] caseIds = array.from("1", "4", "5", "7", "17", "22", "29")
+var string[] caseDirs = array.from("UP", "UP", "UP", "UP", "UP", "UP", "DOWN")
+var float[] prev10Extremes = array.from(0.46000, 0.41570, 0.30510, 0.37380, 0.61090, 0.29380, 0.29400)
+var int[] updateTimes = array.from(timestamp("Etc/UTC", 2023, 12, 8, 0, 0), timestamp("Etc/UTC", 2023, 12, 5, 16, 0), timestamp("Etc/UTC", 2023, 11, 1, 20, 0), timestamp("Etc/UTC", 2023, 11, 15, 16, 0), timestamp("Etc/UTC", 2023, 12, 21, 8, 0), 0, 0)
+var bool[] commonFlags = array.from(true, true, true, true, true, false, false)
+
+var color bg = na
+bg := na
+
+for i = 0 to array.size(starts) - 1
+    int st = array.get(starts, i)
+    int ws = array.get(windowStarts, i)
+    int we = array.get(windowEnds, i)
+    string id = array.get(caseIds, i)
+    string dir = array.get(caseDirs, i)
+    bool common = array.get(commonFlags, i)
+    color c = common ? color.rgb(0, 160, 140) : color.rgb(255, 140, 0)
+    if showWindows and time >= ws and time <= we
+        bg := color.new(c, 91)
+    if showStarts and time == st
+        line.new(st, low, st, high, xloc=xloc.bar_time, extend=extend.both, color=c, width=3, style=line.style_solid)
+        if showLabels
+            label.new(st, high, "F1 start #" + id + " " + dir, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(c, 0), textcolor=color.white, size=size.small)
+    if showPrev10Extreme and time == st
+        float lvl = array.get(prev10Extremes, i)
+        line.new(st, lvl, we, lvl, xloc=xloc.bar_time, color=color.new(c, 10), width=2, style=line.style_dashed)
+        if showLabels
+            label.new(st, lvl, "prev10 extreme #" + id, xloc=xloc.bar_time, style=label.style_label_left, color=color.new(c, 15), textcolor=color.white, size=size.tiny)
+    int upd = array.get(updateTimes, i)
+    if showFirstExtremeUpdate and upd != 0 and time == upd
+        line.new(upd, low, upd, high, xloc=xloc.bar_time, extend=extend.both, color=color.new(color.fuchsia, 0), width=2, style=line.style_dotted)
+        if showLabels
+            label.new(upd, low, "first prev10 break #" + id, xloc=xloc.bar_time, style=label.style_label_up, color=color.new(color.fuchsia, 0), textcolor=color.white, size=size.tiny)
+
+bgcolor(bg)
+
+// Legend: teal = common_start_candidate true; orange = counterexample to common_start_candidate.
+// Dashed horizontal line = previous 10-bar extreme at accepted start. Fuchsia = first update of that extreme.
