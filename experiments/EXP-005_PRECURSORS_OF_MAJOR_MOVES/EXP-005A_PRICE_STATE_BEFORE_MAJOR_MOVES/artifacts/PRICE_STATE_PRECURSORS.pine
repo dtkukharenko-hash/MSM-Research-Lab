@@ -1,0 +1,42 @@
+//@version=6
+indicator("EXP-005A Price State Precursors", overlay=true, max_lines_count=200, max_labels_count=200)
+
+// Retrospective OHLC-only visual research markup. No EMA, no signal, no strategy.
+// Use on ADAUSDT 4H. Recommended TradingView ticker: BYBIT:ADAUSDT.P; fallback: BINANCE:ADAUSDT.
+showLong = input.bool(true, "showLong")
+showShort = input.bool(true, "showShort")
+showPrecursorWindows = input.bool(true, "showPrecursorWindows")
+showStateLabels = input.bool(true, "showStateLabels")
+showHoldout = input.bool(true, "showHoldout")
+
+var int[] starts = array.from(timestamp("Etc/UTC", 2023, 9, 11, 16, 0), timestamp("Etc/UTC", 2023, 12, 13, 20, 0), timestamp("Etc/UTC", 2024, 1, 23, 8, 0), timestamp("Etc/UTC", 2024, 3, 14, 8, 0), timestamp("Etc/UTC", 2024, 7, 5, 0, 0), timestamp("Etc/UTC", 2024, 7, 16, 0, 0), timestamp("Etc/UTC", 2024, 8, 5, 8, 0), timestamp("Etc/UTC", 2024, 9, 6, 16, 0), timestamp("Etc/UTC", 2024, 10, 26, 12, 0), timestamp("Etc/UTC", 2024, 12, 3, 0, 0), timestamp("Etc/UTC", 2024, 12, 20, 8, 0), timestamp("Etc/UTC", 2025, 1, 17, 16, 0), timestamp("Etc/UTC", 2025, 2, 28, 4, 0), timestamp("Etc/UTC", 2025, 3, 2, 20, 0), timestamp("Etc/UTC", 2025, 4, 7, 4, 0))
+var string[] ids = array.from("M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10", "M11", "M12", "M13", "M14", "M15")
+var string[] dirs = array.from("LONG", "SHORT", "LONG", "SHORT", "LONG", "SHORT", "LONG", "LONG", "LONG", "SHORT", "LONG", "SHORT", "LONG", "SHORT", "LONG")
+var string[] states = array.from("OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "TRANSITION", "OPPOSITE_TREND", "OPPOSITE_TREND", "CHOP", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND", "CHOP", "OPPOSITE_TREND", "OPPOSITE_TREND", "OPPOSITE_TREND")
+int holdoutStart = timestamp("Etc/UTC", 2025, 7, 1, 4, 0)
+int holdoutEnd = timestamp("Etc/UTC", 2026, 7, 1, 0, 0)
+
+var color bg = na
+bg := na
+
+if showHoldout and time >= holdoutStart and time <= holdoutEnd
+    bg := color.new(color.gray, 82)
+    if time == holdoutStart and showStateLabels
+        label.new(time, high, "HOLDOUT - NOT USED", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.gray, 0), textcolor=color.white, size=size.small)
+
+for i = 0 to array.size(starts) - 1
+    int st = array.get(starts, i)
+    string id = array.get(ids, i)
+    string dir = array.get(dirs, i)
+    string state = array.get(states, i)
+    bool visible = dir == "LONG" ? showLong : showShort
+    color c = dir == "LONG" ? color.rgb(0, 170, 120) : color.rgb(210, 70, 70)
+    int precursorStart = st - 30 * 4 * 60 * 60 * 1000
+    if visible and showPrecursorWindows and time >= precursorStart and time < st
+        bg := color.new(c, 89)
+    if visible and time == st
+        line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=c, width=2)
+        if showStateLabels
+            label.new(time, high, id + " " + dir + " " + state, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(c, 0), textcolor=color.white, size=size.small)
+
+bgcolor(bg)

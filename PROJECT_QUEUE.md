@@ -20,6 +20,28 @@
 
 ## DONE / REPORT_READY
 
+### EXP-005A_PRICE_STATE_BEFORE_MAJOR_MOVES
+
+Статус: DONE / REPORT_READY
+
+Вердикт: OPPOSITE_STATE_CANDIDATE_FOUND — после исключения последних 12 месяцев как holdout в research-периоде
+2023-07-01 — 2025-07-01 найдено 15 завершённых крупных движений и 1 CENSORED-кандидат у правой границы.
+В 12/15 завершённых случаев 30-барное OHLC-окно до старта классифицировано как OPPOSITE_TREND против 11/75
+контрольных окон. Главная слабость: устойчивость к сдвигу start_time только 7/15. Детали:
+`experiments/EXP-005_PRECURSORS_OF_MAJOR_MOVES/EXP-005A_PRICE_STATE_BEFORE_MAJOR_MOVES/REPORT.md`.
+
+Цель:
+Проверить, из какого OHLC-состояния цены рождаются крупные движения ADAUSDT 4H, полностью исключив последние
+12 месяцев данных как нетронутый holdout.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан.
+
+---
+
 ### EXP-005_PRECURSORS_OF_MAJOR_MOVES
 
 Статус: DONE / REPORT_READY
