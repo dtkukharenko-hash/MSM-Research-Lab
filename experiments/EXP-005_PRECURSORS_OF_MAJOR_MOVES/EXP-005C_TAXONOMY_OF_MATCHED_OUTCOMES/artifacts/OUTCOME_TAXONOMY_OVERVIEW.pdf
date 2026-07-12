@@ -1,0 +1,49 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 900 1100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 2015 >>
+stream
+1 1 1 rg 0 0 900 1100 re f
+/F1 15 Tf 0 0 0 rg 40 1060 Td (EXP-005C Outcome Taxonomy Overview) Tj
+/F1 9 Tf 0 0 0 rg 45 1025 Td (Goal: describe post-event outcomes of 45 matched_non_major_events.) Tj
+/F1 9 Tf 0 0 0 rg 45 1003 Td (Technical label failed_turn from EXP-005B is not treated as a market type.) Tj
+/F1 9 Tf 0 0 0 rg 45 981 Td (Feature rows: 180 event x horizon rows.) Tj
+/F1 9 Tf 0 0 0 rg 45 959 Td (Primary horizon: H=30. Core features: 15.) Tj
+/F1 9 Tf 0 0 0 rg 45 937 Td (Primary clusters: 3. Stable-size clusters: 1.) Tj
+/F1 9 Tf 0 0 0 rg 45 915 Td (Bootstrap mean ARI: 0.659.) Tj
+/F1 9 Tf 0 0 0 rg 45 893 Td (Delayed major moves after H30: 0.) Tj
+/F1 9 Tf 0 0 0 rg 45 871 Td (Discrete vs continuous verdict: WEAK_CLUSTER_STRUCTURE.) Tj
+/F1 9 Tf 0 0 0 rg 45 849 Td () Tj
+/F1 9 Tf 0 0 0 rg 45 827 Td (Cluster profiles:) Tj
+/F1 9 Tf 0 0 0 rg 45 805 Td (C0 TREND_CONTINUATION: n=3, med_ret_atr=-2.91, med_eff=-0.14, delayed=0) Tj
+/F1 9 Tf 0 0 0 rg 45 783 Td (C1 RANGE_WHIPSAW: n=41, med_ret_atr=0.56, med_eff=0.07, delayed=0) Tj
+/F1 9 Tf 0 0 0 rg 45 761 Td (C2 TREND_CONTINUATION: n=1, med_ret_atr=-5.80, med_eff=-0.33, delayed=0) Tj
+/F1 9 Tf 0 0 0 rg 45 739 Td () Tj
+/F1 9 Tf 0 0 0 rg 45 717 Td (Major comparison:) Tj
+/F1 9 Tf 0 0 0 rg 45 695 Td ({'event_type': 'MAJOR_START', 'count': 15, 'median_signed_return_atr': np.float64\(3.2173913043478297\), 'median_mfe_atr': np.float64\(4.301953818827705\), 'median_mae_atr': np.float64\(-0.49170353982301035\), 'median_signed_efficiency': np.float64\(0.2551159618008186\), 'median_range_atr': np.float64\(4.5257548845470685\), 'delayed_major_move_count': 0}) Tj
+/F1 9 Tf 0 0 0 rg 45 673 Td ({'event_type': 'MATCHED_NON_MAJOR', 'count': 45, 'median_signed_return_atr': np.float64\(0.4458598726114635\), 'median_mfe_atr': np.float64\(2.0912863070539425\), 'median_mae_atr': np.float64\(-1.8116298116298089\), 'median_signed_efficiency': np.float64\(0.04132231404958669\), 'median_range_atr': np.float64\(4.3891336270190955\), 'delayed_major_move_count': 0}) Tj
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000242 00000 n 
+0000002309 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+2379
+%%EOF

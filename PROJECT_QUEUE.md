@@ -20,6 +20,29 @@
 
 ## DONE / REPORT_READY
 
+### EXP-005C_TAXONOMY_OF_MATCHED_OUTCOMES
+
+Статус: DONE / REPORT_READY
+
+Вердикт: WEAK_OUTCOME_TAXONOMY — 45 matched non-major outcomes не образовали устойчивую многоклассовую
+таксономию. Основной H=30 clustering дал один широкий кластер 41/45 (`RANGE_WHIPSAW`) и два малых
+trend-continuation/outlier кластера 3/45 и 1/45. Delayed major moves: 0. Следующий шаг не открывать
+автоматически; рекомендовано изучать continuous outcome severity вместо классификатора. Commit: см. историю
+git для этого изменения. Детали:
+`experiments/EXP-005_PRECURSORS_OF_MAJOR_MOVES/EXP-005C_TAXONOMY_OF_MATCHED_OUTCOMES/REPORT.md`.
+
+Цель:
+Построить описательную post-event таксономию исходов после 45 matched non-major событий EXP-005B без
+предиктивной интерпретации.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан.
+
+---
+
 ### EXP-005B_SELECTION_BIAS_TEST
 
 Статус: DONE / REPORT_READY

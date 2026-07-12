@@ -1,0 +1,40 @@
+//@version=6
+indicator("EXP-005C Outcome Taxonomy Review", overlay=true, max_lines_count=300, max_labels_count=300)
+
+// Fixed review markup. Classes are loaded from EXP-005C CSV outputs. No signal.
+showLabels = input.bool(true, "showLabels")
+showWindows = input.bool(true, "showOutcomeWindow")
+
+var int[] times = array.from(timestamp("Etc/UTC", 2023, 8, 16, 16, 0), timestamp("Etc/UTC", 2023, 8, 15, 20, 0), timestamp("Etc/UTC", 2023, 8, 17, 0, 0), timestamp("Etc/UTC", 2025, 5, 13, 0, 0), timestamp("Etc/UTC", 2025, 5, 11, 20, 0), timestamp("Etc/UTC", 2025, 5, 11, 12, 0), timestamp("Etc/UTC", 2024, 10, 6, 4, 0), timestamp("Etc/UTC", 2024, 8, 28, 8, 0), timestamp("Etc/UTC", 2023, 8, 4, 8, 0), timestamp("Etc/UTC", 2024, 10, 7, 16, 0), timestamp("Etc/UTC", 2024, 8, 26, 4, 0), timestamp("Etc/UTC", 2024, 9, 29, 4, 0), timestamp("Etc/UTC", 2025, 5, 30, 8, 0), timestamp("Etc/UTC", 2025, 5, 27, 4, 0), timestamp("Etc/UTC", 2025, 6, 3, 12, 0), timestamp("Etc/UTC", 2024, 9, 28, 4, 0), timestamp("Etc/UTC", 2024, 9, 28, 16, 0), timestamp("Etc/UTC", 2024, 9, 27, 4, 0), timestamp("Etc/UTC", 2024, 10, 3, 16, 0), timestamp("Etc/UTC", 2024, 10, 2, 0, 0), timestamp("Etc/UTC", 2025, 5, 31, 4, 0), timestamp("Etc/UTC", 2025, 5, 30, 16, 0), timestamp("Etc/UTC", 2025, 5, 18, 4, 0), timestamp("Etc/UTC", 2025, 5, 18, 12, 0), timestamp("Etc/UTC", 2024, 8, 28, 16, 0), timestamp("Etc/UTC", 2024, 8, 28, 0, 0), timestamp("Etc/UTC", 2024, 8, 29, 0, 0), timestamp("Etc/UTC", 2025, 5, 11, 4, 0), timestamp("Etc/UTC", 2025, 5, 12, 16, 0), timestamp("Etc/UTC", 2023, 7, 14, 16, 0), timestamp("Etc/UTC", 2024, 10, 4, 16, 0), timestamp("Etc/UTC", 2025, 5, 18, 20, 0), timestamp("Etc/UTC", 2023, 7, 18, 20, 0), timestamp("Etc/UTC", 2025, 5, 14, 0, 0), timestamp("Etc/UTC", 2024, 9, 28, 20, 0), timestamp("Etc/UTC", 2024, 9, 29, 0, 0), timestamp("Etc/UTC", 2025, 6, 1, 12, 0), timestamp("Etc/UTC", 2024, 10, 2, 20, 0), timestamp("Etc/UTC", 2024, 10, 2, 12, 0), timestamp("Etc/UTC", 2025, 5, 11, 0, 0), timestamp("Etc/UTC", 2023, 7, 14, 12, 0), timestamp("Etc/UTC", 2023, 7, 14, 8, 0), timestamp("Etc/UTC", 2024, 10, 4, 0, 0), timestamp("Etc/UTC", 2024, 10, 3, 20, 0), timestamp("Etc/UTC", 2025, 5, 19, 8, 0))
+var string[] ids = array.from("F001", "F002", "F003", "F004", "F005", "F006", "F007", "F008", "F009", "F010", "F011", "F012", "F013", "F014", "F015", "F016", "F017", "F018", "F019", "F020", "F021", "F022", "F023", "F024", "F025", "F026", "F027", "F028", "F029", "F030", "F031", "F032", "F033", "F034", "F035", "F036", "F037", "F038", "F039", "F040", "F041", "F042", "F043", "F044", "F045")
+var string[] dirs = array.from("LONG", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG")
+var string[] clusters = array.from("C0", "C0", "C0", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C2", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1", "C1")
+var string[] classes = array.from("TREND_CONTINUATION", "TREND_CONTINUATION", "TREND_CONTINUATION", "UNCLASSIFIED", "UNCLASSIFIED", "RANGE_WHIPSAW", "RANGE_WHIPSAW", "TREND_CONTINUATION", "UNCLASSIFIED", "RANGE_WHIPSAW", "WEAK_REVERSAL", "WEAK_REVERSAL", "RANGE_WHIPSAW", "TREND_CONTINUATION", "TREND_CONTINUATION", "WEAK_REVERSAL", "WEAK_REVERSAL", "WEAK_REVERSAL", "RANGE_WHIPSAW", "RANGE_WHIPSAW", "RANGE_WHIPSAW", "TREND_CONTINUATION", "UNCLASSIFIED", "RANGE_WHIPSAW", "TREND_CONTINUATION", "TREND_CONTINUATION", "TREND_CONTINUATION", "RANGE_WHIPSAW", "WEAK_REVERSAL", "RANGE_WHIPSAW", "TREND_CONTINUATION", "RANGE_WHIPSAW", "RANGE_WHIPSAW", "WEAK_REVERSAL", "WEAK_REVERSAL", "WEAK_REVERSAL", "RANGE_WHIPSAW", "RANGE_WHIPSAW", "RANGE_WHIPSAW", "RANGE_WHIPSAW", "WEAK_REVERSAL", "WEAK_REVERSAL", "RANGE_WHIPSAW", "RANGE_WHIPSAW", "UNCLASSIFIED")
+var bool[] delayed = array.from(false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false)
+
+f_color(cls) =>
+    cls == "TREND_CONTINUATION" ? color.rgb(210, 70, 70) :
+     cls == "WEAK_REVERSAL" ? color.rgb(0, 170, 120) :
+     cls == "RANGE_WHIPSAW" ? color.rgb(230, 150, 0) :
+     cls == "DELAYED_MAJOR_MOVE" ? color.rgb(120, 80, 210) :
+     cls == "COMPRESSION" ? color.rgb(80, 150, 190) :
+     color.rgb(120, 120, 120)
+
+var color bg = na
+bg := na
+for i = 0 to array.size(times) - 1
+    int t = array.get(times, i)
+    string id = array.get(ids, i)
+    string dir = array.get(dirs, i)
+    string cl = array.get(clusters, i)
+    string cls = array.get(classes, i)
+    bool dly = array.get(delayed, i)
+    color c = f_color(cls)
+    int outEnd = t + 30 * 4 * 60 * 60 * 1000
+    if showWindows and time > t and time <= outEnd
+        bg := color.new(c, 90)
+    if time == t
+        line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=c, width=2)
+        if showLabels
+            label.new(time, high, id + " " + dir + " " + cl + " " + cls + (dly ? " DELAYED" : ""), xloc=xloc.bar_time, style=label.style_label_down, color=color.new(c, 0), textcolor=color.white, size=size.tiny)
+bgcolor(bg)
