@@ -1,0 +1,13 @@
+//@version=6
+indicator("EXP-005G Holdout Review - BLOCKED", overlay=true)
+
+// EXP-005G did not generate holdout event points because EXP-005A/005B
+// do not define an exact causal event-generation algorithm.
+// No model is calculated here and no holdout labels were opened.
+ema27 = ta.ema(close, 27)
+ema200 = ta.ema(close, 200)
+plot(ema27, "EMA27", color=color.new(color.teal, 0), linewidth=2)
+plot(ema200, "EMA200", color=color.new(color.orange, 0), linewidth=2)
+holdoutStart = timestamp("Etc/UTC", 2025, 7, 1, 4, 0)
+holdoutEnd = timestamp("Etc/UTC", 2026, 7, 1, 0, 0)
+bgcolor(time >= holdoutStart and time <= holdoutEnd ? color.new(color.gray, 86) : na)

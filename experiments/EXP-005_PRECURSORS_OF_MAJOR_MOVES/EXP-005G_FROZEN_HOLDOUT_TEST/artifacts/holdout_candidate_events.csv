@@ -1,0 +1,2 @@
+event_id,event_time,direction,event_point_rule,causal_available,unknown_reason
+BLOCKED,,,NOT_GENERATED,false,HOLDOUT_BLOCKED_BY_EVENT_DEFINITION: EXP-005A/EXP-005B event-generation is not causal and exact enough to enumerate holdout candidates without new choices.

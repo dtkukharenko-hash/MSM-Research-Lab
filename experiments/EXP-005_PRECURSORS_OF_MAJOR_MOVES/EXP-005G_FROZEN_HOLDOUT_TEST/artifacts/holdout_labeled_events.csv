@@ -1,0 +1,2 @@
+event_id,event_time,direction,outcome_label,label_status,reason
+BLOCKED,,,UNKNOWN,NOT_LABELED,Holdout candidate events were not causally generated; holdout labels were not opened.

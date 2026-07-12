@@ -1,0 +1,2 @@
+event_id,model,predicted_probability,status,reason
+BLOCKED,Model 3,,NOT_SCORED,No causal holdout event set.

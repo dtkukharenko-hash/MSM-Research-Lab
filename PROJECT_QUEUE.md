@@ -20,6 +20,28 @@
 
 ## DONE / REPORT_READY
 
+### EXP-005G_FROZEN_HOLDOUT_TEST
+
+Статус: DONE / BLOCKED
+
+Вердикт: HOLDOUT_BLOCKED_BY_EVENT_DEFINITION — замороженная Model 3 из EXP-005F не запускалась на holdout
+outcomes, потому что EXP-005A/EXP-005B не содержат точного причинного алгоритма генерации полного набора
+holdout candidate event points и label rules. Holdout labels не открывались; результат не подтверждает и не
+отвергает EMA-гипотезу. Детали:
+`experiments/EXP-005_PRECURSORS_OF_MAJOR_MOVES/EXP-005G_FROZEN_HOLDOUT_TEST/REPORT.md`.
+
+Цель:
+Один раз проверить полностью замороженную спецификацию Model 3 на нетронутом holdout-периоде, если event
+generation можно воспроизвести причинно и однозначно.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан; holdout test заблокирован до формализации event-generation на research.
+
+---
+
 ### EXP-005F_EMA_CONTEXT_INCREMENT
 
 Статус: DONE / REPORT_READY

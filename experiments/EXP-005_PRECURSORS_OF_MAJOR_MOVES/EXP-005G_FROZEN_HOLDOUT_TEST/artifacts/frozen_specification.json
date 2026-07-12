@@ -1,0 +1,65 @@
+{
+  "experiment": "EXP-005G_FROZEN_HOLDOUT_TEST",
+  "verdict": "HOLDOUT_BLOCKED_BY_EVENT_DEFINITION",
+  "research_period": {
+    "start": "2023-07-01 00:00 UTC",
+    "end": "2025-07-01 00:00 UTC"
+  },
+  "holdout_period": {
+    "start": "2025-07-01 04:00 UTC",
+    "end": "2026-07-01 00:00 UTC"
+  },
+  "holdout_outcomes_opened": false,
+  "blocked_before_holdout_labeling": true,
+  "model_source": "EXP-005F Model 3",
+  "target": {
+    "MAJOR": 1,
+    "MATCHED_NON_MAJOR": 0
+  },
+  "model": {
+    "type": "logistic_regression",
+    "penalty": "L2",
+    "C": 1.0,
+    "class_weight": "balanced",
+    "scaler_fit": "research_events_only",
+    "threshold": 0.5,
+    "threshold_optimized": false
+  },
+  "feature_timing": "t-1 closed bars only; event bar excluded",
+  "features": [
+    "pre_net_return_atr",
+    "price_minus_ema27_atr",
+    "ema27_slope_5",
+    "ema27_slope_10",
+    "ema27_slope_change",
+    "fraction_last10_above_ema27",
+    "number_of_ema27_crosses_last20",
+    "distance_change_to_ema27_last10",
+    "price_minus_ema200_atr",
+    "ema200_slope_10",
+    "ema200_slope_30",
+    "fraction_last30_above_ema200",
+    "number_of_ema200_crosses_last50",
+    "distance_change_to_ema200_last20",
+    "ema27_minus_ema200_atr",
+    "ema27_above_ema200",
+    "ema27_ema200_distance_change_last20",
+    "price_between_ema27_ema200",
+    "ema27_turning_against_previous_state"
+  ],
+  "blocker": {
+    "summary": "EXP-005A/EXP-005B do not provide a causal, exact event-generation algorithm.",
+    "missing_items": [
+      "numeric major movement thresholds",
+      "causal candidate turn rule",
+      "complete holdout candidate event-point generation rule",
+      "exact matched-control selection algorithm",
+      "formal CENSORED/UNKNOWN label rules",
+      "exact outcome horizon and completion rules for major/non-major labeling"
+    ],
+    "evidence": [
+      "EXP-005A uses retrospective OHLC close turning region and 120-bar local context wording.",
+      "EXP-005B uses similar prior volatility/net return/efficiency/range/duration and no comparable major movement, without exact constants."
+    ]
+  }
+}

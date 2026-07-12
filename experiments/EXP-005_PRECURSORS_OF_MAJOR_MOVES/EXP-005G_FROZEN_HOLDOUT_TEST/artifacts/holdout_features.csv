@@ -1,0 +1,2 @@
+event_id,pre_net_return_atr,price_minus_ema27_atr,ema27_slope_5,ema27_slope_10,ema27_slope_change,fraction_last10_above_ema27,number_of_ema27_crosses_last20,distance_change_to_ema27_last10,price_minus_ema200_atr,ema200_slope_10,ema200_slope_30,fraction_last30_above_ema200,number_of_ema200_crosses_last50,distance_change_to_ema200_last20,ema27_minus_ema200_atr,ema27_above_ema200,ema27_ema200_distance_change_last20,price_between_ema27_ema200,ema27_turning_against_previous_state,status
+BLOCKED,,,,,,,,,,,,,,,,,,,,NOT_COMPUTED
