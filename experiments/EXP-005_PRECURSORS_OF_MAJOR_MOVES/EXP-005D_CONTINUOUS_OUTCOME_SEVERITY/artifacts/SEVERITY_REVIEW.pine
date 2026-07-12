@@ -1,0 +1,28 @@
+//@version=6
+indicator("EXP-005D Severity Review", overlay=true, max_lines_count=200, max_labels_count=200)
+showLabels = input.bool(true, "showLabels")
+showPreWindow = input.bool(true, "showPreWindow")
+showHoldout = input.bool(true, "showHoldout")
+var int[] times = array.from(timestamp("Etc/UTC", 2023, 7, 14, 8, 0), timestamp("Etc/UTC", 2023, 7, 14, 12, 0), timestamp("Etc/UTC", 2023, 7, 14, 16, 0), timestamp("Etc/UTC", 2023, 7, 18, 20, 0), timestamp("Etc/UTC", 2023, 8, 4, 8, 0), timestamp("Etc/UTC", 2023, 8, 15, 20, 0), timestamp("Etc/UTC", 2023, 8, 16, 16, 0), timestamp("Etc/UTC", 2023, 8, 17, 0, 0), timestamp("Etc/UTC", 2023, 9, 11, 16, 0), timestamp("Etc/UTC", 2023, 12, 13, 20, 0), timestamp("Etc/UTC", 2024, 1, 23, 8, 0), timestamp("Etc/UTC", 2024, 3, 14, 8, 0), timestamp("Etc/UTC", 2024, 7, 5, 0, 0), timestamp("Etc/UTC", 2024, 7, 16, 0, 0), timestamp("Etc/UTC", 2024, 8, 5, 8, 0), timestamp("Etc/UTC", 2024, 8, 26, 4, 0), timestamp("Etc/UTC", 2024, 8, 28, 0, 0), timestamp("Etc/UTC", 2024, 8, 28, 8, 0), timestamp("Etc/UTC", 2024, 8, 28, 16, 0), timestamp("Etc/UTC", 2024, 8, 29, 0, 0), timestamp("Etc/UTC", 2024, 9, 6, 16, 0), timestamp("Etc/UTC", 2024, 9, 27, 4, 0), timestamp("Etc/UTC", 2024, 9, 28, 4, 0), timestamp("Etc/UTC", 2024, 9, 28, 16, 0), timestamp("Etc/UTC", 2024, 9, 28, 20, 0), timestamp("Etc/UTC", 2024, 9, 29, 0, 0), timestamp("Etc/UTC", 2024, 9, 29, 4, 0), timestamp("Etc/UTC", 2024, 10, 2, 0, 0), timestamp("Etc/UTC", 2024, 10, 2, 12, 0), timestamp("Etc/UTC", 2024, 10, 2, 20, 0), timestamp("Etc/UTC", 2024, 10, 3, 16, 0), timestamp("Etc/UTC", 2024, 10, 3, 20, 0), timestamp("Etc/UTC", 2024, 10, 4, 0, 0), timestamp("Etc/UTC", 2024, 10, 4, 16, 0), timestamp("Etc/UTC", 2024, 10, 6, 4, 0), timestamp("Etc/UTC", 2024, 10, 7, 16, 0), timestamp("Etc/UTC", 2024, 10, 26, 12, 0), timestamp("Etc/UTC", 2024, 12, 3, 0, 0), timestamp("Etc/UTC", 2024, 12, 20, 8, 0), timestamp("Etc/UTC", 2025, 1, 17, 16, 0), timestamp("Etc/UTC", 2025, 2, 28, 4, 0), timestamp("Etc/UTC", 2025, 3, 2, 20, 0), timestamp("Etc/UTC", 2025, 4, 7, 4, 0), timestamp("Etc/UTC", 2025, 5, 11, 0, 0), timestamp("Etc/UTC", 2025, 5, 11, 4, 0), timestamp("Etc/UTC", 2025, 5, 11, 12, 0), timestamp("Etc/UTC", 2025, 5, 11, 20, 0), timestamp("Etc/UTC", 2025, 5, 12, 16, 0), timestamp("Etc/UTC", 2025, 5, 13, 0, 0), timestamp("Etc/UTC", 2025, 5, 14, 0, 0), timestamp("Etc/UTC", 2025, 5, 18, 4, 0), timestamp("Etc/UTC", 2025, 5, 18, 12, 0), timestamp("Etc/UTC", 2025, 5, 18, 20, 0), timestamp("Etc/UTC", 2025, 5, 19, 8, 0), timestamp("Etc/UTC", 2025, 5, 27, 4, 0), timestamp("Etc/UTC", 2025, 5, 30, 8, 0), timestamp("Etc/UTC", 2025, 5, 30, 16, 0), timestamp("Etc/UTC", 2025, 5, 31, 4, 0), timestamp("Etc/UTC", 2025, 6, 1, 12, 0), timestamp("Etc/UTC", 2025, 6, 3, 12, 0))
+var string[] ids = array.from("F042", "F041", "F030", "F033", "F009", "F002", "F001", "F003", "M01", "M02", "M03", "M04", "M05", "M06", "M07", "F011", "F026", "F008", "F025", "F027", "M08", "F018", "F016", "F017", "F035", "F036", "F012", "F020", "F039", "F038", "F019", "F044", "F043", "F031", "F007", "F010", "M09", "M10", "M11", "M12", "M13", "M14", "M15", "F040", "F028", "F006", "F005", "F029", "F004", "F034", "F023", "F024", "F032", "F045", "F014", "F013", "F022", "F021", "F037", "F015")
+var string[] types = array.from("MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR", "MATCHED_NON_MAJOR")
+var int[] ranks = array.from(44, 41, 14, 30, 29, 3, 7, 2, 43, 38, 42, 56, 48, 35, 47, 49, 9, 4, 8, 6, 50, 54, 53, 58, 57, 59, 55, 15, 22, 26, 19, 16, 17, 11, 21, 31, 39, 33, 45, 46, 60, 52, 51, 28, 20, 18, 32, 34, 25, 40, 37, 27, 23, 36, 1, 12, 5, 24, 13, 10)
+int holdoutStart = timestamp("Etc/UTC", 2025, 7, 1, 4, 0)
+int holdoutEnd = timestamp("Etc/UTC", 2026, 7, 1, 0, 0)
+var color bg = na
+bg := na
+if showHoldout and time >= holdoutStart and time <= holdoutEnd
+    bg := color.new(color.gray, 82)
+for i = 0 to array.size(times) - 1
+    int t = array.get(times, i)
+    string id = array.get(ids, i)
+    string typ = array.get(types, i)
+    int r = array.get(ranks, i)
+    color c = typ == "MAJOR" ? color.rgb(0, 170, 120) : color.rgb(230, 150, 0)
+    if showPreWindow and time >= t - 30 * 4 * 60 * 60 * 1000 and time < t
+        bg := color.new(c, 91)
+    if time == t
+        line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=c, width=2)
+        if showLabels
+            label.new(time, high, id + " " + typ + " rank=" + str.tostring(r), xloc=xloc.bar_time, style=label.style_label_down, color=color.new(c, 0), textcolor=color.white, size=size.tiny)
+bgcolor(bg)

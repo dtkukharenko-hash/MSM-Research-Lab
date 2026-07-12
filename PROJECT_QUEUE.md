@@ -20,6 +20,28 @@
 
 ## DONE / REPORT_READY
 
+### EXP-005D_CONTINUOUS_OUTCOME_SEVERITY
+
+Статус: DONE / REPORT_READY
+
+Вердикт: WEAK_CONTINUOUS_SEVERITY_SIGNAL — использовано 60 событий (15 major + 45 matched non-major).
+Лучший group-aware OOF Spearman = 0.205 (`pre_net_return_only`), лучший OOF R² = -0.006 (`forest`).
+После удаления top-1/top-3 severity Spearman сохраняется около 0.27/0.22, но сильный критерий не пройден:
+R² остаётся слабым/около нуля, а связь чувствительна к выбору event point. Holdout не открыт. Детали:
+`experiments/EXP-005_PRECURSORS_OF_MAJOR_MOVES/EXP-005D_CONTINUOUS_OUTCOME_SEVERITY/REPORT.md`.
+
+Цель:
+Проверить, можно ли по OHLC-состоянию до matched event объяснить непрерывную силу последующего движения без
+искусственной дискретной классификации.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан.
+
+---
+
 ### EXP-005C_TAXONOMY_OF_MATCHED_OUTCOMES
 
 Статус: DONE / REPORT_READY

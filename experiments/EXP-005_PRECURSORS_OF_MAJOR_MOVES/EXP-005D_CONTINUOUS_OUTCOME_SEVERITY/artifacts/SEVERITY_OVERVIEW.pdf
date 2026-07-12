@@ -1,0 +1,49 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 900 1100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 1499 >>
+stream
+1 1 1 rg 0 0 900 1100 re f
+/F1 15 Tf 0 0 0 rg 40 1060 Td (EXP-005D Severity Overview) Tj
+/F1 9 Tf 0 0 0 rg 45 1025 Td (Events used: 60) Tj
+/F1 9 Tf 0 0 0 rg 45 1003 Td (Severity score = robust_z\(return_atr\)+robust_z\(MFE_atr\)+robust_z\(signed_efficiency\) / 3) Tj
+/F1 9 Tf 0 0 0 rg 45 981 Td (Best model: pre_net_return_only Spearman=0.205 R2=-0.070) Tj
+/F1 9 Tf 0 0 0 rg 45 959 Td (Best MAE=0.694 RMSE=0.955) Tj
+/F1 9 Tf 0 0 0 rg 45 937 Td (Top correlations:) Tj
+/F1 9 Tf 0 0 0 rg 45 915 Td (new_low_count: spearman=-0.408) Tj
+/F1 9 Tf 0 0 0 rg 45 893 Td (pre_net_return_atr: spearman=0.367) Tj
+/F1 9 Tf 0 0 0 rg 45 871 Td (distance_from_30bar_high: spearman=-0.354) Tj
+/F1 9 Tf 0 0 0 rg 45 849 Td (range_expansion_ratio: spearman=-0.325) Tj
+/F1 9 Tf 0 0 0 rg 45 827 Td (new_high_count: spearman=0.317) Tj
+/F1 9 Tf 0 0 0 rg 45 805 Td (Stability:) Tj
+/F1 9 Tf 0 0 0 rg 45 783 Td (       r2  spearman      mae     rmse  median_absolute_error          test  removed_count  remaining_count
+-0.069545  0.204835 0.694249 0.954535               0.507337          none              0               60
+ 0.018570  0.268147 0.623646 0.783482               0.535804          top1              1               59
+ 0.024607  0.224916 0.570792 0.726569               0.517965          top3              3               57
+ 0.036713  0.358630 0.634299 0.797648               0.592785 major_removed             15               45) Tj
+/F1 9 Tf 0 0 0 rg 45 761 Td (Research/holdout boundary: holdout not used.) Tj
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000242 00000 n 
+0000001793 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+1863
+%%EOF
