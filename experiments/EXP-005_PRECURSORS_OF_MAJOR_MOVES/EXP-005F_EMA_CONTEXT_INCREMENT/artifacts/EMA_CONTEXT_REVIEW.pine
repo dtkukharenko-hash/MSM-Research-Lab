@@ -1,0 +1,34 @@
+//@version=6
+indicator("EXP-005F EMA Context Review", overlay=true, max_lines_count=200, max_labels_count=200)
+
+// Fixed visual research markup only. The model is not calculated in Pine.
+// Use on ADAUSDT 4H. Recommended ticker: BYBIT:ADAUSDT.P; fallback: BINANCE:ADAUSDT.
+showEvents = input.bool(true, "showEvents")
+showLabels = input.bool(true, "showLabels")
+showHoldoutShade = input.bool(true, "showHoldoutShade")
+
+ema27 = ta.ema(close, 27)
+ema200 = ta.ema(close, 200)
+plot(ema27, "EMA27", color=color.new(color.teal, 0), linewidth=2)
+plot(ema200, "EMA200", color=color.new(color.orange, 0), linewidth=2)
+
+holdoutStart = timestamp("Etc/UTC", 2025, 7, 1, 4, 0)
+holdoutEnd = timestamp("Etc/UTC", 2026, 7, 1, 0, 0)
+bgcolor(showHoldoutShade and time >= holdoutStart and time <= holdoutEnd ? color.new(color.gray, 86) : na)
+
+var int[] eventTimes = array.from(timestamp("Etc/UTC", 2023, 7, 14, 8, 0), timestamp("Etc/UTC", 2023, 7, 14, 12, 0), timestamp("Etc/UTC", 2023, 7, 14, 16, 0), timestamp("Etc/UTC", 2023, 7, 18, 20, 0), timestamp("Etc/UTC", 2023, 8, 4, 8, 0), timestamp("Etc/UTC", 2023, 8, 15, 20, 0), timestamp("Etc/UTC", 2023, 8, 16, 16, 0), timestamp("Etc/UTC", 2023, 8, 17, 0, 0), timestamp("Etc/UTC", 2023, 9, 11, 16, 0), timestamp("Etc/UTC", 2023, 12, 13, 20, 0), timestamp("Etc/UTC", 2024, 1, 23, 8, 0), timestamp("Etc/UTC", 2024, 3, 14, 8, 0), timestamp("Etc/UTC", 2024, 7, 5, 0, 0), timestamp("Etc/UTC", 2024, 7, 16, 0, 0), timestamp("Etc/UTC", 2024, 8, 5, 8, 0), timestamp("Etc/UTC", 2024, 8, 26, 4, 0), timestamp("Etc/UTC", 2024, 8, 28, 0, 0), timestamp("Etc/UTC", 2024, 8, 28, 8, 0), timestamp("Etc/UTC", 2024, 8, 28, 16, 0), timestamp("Etc/UTC", 2024, 8, 29, 0, 0), timestamp("Etc/UTC", 2024, 9, 6, 16, 0), timestamp("Etc/UTC", 2024, 9, 27, 4, 0), timestamp("Etc/UTC", 2024, 9, 28, 4, 0), timestamp("Etc/UTC", 2024, 9, 28, 16, 0), timestamp("Etc/UTC", 2024, 9, 28, 20, 0), timestamp("Etc/UTC", 2024, 9, 29, 0, 0), timestamp("Etc/UTC", 2024, 9, 29, 4, 0), timestamp("Etc/UTC", 2024, 10, 2, 0, 0), timestamp("Etc/UTC", 2024, 10, 2, 12, 0), timestamp("Etc/UTC", 2024, 10, 2, 20, 0), timestamp("Etc/UTC", 2024, 10, 3, 16, 0), timestamp("Etc/UTC", 2024, 10, 3, 20, 0), timestamp("Etc/UTC", 2024, 10, 4, 0, 0), timestamp("Etc/UTC", 2024, 10, 4, 16, 0), timestamp("Etc/UTC", 2024, 10, 6, 4, 0), timestamp("Etc/UTC", 2024, 10, 7, 16, 0), timestamp("Etc/UTC", 2024, 10, 26, 12, 0), timestamp("Etc/UTC", 2024, 12, 3, 0, 0), timestamp("Etc/UTC", 2024, 12, 20, 8, 0), timestamp("Etc/UTC", 2025, 1, 17, 16, 0), timestamp("Etc/UTC", 2025, 2, 28, 4, 0), timestamp("Etc/UTC", 2025, 3, 2, 20, 0), timestamp("Etc/UTC", 2025, 4, 7, 4, 0), timestamp("Etc/UTC", 2025, 5, 11, 0, 0), timestamp("Etc/UTC", 2025, 5, 11, 4, 0), timestamp("Etc/UTC", 2025, 5, 11, 12, 0), timestamp("Etc/UTC", 2025, 5, 11, 20, 0), timestamp("Etc/UTC", 2025, 5, 12, 16, 0), timestamp("Etc/UTC", 2025, 5, 13, 0, 0), timestamp("Etc/UTC", 2025, 5, 14, 0, 0), timestamp("Etc/UTC", 2025, 5, 18, 4, 0), timestamp("Etc/UTC", 2025, 5, 18, 12, 0), timestamp("Etc/UTC", 2025, 5, 18, 20, 0), timestamp("Etc/UTC", 2025, 5, 19, 8, 0), timestamp("Etc/UTC", 2025, 5, 27, 4, 0), timestamp("Etc/UTC", 2025, 5, 30, 8, 0), timestamp("Etc/UTC", 2025, 5, 30, 16, 0), timestamp("Etc/UTC", 2025, 5, 31, 4, 0), timestamp("Etc/UTC", 2025, 6, 1, 12, 0), timestamp("Etc/UTC", 2025, 6, 3, 12, 0))
+var string[] eventLabels = array.from("F042 MATCHED_NON_MAJOR p=0.18", "F041 MATCHED_NON_MAJOR p=0.07", "F030 MATCHED_NON_MAJOR p=0.08", "F033 MATCHED_NON_MAJOR p=0.00", "F009 MATCHED_NON_MAJOR p=0.38", "F002 MATCHED_NON_MAJOR p=0.75", "F001 MATCHED_NON_MAJOR p=0.71", "F003 MATCHED_NON_MAJOR p=0.81", "M01 MAJOR p=0.85", "M02 MAJOR p=0.89", "M03 MAJOR p=0.80", "M04 MAJOR p=0.77", "M05 MAJOR p=0.82", "M06 MAJOR p=0.70", "M07 MAJOR p=0.50", "F011 MATCHED_NON_MAJOR p=0.43", "F026 MATCHED_NON_MAJOR p=0.05", "F008 MATCHED_NON_MAJOR p=0.08", "F025 MATCHED_NON_MAJOR p=0.14", "F027 MATCHED_NON_MAJOR p=0.26", "M08 MAJOR p=0.87", "F018 MATCHED_NON_MAJOR p=0.39", "F016 MATCHED_NON_MAJOR p=0.41", "F017 MATCHED_NON_MAJOR p=0.29", "F035 MATCHED_NON_MAJOR p=0.17", "F036 MATCHED_NON_MAJOR p=0.19", "F012 MATCHED_NON_MAJOR p=0.25", "F020 MATCHED_NON_MAJOR p=0.10", "F039 MATCHED_NON_MAJOR p=0.29", "F038 MATCHED_NON_MAJOR p=0.17", "F019 MATCHED_NON_MAJOR p=0.49", "F044 MATCHED_NON_MAJOR p=0.62", "F043 MATCHED_NON_MAJOR p=0.67", "F031 MATCHED_NON_MAJOR p=0.85", "F007 MATCHED_NON_MAJOR p=0.51", "F010 MATCHED_NON_MAJOR p=0.42", "M09 MAJOR p=0.62", "M10 MAJOR p=0.74", "M11 MAJOR p=0.16", "M12 MAJOR p=0.31", "M13 MAJOR p=0.75", "M14 MAJOR p=1.00", "M15 MAJOR p=0.62", "F040 MATCHED_NON_MAJOR p=0.05", "F028 MATCHED_NON_MAJOR p=0.03", "F006 MATCHED_NON_MAJOR p=0.03", "F005 MATCHED_NON_MAJOR p=0.05", "F029 MATCHED_NON_MAJOR p=0.03", "F004 MATCHED_NON_MAJOR p=0.05", "F034 MATCHED_NON_MAJOR p=0.16", "F023 MATCHED_NON_MAJOR p=0.01", "F024 MATCHED_NON_MAJOR p=0.02", "F032 MATCHED_NON_MAJOR p=0.01", "F045 MATCHED_NON_MAJOR p=0.23", "F014 MATCHED_NON_MAJOR p=0.01", "F013 MATCHED_NON_MAJOR p=0.13", "F022 MATCHED_NON_MAJOR p=0.29", "F021 MATCHED_NON_MAJOR p=0.08", "F037 MATCHED_NON_MAJOR p=0.21", "F015 MATCHED_NON_MAJOR p=0.09")
+var int[] eventClasses = array.from(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+var float[] eventProbs = array.from(0.181920, 0.071166, 0.075981, 0.001671, 0.380007, 0.746533, 0.713668, 0.812668, 0.845661, 0.885728, 0.796433, 0.765145, 0.822095, 0.695423, 0.499547, 0.431621, 0.053345, 0.080598, 0.138824, 0.259688, 0.874120, 0.390952, 0.414509, 0.292524, 0.171019, 0.191747, 0.245864, 0.103555, 0.291007, 0.167086, 0.487771, 0.621666, 0.666364, 0.849725, 0.511474, 0.420139, 0.617814, 0.740412, 0.161988, 0.309906, 0.749940, 0.999108, 0.620071, 0.046661, 0.027779, 0.034243, 0.053508, 0.025928, 0.049664, 0.160241, 0.011690, 0.017934, 0.013103, 0.228301, 0.009558, 0.127349, 0.292558, 0.076676, 0.209703, 0.086257)
+
+if showEvents
+    for i = 0 to array.size(eventTimes) - 1
+        int et = array.get(eventTimes, i)
+        int cls = array.get(eventClasses, i)
+        string labelText = array.get(eventLabels, i)
+        float prob = array.get(eventProbs, i)
+        color c = cls == 1 ? color.new(color.red, 0) : color.new(color.blue, 0)
+        if time == et
+            line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=c, width=cls == 1 ? 2 : 1, style=cls == 1 ? line.style_solid : line.style_dashed)
+            if showLabels
+                label.new(time, high, labelText, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(c, 0), textcolor=color.white, size=size.tiny)

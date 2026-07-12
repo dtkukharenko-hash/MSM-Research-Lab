@@ -20,6 +20,28 @@
 
 ## DONE / REPORT_READY
 
+### EXP-005F_EMA_CONTEXT_INCREMENT
+
+Статус: DONE / REPORT_READY
+
+Вердикт: EMA_INCREMENT_FOUND — EMA-контекст дал прирост над `pre_net_return_atr`: temporal ROC-AUC Model 3
+`0.773` против Model 0 `0.533`, group-aware OOF ROC-AUC Model 3 `0.782`, temporal PR-AUC `0.614` выше
+prevalence `0.250`. Holdout не открыт; зафиксирована кандидатная спецификация Model 3 для отдельного
+будущего holdout-теста. Детали:
+`experiments/EXP-005_PRECURSORS_OF_MAJOR_MOVES/EXP-005F_EMA_CONTEXT_INCREMENT/REPORT.md`.
+
+Цель:
+Проверить, добавляет ли EMA27/EMA200 контекст причинно доступную информацию сверх OHLC baseline для
+отличия major starts от matched non-major events.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан.
+
+---
+
 ### EXP-005E_TEMPORAL_VALIDATION
 
 Статус: DONE / REPORT_READY
