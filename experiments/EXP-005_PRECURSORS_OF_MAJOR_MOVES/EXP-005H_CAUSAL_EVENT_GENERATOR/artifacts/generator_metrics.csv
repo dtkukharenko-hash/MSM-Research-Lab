@@ -1,0 +1,2 @@
+verdict,development_candidates,pseudo_holdout_candidates,pseudo_candidate_rate_per_month,pseudo_long,pseudo_short,development_known_matched,development_known_total,pseudo_known_matched,pseudo_known_total,pseudo_retrospective_only_share,outcome_label_status
+EVENT_DEFINITION_BLOCKED,130,41,6.465997409326425,26,15,15,38,15,22,0.3181818181818182,BLOCKED

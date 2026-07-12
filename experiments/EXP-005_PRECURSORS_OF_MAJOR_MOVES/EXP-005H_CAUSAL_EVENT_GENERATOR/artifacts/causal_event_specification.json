@@ -1,0 +1,44 @@
+{
+  "name": "EXP-005H causal event generator v1",
+  "frozen_before_pseudo_holdout": true,
+  "true_holdout_used": false,
+  "development_period": {
+    "start": "2023-07-01 00:00:00",
+    "end": "2024-12-19 23:59:00"
+  },
+  "pseudo_holdout_period": {
+    "start": "2024-12-20 00:00:00",
+    "end": "2025-07-01 00:00:00"
+  },
+  "true_holdout_period_not_used": {
+    "start": "2025-07-01 04:00:00",
+    "end": "2026-07-01 00:00:00"
+  },
+  "inputs": [
+    "OHLC",
+    "EMA27",
+    "EMA200",
+    "closed bars up to t"
+  ],
+  "conditions": {
+    "LONG": [
+      "pre_net_return_atr_30 <= -2.0",
+      "close[t] > close[t-1]",
+      "distance_to_ema27[t] > distance_to_ema27[t-3]",
+      "price_minus_ema27_atr[t] >= -1.5",
+      "number_of_ema200_crosses_last50 <= 12"
+    ],
+    "SHORT": [
+      "pre_net_return_atr_30 >= 2.0",
+      "close[t] < close[t-1]",
+      "distance_to_ema27[t] < distance_to_ema27[t-3]",
+      "price_minus_ema27_atr[t] <= 1.5",
+      "number_of_ema200_crosses_last50 <= 12"
+    ]
+  },
+  "cooldown": {
+    "any_direction_bars": 6,
+    "same_direction_bars": 12
+  },
+  "outcome_label_status": "BLOCKED_BY_NONFORMAL_MAJOR_OUTCOME_DEFINITION"
+}

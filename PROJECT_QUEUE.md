@@ -20,6 +20,27 @@
 
 ## DONE / REPORT_READY
 
+### EXP-005H_CAUSAL_EVENT_GENERATOR
+
+Статус: DONE / BLOCKED
+
+Вердикт: EVENT_DEFINITION_BLOCKED — причинный generator зафиксирован и запущен на research-only
+DEVELOPMENT/PSEUDO-HOLDOUT, но основной тест Model 3 заблокирован: EXP-005A не содержит точного числового
+major/non-major/censored outcome definition. Pseudo-holdout candidates: 41; labels остаются UNKNOWN/BLOCKED.
+Настоящий holdout не открыт. Детали:
+`experiments/EXP-005_PRECURSORS_OF_MAJOR_MOVES/EXP-005H_CAUSAL_EVENT_GENERATOR/REPORT.md`.
+
+Цель:
+Формализовать causal candidate event generator для EXP-005F перед любым повторным holdout-тестом.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан; нужен отдельный research-only шаг по формализации outcome label definition.
+
+---
+
 ### EXP-005G_FROZEN_HOLDOUT_TEST
 
 Статус: DONE / BLOCKED

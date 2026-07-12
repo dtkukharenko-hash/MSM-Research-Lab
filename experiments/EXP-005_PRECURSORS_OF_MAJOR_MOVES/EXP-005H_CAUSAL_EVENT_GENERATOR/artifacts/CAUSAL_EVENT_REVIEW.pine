@@ -1,0 +1,8 @@
+//@version=6
+indicator("EXP-005H Causal Event Review", overlay=true, max_lines_count=200, max_labels_count=200)
+ema27 = ta.ema(close, 27)
+ema200 = ta.ema(close, 200)
+plot(ema27, "EMA27", color=color.new(color.teal, 0))
+plot(ema200, "EMA200", color=color.new(color.orange, 0))
+// Candidate list is fixed in artifacts/pseudo_holdout_candidates.csv.
+// Outcome labels are blocked because EXP-005A major definition is not formalized.
