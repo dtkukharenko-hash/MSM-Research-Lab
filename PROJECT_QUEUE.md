@@ -20,6 +20,27 @@
 
 ## DONE / REPORT_READY
 
+### EXP-005E_TEMPORAL_VALIDATION
+
+Статус: DONE / REPORT_READY
+
+Вердикт: WEAK_TEMPORAL_SIGNAL — Model A (`pre_net_return_atr`, 30 баров, linear regression) сохранила
+положительный Spearman на позднем research-сегменте (`0.376`) и положительный знак коэффициента, но test R²
+остался отрицательным (`-0.332`). Настоящий holdout не открыт; правило для holdout не заморожено. Детали:
+`experiments/EXP-005_PRECURSORS_OF_MAJOR_MOVES/EXP-005E_TEMPORAL_VALIDATION/REPORT.md`.
+
+Цель:
+Проверить временной перенос слабой связи EXP-005D без новых признаков, пересбора событий, подбора горизонта
+или усложнения модели.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан.
+
+---
+
 ### EXP-005D_CONTINUOUS_OUTCOME_SEVERITY
 
 Статус: DONE / REPORT_READY

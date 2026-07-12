@@ -1,0 +1,136 @@
+{
+  "research_period": {
+    "start": "2023-07-01 00:00:00",
+    "end": "2025-07-01 00:00:00"
+  },
+  "true_holdout_not_opened": {
+    "start": "2025-07-01 04:00:00",
+    "end": "2026-07-01 00:00:00"
+  },
+  "target_horizon": 30,
+  "target_component_train_params": {
+    "signed_close_return_atr": {
+      "median": 0.8703868021233929,
+      "iqr": 3.800721909013082
+    },
+    "MFE_atr": {
+      "median": 2.349713696747595,
+      "iqr": 2.70464801689081
+    },
+    "signed_efficiency": {
+      "median": 0.0899819721616634,
+      "iqr": 0.32924570203097814
+    }
+  },
+  "temporal_split": {
+    "n_groups": 15,
+    "train_group_count": 10,
+    "test_group_count": 5,
+    "train_groups": [
+      "M01",
+      "M02",
+      "M03",
+      "M04",
+      "M05",
+      "M06",
+      "M07",
+      "M08",
+      "M09",
+      "M10"
+    ],
+    "test_groups": [
+      "M11",
+      "M12",
+      "M13",
+      "M14",
+      "M15"
+    ],
+    "train_last_major_time": "2024-12-03 00:00:00",
+    "test_first_major_time": "2024-12-20 08:00:00",
+    "split_rule": "first floor(15 * 0.70) match_groups by major event time are TRAIN; remaining groups are TEMPORAL_TEST"
+  },
+  "models": {
+    "Model A": {
+      "feature": "pre_net_return_atr",
+      "model": "linear_regression"
+    },
+    "Model B": {
+      "feature": "pre_signed_efficiency",
+      "model": "linear_regression"
+    },
+    "Model C": {
+      "features": [
+        "pre_net_return_atr",
+        "pre_signed_efficiency"
+      ],
+      "model": "ridge_regression",
+      "alpha": 1.0
+    },
+    "Baseline": {
+      "model": "train_mean_severity",
+      "value": 0.10615503607350574
+    }
+  },
+  "fitted_parameters": {
+    "Model A": {
+      "intercept": 0.14835127741106108,
+      "coefficient": 0.08951878210580475
+    },
+    "Model B": {
+      "intercept": 0.035127626560169295,
+      "coefficient": -0.21304743559308237
+    },
+    "Model C": {
+      "intercept": 0.10615503607350574,
+      "coefficients": [
+        0.37648245491148413,
+        0.011233894379220469
+      ]
+    }
+  },
+  "nonmajor_secondary": {
+    "nonmajor_model_coefficient": 0.11627875977418273,
+    "nonmajor_test_n": 15,
+    "nonmajor_test_metrics": {
+      "spearman": 0.7142857142857142,
+      "pearson": 0.7112768994886155,
+      "r2": 0.10990796265227276,
+      "mae": 0.5160558349573653,
+      "rmse": 0.6346920267069327
+    },
+    "test_major_n": 5,
+    "test_major_rank_spearman": -0.3,
+    "test_major_predictions": [
+      {
+        "event_id": "M11",
+        "event_time": "2024-12-20 08:00:00",
+        "prediction": -0.48893677543795666,
+        "severity_score": 0.5470873853320736
+      },
+      {
+        "event_id": "M12",
+        "event_time": "2025-01-17 16:00:00",
+        "prediction": 0.3149167981195864,
+        "severity_score": 0.5946854149473316
+      },
+      {
+        "event_id": "M13",
+        "event_time": "2025-02-28 04:00:00",
+        "prediction": -0.8400698455791391,
+        "severity_score": 3.817651386471621
+      },
+      {
+        "event_id": "M14",
+        "event_time": "2025-03-02 20:00:00",
+        "prediction": 0.7293687472124438,
+        "severity_score": 1.0907713272019028
+      },
+      {
+        "event_id": "M15",
+        "event_time": "2025-04-07 04:00:00",
+        "prediction": -0.7841468896481946,
+        "severity_score": 1.0782753375997087
+      }
+    ]
+  }
+}
