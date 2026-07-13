@@ -1,0 +1,2 @@
+entry_variant,signal_i,signal_time,entry_i,entry_time,direction,context,context_ok,late_entry_block,late_reason,chop_block,chop_reason,blocked,block_reason,distance_to_ema27_atr,move5_atr,scope,executed,skip_reason
+ENTRY_A,1198,2024-01-16 16:00:00,1199,2024-01-16 20:00:00,SHORT,BLOCK_CONTEXT,False,False,,True,EMA_CROSSINGS_LAST30,True,CONTEXT_BLOCK|CHOP_BLOCK,0.09352130591931002,-0.9999999999999932,DEVELOPMENT,False,CONTEXT_BLOCK|CHOP_BLOCK

@@ -20,6 +20,30 @@
 
 ## DONE / REPORT_READY
 
+### EXP-007_TREND_ALIGNED_ENTRY
+
+Статус: DONE / REPORT_READY
+
+Вердикт: NO_STABLE_ENTRY — trend-aligned EMA gate и fixed entry-кандидаты `ENTRY_T1`/`ENTRY_T4`
+улучшили DEVELOPMENT относительно gated `ENTRY_A`, но не перенеслись на VALIDATION 2024-07-01 →
+2024-12-31. На DEVELOPMENT выбраны `ENTRY_T1` и `ENTRY_T4`; на VALIDATION `ENTRY_T1`: 23 сделки,
+PF 0.645, total return -11.4%, max DD -16.6%, BAD_ENTRY 60.9%; `ENTRY_T4`: 13 сделок, PF 0.768,
+total return -8.5%, max DD -21.6%, BAD_ENTRY 61.5%. Израсходованный holdout 2025-2026 не использовался.
+Детали: `experiments/EXP-007_TREND_ALIGNED_ENTRY/REPORT.md`.
+
+Цель:
+Проверить, улучшается ли качество входа, если входить только по направлению EMA27/EMA200-контекста и
+блокировать контртрендовые, поздние и боковые входы.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан; следующий шаг возможен только как research-only визуальный разбор selected entry failures,
+без нового holdout и без изменения EXIT_R5/STOP_A.
+
+---
+
 ### EXP-006D_VISUAL_REVIEW
 
 Статус: DONE / REPORT_READY

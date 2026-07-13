@@ -1,0 +1,62 @@
+//@version=6
+indicator("EXP-007 Trend-Aligned EMA Entry Review", overlay=true, max_labels_count=500)
+showBaseline = input.bool(true, "showBaseline")
+showT1 = input.bool(true, "showT1")
+showT2 = input.bool(true, "showT2")
+showT3 = input.bool(true, "showT3")
+showT4 = input.bool(true, "showT4")
+showBlocked = input.bool(true, "showBlocked")
+showLong = input.bool(true, "showLong")
+showShort = input.bool(true, "showShort")
+showOnlySelected = input.bool(false, "showOnlySelected")
+tradeFrom = input.int(1, "tradeFrom", minval=1)
+tradeTo = input.int(500, "tradeTo", minval=1)
+ema27 = ta.ema(close, 27)
+ema200 = ta.ema(close, 200)
+atr14 = ta.atr(14)
+ema200Slope20 = ema200 - ema200[20]
+ema27Slope10 = ema27 - ema27[10]
+dist = math.abs(ema27 - ema200) / atr14
+crossing = ta.cross(ema27, ema200) ? 1 : 0
+cross30 = math.sum(crossing, 30)
+between = close > math.min(ema27, ema200) and close < math.max(ema27, ema200)
+longContext = ema27 > ema200 and ema200Slope20 > 0 and close > ema200 and dist >= 0.25 and cross30 <= 1 and not between
+shortContext = ema27 < ema200 and ema200Slope20 < 0 and close < ema200 and dist >= 0.25 and cross30 <= 1 and not between
+blockContext = not longContext and not shortContext
+plot(ema27, "EMA27", color=color.aqua)
+plot(ema200, "EMA200", color=color.orange)
+bgcolor(longContext ? color.new(color.green, 90) : shortContext ? color.new(color.red, 90) : color.new(color.gray, 94))
+body = math.abs(close - open)
+medBody = ta.median(body[1], 10)
+impulse = body > 1.5 * medBody
+range20 = ta.highest(high, 20) - ta.lowest(low, 20)
+dirChange = math.sum(math.sign(close - open) != math.sign(close[1] - open[1]) ? 1 : 0, 10)
+ema27Cross10 = math.sum(ta.cross(close, ema27) ? 1 : 0, 10)
+chop = cross30 > 1 or ema27Slope10 * ema200Slope20 < 0 or range20 < 2 * atr14 or dirChange >= 6 or ema27Cross10 >= 5
+lateLong = close - close[5] > 2 * atr14 or math.abs(close - ema27) > 1.5 * atr14 or impulse or (close > open and close[1] > open[1] and close[2] > open[2] and close - open[2] > 1.5 * atr14)
+lateShort = close[5] - close > 2 * atr14 or math.abs(close - ema27) > 1.5 * atr14 or impulse or (close < open and close[1] < open[1] and close[2] < open[2] and open[2] - close > 1.5 * atr14)
+baselineLong = ta.crossover(close, ema27) and ema27 > ema200
+baselineShort = ta.crossunder(close, ema27) and ema27 < ema200
+t1Long = longContext and ta.lowest(low - ema27, 10) < 0 and close > ema27 and close - ema27 <= atr14 and not impulse
+t1Short = shortContext and ta.highest(high - ema27, 10) > 0 and close < ema27 and ema27 - close <= atr14 and not impulse
+t2Long = longContext and ta.lowest(low - ema27, 10) <= 0 and close > open and close > ema27 and not impulse
+t2Short = shortContext and ta.highest(high - ema27, 10) >= 0 and close < open and close < ema27 and not impulse
+t3Long = longContext and close > ta.highest(high[1], 10) and math.abs(close - ema27) <= 1.5 * atr14
+t3Short = shortContext and close < ta.lowest(low[1], 10) and math.abs(close - ema27) <= 1.5 * atr14
+t4Long = longContext and ta.lowest(low[2] - ema27[2], 8) <= 0 and close[1] > ema27[1] and close > ema27 and close > close[1] and not impulse and not impulse[1]
+t4Short = shortContext and ta.highest(high[2] - ema27[2], 8) >= 0 and close[1] < ema27[1] and close < ema27 and close < close[1] and not impulse and not impulse[1]
+okLong = showLong and not chop and not lateLong
+okShort = showShort and not chop and not lateShort
+plotshape(showBaseline and baselineLong and okLong, "ENTRY_A LONG", shape.triangleup, location.belowbar, color.green, size=size.tiny, text="A")
+plotshape(showBaseline and baselineShort and okShort, "ENTRY_A SHORT", shape.triangledown, location.abovebar, color.red, size=size.tiny, text="A")
+plotshape(showT1 and t1Long and okLong, "T1 LONG", shape.triangleup, location.belowbar, color.lime, size=size.tiny, text="T1")
+plotshape(showT1 and t1Short and okShort, "T1 SHORT", shape.triangledown, location.abovebar, color.maroon, size=size.tiny, text="T1")
+plotshape(showT2 and t2Long and okLong, "T2 LONG", shape.triangleup, location.belowbar, color.lime, size=size.tiny, text="T2")
+plotshape(showT2 and t2Short and okShort, "T2 SHORT", shape.triangledown, location.abovebar, color.maroon, size=size.tiny, text="T2")
+plotshape(showT3 and t3Long and okLong, "T3 LONG", shape.triangleup, location.belowbar, color.lime, size=size.tiny, text="T3")
+plotshape(showT3 and t3Short and okShort, "T3 SHORT", shape.triangledown, location.abovebar, color.maroon, size=size.tiny, text="T3")
+plotshape(showT4 and t4Long and okLong, "T4 LONG", shape.triangleup, location.belowbar, color.lime, size=size.tiny, text="T4")
+plotshape(showT4 and t4Short and okShort, "T4 SHORT", shape.triangledown, location.abovebar, color.maroon, size=size.tiny, text="T4")
+plotshape(showBlocked and blockContext, "BLOCK_CONTEXT", shape.xcross, location.top, color.gray, size=size.tiny)
+plotshape(showBlocked and chop, "CHOP_BLOCK", shape.circle, location.top, color.yellow, size=size.tiny)
+plotshape(showBlocked and (lateLong or lateShort), "LATE_ENTRY_BLOCK", shape.circle, location.bottom, color.orange, size=size.tiny)
