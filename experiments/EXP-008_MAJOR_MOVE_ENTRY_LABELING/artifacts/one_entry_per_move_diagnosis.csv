@@ -1,0 +1,12 @@
+move_id,exp007_signal_count,first_signal_time,first_signal_variant,first_signal_zone,mature_late_exhaustion_signal_count,one_entry_per_move_keeps_signal,one_entry_per_move_discards_count,diagnosis_note
+M01,126,2023-10-19 16:00:00,ENTRY_T1,ZONE_1_BIRTH,104,2023-10-19 16:00:00,125,diagnostic count only; no PnL or trade simulation computed in EXP-008
+M02,11,2023-12-28 08:00:00,ENTRY_T2,ZONE_1_BIRTH,4,2023-12-28 08:00:00,10,diagnostic count only; no PnL or trade simulation computed in EXP-008
+M03,22,2024-01-09 04:00:00,ENTRY_A,ZONE_2_FIRST_PULLBACK,18,2024-01-09 04:00:00,21,diagnostic count only; no PnL or trade simulation computed in EXP-008
+M04,25,2024-02-07 20:00:00,ENTRY_T1,ZONE_1_BIRTH,24,2024-02-07 20:00:00,24,diagnostic count only; no PnL or trade simulation computed in EXP-008
+M05,95,2024-02-24 20:00:00,ENTRY_T1,ZONE_1_BIRTH,72,2024-02-24 20:00:00,94,diagnostic count only; no PnL or trade simulation computed in EXP-008
+M07,20,2024-04-10 00:00:00,ENTRY_T1,ZONE_3_EARLY_CONTINUATION,3,2024-04-10 00:00:00,19,diagnostic count only; no PnL or trade simulation computed in EXP-008
+M08,120,2024-05-22 04:00:00,ENTRY_T1,ZONE_3_EARLY_CONTINUATION,71,2024-05-22 04:00:00,119,diagnostic count only; no PnL or trade simulation computed in EXP-008
+M09,5,2024-07-05 20:00:00,ENTRY_T4,ZONE_2_FIRST_PULLBACK,0,2024-07-05 20:00:00,4,diagnostic count only; no PnL or trade simulation computed in EXP-008
+M10,14,2024-07-18 08:00:00,ENTRY_T1,ZONE_3_EARLY_CONTINUATION,0,2024-07-18 08:00:00,13,diagnostic count only; no PnL or trade simulation computed in EXP-008
+M11,50,2024-10-27 20:00:00,ENTRY_T1,ZONE_3_EARLY_CONTINUATION,37,2024-10-27 20:00:00,49,diagnostic count only; no PnL or trade simulation computed in EXP-008
+M12,43,2024-12-03 16:00:00,ENTRY_T1,ZONE_3_EARLY_CONTINUATION,14,2024-12-03 16:00:00,42,diagnostic count only; no PnL or trade simulation computed in EXP-008

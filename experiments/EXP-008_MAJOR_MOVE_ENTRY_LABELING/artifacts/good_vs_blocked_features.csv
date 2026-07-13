@@ -1,0 +1,7 @@
+feature,approved_median,blocked_median,approved_mean,blocked_mean,difference_note
+bars_from_move_start,5.5,60.0,10.75,87.36111111111111,blocked labels are later in bar-count age
+atr_from_move_start,2.1169161573764157,7.003288969746903,2.3052815000007043,8.112220707603408,context feature compared for descriptive audit only
+fraction_move_completed,0.19339940043999976,0.6702653908647769,0.17703967886435298,0.6087994888564524,blocked labels occur after much more of the retrospective move has already happened
+price_distance_ema27_atr,1.0056026602742905,1.2445658847598988,1.122858075910486,1.39038164846653,EMA proximity alone is not enough; blocked labels can still be near EMA27
+ema_distance_atr,2.2183548857260997,2.7698482138843072,2.255989724233626,2.6537456040883436,context feature compared for descriptive audit only
+ema27_crossings_last10,1.0,0.0,1.2083333333333333,0.8611111111111112,crossing count helps with chop but does not separate all late examples

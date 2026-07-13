@@ -1,0 +1,13 @@
+move_id,direction,start_time,end_time,start_price,end_price,duration_bars,return_pct,ema27_vs_ema200_at_start,confidence,boundary_method,boundary_note
+M01,LONG,2023-10-19 00:00:00,2023-12-13 20:00:00,0.2406,0.6681,335,177.68079800498754,EMA27_BELOW_EMA200,HIGH,coarse_retrospective_local_extrema_order36_return25pct,LOW_to_HIGH; reference labeling only
+M02,SHORT,2023-12-28 04:00:00,2024-01-08 00:00:00,0.6626,0.4741,65,-28.44853607002716,EMA27_ABOVE_EMA200,MEDIUM,coarse_retrospective_local_extrema_order36_return25pct,HIGH_to_LOW; reference labeling only
+M03,LONG,2024-01-08 00:00:00,2024-01-11 08:00:00,0.4741,0.5993,20,26.407930816283493,EMA27_BELOW_EMA200,LOW,coarse_retrospective_local_extrema_order36_return25pct,LOW_to_HIGH; reference labeling only
+M04,LONG,2024-02-07 08:00:00,2024-02-18 08:00:00,0.4757,0.6352,66,33.52953542148413,EMA27_BELOW_EMA200,MEDIUM,coarse_retrospective_local_extrema_order36_return25pct,LOW_to_HIGH; reference labeling only
+M05,LONG,2024-02-24 00:00:00,2024-03-14 08:00:00,0.5762,0.796,116,38.14647691773689,EMA27_ABOVE_EMA200,HIGH,coarse_retrospective_local_extrema_order36_return25pct,LOW_to_HIGH; reference labeling only
+M06,SHORT,2024-03-14 08:00:00,2024-03-19 20:00:00,0.796,0.5866,33,-26.306532663316585,EMA27_ABOVE_EMA200,MEDIUM,coarse_retrospective_local_extrema_order36_return25pct,HIGH_to_LOW; reference labeling only
+M07,SHORT,2024-04-08 16:00:00,2024-04-17 12:00:00,0.6153,0.4322,53,-29.757841703234195,EMA27_BELOW_EMA200,MEDIUM,coarse_retrospective_local_extrema_order36_return25pct,HIGH_to_LOW; reference labeling only
+M08,SHORT,2024-05-20 20:00:00,2024-06-24 16:00:00,0.5022,0.3685,209,-26.622859418558342,EMA27_BELOW_EMA200,MEDIUM,coarse_retrospective_local_extrema_order36_return25pct,HIGH_to_LOW; reference labeling only
+M09,LONG,2024-07-05 00:00:00,2024-07-16 00:00:00,0.3236,0.4512,66,39.431396786155744,EMA27_BELOW_EMA200,HIGH,coarse_retrospective_local_extrema_order36_return25pct,LOW_to_HIGH; reference labeling only
+M10,SHORT,2024-07-16 00:00:00,2024-08-05 08:00:00,0.4512,0.2956,122,-34.48581560283689,EMA27_ABOVE_EMA200,MEDIUM,coarse_retrospective_local_extrema_order36_return25pct,HIGH_to_LOW; reference labeling only
+M11,LONG,2024-10-26 12:00:00,2024-12-03 00:00:00,0.3255,1.3,225,299.38556067588326,EMA27_BELOW_EMA200,HIGH,coarse_retrospective_local_extrema_order36_return25pct,LOW_to_HIGH; reference labeling only
+M12,SHORT,2024-12-03 00:00:00,2024-12-20 08:00:00,1.3,0.7621,104,-41.37692307692308,EMA27_ABOVE_EMA200,HIGH,coarse_retrospective_local_extrema_order36_return25pct,HIGH_to_LOW; reference labeling only
