@@ -1,0 +1,20 @@
+metric,EXP-011,EXP-011A
+layers,single combined state,direction + slow backbone + fast phase
+direction_definition,EMA order plus slope context,EMA27/EMA200 order with 2-bar confirmation
+backbone_definition,"EMA27, EMA200, and distance change mixed",EMA200 slope/change/persistence only
+fast_phase_definition,mixed into EXPANDING/STABLE/WEAKENING,EMA27 slope and EMA distance change
+state_changes_4h,10.519645120405578,3.756177924217463
+state_changes_1h,11.075367647058822,3.8809431774255896
+median_dwell_active_4h,,46.5
+median_dwell_active_1h,,54.0
+median_dwell_flattening_4h,,8.0
+median_dwell_flattening_1h,,9.0
+stable_fraction_4h_or_active_fraction_4h,0.1302281368821292,0.8171334431630972
+stable_fraction_1h_or_active_fraction_1h,0.1312806372549019,0.812137611132586
+TYPE_A_count,2,8
+TYPE_B_count,8,7
+LOWER_OPPOSES_PARENT_fraction,0.2146422628951747,0.2278981626431573
+ACTIVE_CONTRACTING_exists,,True
+ACTIVE_OPPOSING_exists,,True
+causal,True,True
+lookahead,closed 4H only,closed 4H only

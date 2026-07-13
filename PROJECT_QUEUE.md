@@ -20,6 +20,36 @@
 
 ## DONE / REPORT_READY
 
+### EXP-011A_SLOW_BACKBONE_FAST_PHASE
+
+Статус: DONE / REPORT_READY
+
+Вердикт: PARTIAL_BACKBONE_PHASE_DECOMPOSITION — EXP-011A разделил состояние на `DIRECTION`,
+`SLOW_BACKBONE` и `FAST_PHASE`, исправляя проблему EXP-011, где единая модель
+EXPANDING/STABLE/WEAKENING смешивала EMA200 backbone и движение EMA27 к EMA200. Выбран `BACKBONE_C`:
+EMA200-only backbone с persistence и hysteresis переносится на 4H и 1H без изменения формул,
+сохраняет ACTIVE при FAST_PHASE CONTRACTING/OPPOSING, снижает state changes с EXP-011
+4H 10.52 / 1H 11.08 до 4H 3.76 / 1H 3.88 changes/100 bars. Строгий полный verdict не дан,
+потому что TYPE_B найдено 7 при требовании 8. TYPE_A=8, TYPE_C=6, TYPE_D=8; ACTIVE+CONTRACTING
+и ACTIVE+OPPOSING существуют на обоих таймфреймах. Исследование относительных коррекций остаётся
+отложенным до принятия частичного verdict EXP-011A. Детали:
+`experiments/EXP-011A_SLOW_BACKBONE_FAST_PHASE/REPORT.md`.
+
+Цель:
+Проверить, может ли EMA200 задавать медленную трендовую основу отдельно от быстрого движения EMA27
+и изменения расстояния EMA27–EMA200, без входов, выходов, PnL и торговых выводов.
+
+Исполнитель:
+Codex
+
+Результат:
+TASK.md, REPORT.md, feature/state CSV, direction/backbone/fast/composite states, model comparison,
+dwell/statistics, multiscale mapping, visual review windows, EXP-011 comparison, Pine viewer и PDF
+contact sheet созданы. Использованы только сохранённые OHLC EXP-011 за 2023-07-01 → 2024-12-31;
+Irobot, clustering, ZigZag, PnL/backtest и данные 2025+ не использовались; `docs/DEFINITIONS.md` не менялся.
+
+---
+
 ### EXP-011_MULTISCALE_EMA_TREND_BACKBONE
 
 Статус: DONE / REPORT_READY

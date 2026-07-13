@@ -1,0 +1,3 @@
+timeframe,model,p_active_after_expanding_to_contracting,p_active_when_opposing,active_contracting_bar_count,active_opposing_bar_count,active_contracting_episode_count,active_opposing_episode_count,mean_duration_active_contracting,mean_duration_active_opposing
+1H,BACKBONE_C,0.9722222222222222,0.770699058006941,1778,3109,494,311,3.5991902834008096,9.996784565916398
+4H,BACKBONE_C,1.0,0.757396449704142,471,640,108,71,4.361111111111111,9.014084507042254

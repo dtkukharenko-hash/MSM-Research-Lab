@@ -1,0 +1,133 @@
+//@version=6
+indicator("EXP-011A Slow Backbone Fast Phase", overlay=true, max_labels_count=500)
+
+showEMA1H = input.bool(true, "showEMA1H")
+showEMA4H = input.bool(true, "showEMA4H")
+showDirection4H = input.bool(true, "showDirection4H")
+showBackbone4H = input.bool(true, "showBackbone4H")
+showFastPhase4H = input.bool(true, "showFastPhase4H")
+showDirection1H = input.bool(true, "showDirection1H")
+showBackbone1H = input.bool(true, "showBackbone1H")
+showFastPhase1H = input.bool(true, "showFastPhase1H")
+showScaleRelation = input.bool(true, "showScaleRelation")
+showStateLabels = input.bool(true, "showStateLabels")
+showOnlyTransitions = input.bool(false, "showOnlyTransitions")
+
+f_dir() =>
+    float e27 = ta.ema(close, 27)
+    float e200 = ta.ema(close, 200)
+    string raw = e27 > e200 ? "UP" : e27 < e200 ? "DOWN" : "TRANSITION"
+    var string confirmed = "TRANSITION"
+    var string cand = ""
+    var int cnt = 0
+    bool crossed = raw != "TRANSITION" and raw[1] != "TRANSITION" and raw != raw[1]
+    if raw == "TRANSITION"
+        confirmed := "TRANSITION"
+        cand := ""
+        cnt := 0
+    else if confirmed == raw and not crossed
+        cand := ""
+        cnt := 0
+    else
+        if crossed
+            confirmed := "TRANSITION"
+            cand := raw
+            cnt := 1
+        else
+            cnt := cand == raw ? cnt + 1 : 1
+            cand := raw
+        if cnt >= 2
+            confirmed := raw
+            cand := ""
+            cnt := 0
+    confirmed
+
+f_phase(string dir) =>
+    float e27 = ta.ema(close, 27)
+    float e200 = ta.ema(close, 200)
+    float dist = (e27 - e200) / e200 * 100.0
+    float s27 = (e27 / e27[6] - 1.0) / 6.0 * 100.0
+    float nf = math.max(ta.median(math.abs(ta.change(s27)), 120), 1e-12)
+    float nd = math.max(ta.median(math.abs(ta.change(dist)), 120), 1e-12)
+    float sign = dir == "UP" ? 1.0 : dir == "DOWN" ? -1.0 : 0.0
+    float af = sign * s27 / nf
+    float ad = sign * (dist - dist[6]) / nd
+    string ph = "TRANSITION"
+    if dir != "TRANSITION"
+        ph := af > 1.0 and ad > 1.0 ? "EXPANDING" : ad < -1.0 and af >= -1.0 ? "CONTRACTING" : af < -1.0 and ad < -1.0 ? "OPPOSING" : "NEUTRAL"
+    ph
+
+f_backbone(string dir) =>
+    float e200 = ta.ema(close, 200)
+    float e27 = ta.ema(close, 27)
+    float s24 = (e200 / e200[24] - 1.0) / 24.0 * 100.0
+    float s48 = (e200 / e200[48] - 1.0) / 48.0 * 100.0
+    float ns = math.max(ta.median(math.abs(ta.change(s24)), 240), 1e-12)
+    float sign = dir == "UP" ? 1.0 : dir == "DOWN" ? -1.0 : 0.0
+    float x = sign * s24 / ns
+    float x48 = sign * s48 / ns
+    float chg = sign * (s24 - s24[12]) / ns
+    float aligned = sign * ta.change(e200)
+    float pers = ta.sma(aligned > 0 ? 1.0 : 0.0, 12)
+    string base = "TRANSITION"
+    if dir != "TRANSITION"
+        if true
+            base := x < -0.5 or pers < 0.50 and x <= 0 ? "LOST" : x > 1.5 and x48 > 1.0 and pers >= 0.75 ? "ACTIVE" : "FLATTENING"
+        else
+            base := x > 1.5 ? "ACTIVE" : x < -0.5 ? "LOST" : "FLATTENING"
+    var string st = "TRANSITION"
+    var string cand = ""
+    var int cnt = 0
+    if not true
+        st := base
+    else if base == "TRANSITION"
+        st := "TRANSITION"
+        cand := ""
+        cnt := 0
+    else if base == st
+        cand := ""
+        cnt := 0
+    else if base == "LOST" and x < -1.5
+        st := "LOST"
+        cand := ""
+        cnt := 0
+    else
+        int need = st == "LOST" and base == "ACTIVE" ? 3 : 2
+        cnt := cand == base ? cnt + 1 : 1
+        cand := base
+        if cnt >= need
+            st := base
+            cand := ""
+            cnt := 0
+    st
+
+string d1 = f_dir()
+string b1 = f_backbone(d1)
+string p1 = f_phase(d1)
+string d4 = request.security(syminfo.tickerid, "240", f_dir()[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+string b4 = request.security(syminfo.tickerid, "240", f_backbone(f_dir())[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+string p4 = request.security(syminfo.tickerid, "240", f_phase(f_dir())[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+float ema27_1 = ta.ema(close, 27)
+float ema200_1 = ta.ema(close, 200)
+float ema27_4 = request.security(syminfo.tickerid, "240", ta.ema(close, 27)[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+float ema200_4 = request.security(syminfo.tickerid, "240", ta.ema(close, 200)[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+
+plot(showEMA1H ? ema27_1 : na, "EMA27 1H", color=color.aqua)
+plot(showEMA1H ? ema200_1 : na, "EMA200 1H", color=color.orange)
+plot(showEMA4H ? ema27_4 : na, "EMA27 4H confirmed", color=color.new(color.aqua, 45), linewidth=2)
+plot(showEMA4H ? ema200_4 : na, "EMA200 4H confirmed", color=color.new(color.orange, 45), linewidth=2)
+
+f_bcolor(string b) =>
+    b == "ACTIVE" ? color.new(color.green, 86) : b == "FLATTENING" ? color.new(color.yellow, 84) : b == "LOST" ? color.new(color.red, 86) : color.new(color.gray, 88)
+
+string rel = d4 == "TRANSITION" ? "PARENT_TRANSITION" : d1 == "TRANSITION" ? "LOWER_TRANSITION" : d4 == d1 and d4 == "UP" ? "ALIGNED_UP" : d4 == d1 and d4 == "DOWN" ? "ALIGNED_DOWN" : "LOWER_OPPOSES_PARENT"
+bool changed = d1 != d1[1] or b1 != b1[1] or p1 != p1[1] or d4 != d4[1] or b4 != b4[1] or p4 != p4[1] or rel != rel[1]
+
+bgcolor(showBackbone4H and (not showOnlyTransitions or changed) ? f_bcolor(b4) : na)
+if showStateLabels and changed
+    if showDirection4H or showBackbone4H or showFastPhase4H
+        label.new(time, high, "4H " + d4 + " " + b4 + " " + p4, xloc=xloc.bar_time, style=label.style_label_down, color=f_bcolor(b4), textcolor=color.black, size=size.tiny)
+    if showDirection1H or showBackbone1H or showFastPhase1H
+        label.new(time, low, "1H " + d1 + " " + b1 + " " + p1, xloc=xloc.bar_time, style=label.style_label_up, color=f_bcolor(b1), textcolor=color.black, size=size.tiny)
+    if showScaleRelation and rel == "LOWER_OPPOSES_PARENT"
+        label.new(time, close, rel, xloc=xloc.bar_time, style=label.style_label_left, color=color.white, textcolor=color.black, size=size.tiny)
