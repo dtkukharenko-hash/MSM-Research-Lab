@@ -14,7 +14,19 @@
 
 ## ACTIVE
 
-Пока нет.
+### EXP-011B_BLIND_BACKBONE_VALIDATION
+
+Статус: AWAITING_HUMAN_LABELS
+
+EXP-011B подготовлен для слепой человеческой визуальной проверки замороженного `BACKBONE_C` из EXP-011A.
+Phase 1 создал blind-набор без раскрытия ответов: 28 окон, seed `11011`, отдельный `blind_key.csv`,
+пустой `human_labels.csv`, Pine-навигацию и PDF с blind-id/UTC-интервалами. `BACKBONE_C` не менялся:
+формулы, пороги, persistence и hysteresis остаются как в EXP-011A. Исследование относительных движений
+между масштабами отложено до завершения human review и Phase 2 scoring.
+
+Следующее действие:
+Заполнить `experiments/EXP-011B_BLIND_BACKBONE_VALIDATION/artifacts/human_labels.csv` по инструкции
+`experiments/EXP-011B_BLIND_BACKBONE_VALIDATION/REVIEW_INSTRUCTIONS.md`, не открывая `blind_key.csv`.
 
 ---
 

@@ -1,0 +1,34 @@
+//@version=6
+indicator("EXP-011B Blind Backbone Review", overlay=true, max_labels_count=500)
+
+showWindowArea = input.bool(true, "showWindowArea")
+showWindowStart = input.bool(true, "showWindowStart")
+showWindowEnd = input.bool(true, "showWindowEnd")
+showBlindId = input.bool(true, "showBlindId")
+showOnlySelectedWindow = input.bool(false, "showOnlySelectedWindow")
+selectedBlindId = input.string("ALL", "selectedBlindId", options=["ALL", "BV001", "BV002", "BV003", "BV004", "BV005", "BV006", "BV007", "BV008", "BV009", "BV010", "BV011", "BV012", "BV013", "BV014", "BV015", "BV016", "BV017", "BV018", "BV019", "BV020", "BV021", "BV022", "BV023", "BV024", "BV025", "BV026", "BV027", "BV028"])
+
+var string[] ids = array.from("BV001", "BV002", "BV003", "BV004", "BV005", "BV006", "BV007", "BV008", "BV009", "BV010", "BV011", "BV012", "BV013", "BV014", "BV015", "BV016", "BV017", "BV018", "BV019", "BV020", "BV021", "BV022", "BV023", "BV024", "BV025", "BV026", "BV027", "BV028")
+var int[] starts = array.from(1716505200000, 1730559600000, 1710774000000, 1708675200000, 1696770000000, 1711954800000, 1696172400000, 1696863600000, 1699995600000, 1717221600000, 1693368000000, 1706871600000, 1704999600000, 1721721600000, 1704110400000, 1734649200000, 1724810400000, 1727866800000, 1701543600000, 1695060000000, 1698908400000, 1696503600000, 1721847600000, 1726311600000, 1701403200000, 1710500400000, 1704164400000, 1704423600000)
+var int[] ends = array.from(1716533999999, 1730595599999, 1710889199999, 1708718399999, 1696816799999, 1712123999999, 1696229999999, 1696921199999, 1700027999999, 1717257599999, 1693403999999, 1706911199999, 1705042799999, 1721764799999, 1704146399999, 1734706799999, 1724849999999, 1727931599999, 1701604799999, 1695095999999, 1699019999999, 1696532399999, 1721933999999, 1726397999999, 1701449999999, 1710554399999, 1704193199999, 1704506399999)
+
+f_visible(string id) =>
+    selectedBlindId == "ALL" or id == selectedBlindId
+
+for i = 0 to array.size(ids) - 1
+    string id = array.get(ids, i)
+    int st = array.get(starts, i)
+    int en = array.get(ends, i)
+    bool visible = f_visible(id) and (not showOnlySelectedWindow or selectedBlindId != "ALL")
+    visible := selectedBlindId == "ALL" ? f_visible(id) : visible
+    bool inWindow = time >= st and time <= en
+    bool atStart = time >= st and time[1] < st
+    bool atEnd = time >= en and time[1] < en
+    if visible and showWindowArea and inWindow
+        bgcolor(color.new(color.yellow, 88))
+    if visible and showWindowStart and atStart
+        line.new(st, low, st, high, xloc=xloc.bar_time, extend=extend.both, color=color.new(color.green, 0), style=line.style_solid, width=1)
+        if showBlindId
+            label.new(st, high, id, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.green, 0), textcolor=color.white, size=size.small)
+    if visible and showWindowEnd and atEnd
+        line.new(en, low, en, high, xloc=xloc.bar_time, extend=extend.both, color=color.new(color.red, 0), style=line.style_solid, width=1)
