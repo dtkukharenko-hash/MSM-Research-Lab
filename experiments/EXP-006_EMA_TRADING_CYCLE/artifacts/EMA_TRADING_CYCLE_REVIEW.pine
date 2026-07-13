@@ -1,0 +1,52 @@
+//@version=6
+indicator("EXP-006 EMA Trading Cycle Review", overlay=true, max_lines_count=500, max_labels_count=500)
+
+// Visual research markup only. Not a strategy and not an auto-detector.
+// Use on ADAUSDT 4H. True holdout is intentionally not marked.
+showEntryA = input.bool(true, "show ENTRY_A")
+showEntryB = input.bool(true, "show ENTRY_B")
+showEntryC = input.bool(true, "show ENTRY_C")
+showExitA = input.bool(true, "show EXIT_A")
+showExitB = input.bool(true, "show EXIT_B")
+showExitC = input.bool(true, "show EXIT_C")
+showExitD = input.bool(true, "show EXIT_D")
+showLabels = input.bool(true, "show labels")
+
+ema27 = ta.ema(close, 27)
+ema200 = ta.ema(close, 200)
+plot(ema27, "EMA27", color=color.aqua)
+plot(ema200, "EMA200", color=color.orange)
+
+slope20 = ema200 - ema200[20]
+bull = close > ema200 and slope20 > 0 and ema27 > ema200
+bear = close < ema200 and slope20 < 0 and ema27 < ema200
+bgcolor(bull ? color.new(color.green, 92) : bear ? color.new(color.red, 92) : color.new(color.gray, 95))
+
+var int[] starts = array.from(timestamp("Etc/UTC", 2024, 12, 21, 12, 0), timestamp("Etc/UTC", 2024, 12, 24, 4, 0), timestamp("Etc/UTC", 2024, 12, 27, 16, 0), timestamp("Etc/UTC", 2025, 1, 18, 12, 0), timestamp("Etc/UTC", 2025, 1, 19, 16, 0), timestamp("Etc/UTC", 2025, 1, 26, 12, 0), timestamp("Etc/UTC", 2025, 1, 28, 16, 0), timestamp("Etc/UTC", 2025, 2, 23, 0, 0), timestamp("Etc/UTC", 2025, 2, 23, 12, 0), timestamp("Etc/UTC", 2025, 3, 4, 8, 0), timestamp("Etc/UTC", 2025, 4, 1, 20, 0), timestamp("Etc/UTC", 2025, 4, 3, 0, 0), timestamp("Etc/UTC", 2025, 4, 5, 16, 0), timestamp("Etc/UTC", 2025, 4, 27, 20, 0), timestamp("Etc/UTC", 2025, 4, 28, 20, 0), timestamp("Etc/UTC", 2025, 5, 3, 16, 0), timestamp("Etc/UTC", 2025, 5, 7, 16, 0), timestamp("Etc/UTC", 2025, 5, 13, 8, 0), timestamp("Etc/UTC", 2025, 6, 7, 12, 0), timestamp("Etc/UTC", 2025, 6, 29, 4, 0), timestamp("Etc/UTC", 2025, 6, 29, 16, 0), timestamp("Etc/UTC", 2024, 12, 21, 12, 0), timestamp("Etc/UTC", 2024, 12, 27, 16, 0), timestamp("Etc/UTC", 2025, 1, 18, 12, 0), timestamp("Etc/UTC", 2025, 1, 19, 16, 0), timestamp("Etc/UTC", 2025, 1, 26, 12, 0), timestamp("Etc/UTC", 2025, 1, 28, 16, 0), timestamp("Etc/UTC", 2025, 2, 23, 0, 0), timestamp("Etc/UTC", 2025, 2, 23, 12, 0), timestamp("Etc/UTC", 2025, 3, 4, 8, 0), timestamp("Etc/UTC", 2025, 4, 1, 20, 0), timestamp("Etc/UTC", 2025, 4, 3, 0, 0), timestamp("Etc/UTC", 2025, 4, 27, 20, 0), timestamp("Etc/UTC", 2025, 4, 28, 20, 0), timestamp("Etc/UTC", 2025, 5, 3, 16, 0), timestamp("Etc/UTC", 2025, 5, 7, 16, 0), timestamp("Etc/UTC", 2025, 5, 13, 8, 0), timestamp("Etc/UTC", 2025, 6, 7, 12, 0), timestamp("Etc/UTC", 2025, 6, 29, 4, 0), timestamp("Etc/UTC", 2024, 12, 21, 12, 0), timestamp("Etc/UTC", 2024, 12, 27, 16, 0), timestamp("Etc/UTC", 2025, 1, 18, 12, 0), timestamp("Etc/UTC", 2025, 1, 19, 16, 0), timestamp("Etc/UTC", 2025, 1, 26, 12, 0), timestamp("Etc/UTC", 2025, 1, 28, 16, 0), timestamp("Etc/UTC", 2025, 2, 23, 0, 0), timestamp("Etc/UTC", 2025, 3, 4, 8, 0), timestamp("Etc/UTC", 2025, 4, 1, 20, 0), timestamp("Etc/UTC", 2025, 4, 3, 0, 0), timestamp("Etc/UTC", 2025, 4, 5, 16, 0), timestamp("Etc/UTC", 2025, 4, 27, 20, 0), timestamp("Etc/UTC", 2025, 4, 28, 20, 0), timestamp("Etc/UTC", 2025, 5, 3, 16, 0), timestamp("Etc/UTC", 2025, 5, 7, 16, 0), timestamp("Etc/UTC", 2025, 5, 13, 8, 0), timestamp("Etc/UTC", 2025, 6, 7, 12, 0), timestamp("Etc/UTC", 2025, 6, 29, 4, 0))
+var int[] ends = array.from(timestamp("Etc/UTC", 2024, 12, 24, 0, 0), timestamp("Etc/UTC", 2024, 12, 24, 12, 0), timestamp("Etc/UTC", 2024, 12, 29, 0, 0), timestamp("Etc/UTC", 2025, 1, 19, 8, 0), timestamp("Etc/UTC", 2025, 1, 19, 20, 0), timestamp("Etc/UTC", 2025, 1, 26, 12, 0), timestamp("Etc/UTC", 2025, 1, 30, 0, 0), timestamp("Etc/UTC", 2025, 2, 23, 4, 0), timestamp("Etc/UTC", 2025, 3, 2, 0, 0), timestamp("Etc/UTC", 2025, 3, 7, 4, 0), timestamp("Etc/UTC", 2025, 4, 2, 12, 0), timestamp("Etc/UTC", 2025, 4, 5, 12, 0), timestamp("Etc/UTC", 2025, 4, 9, 20, 0), timestamp("Etc/UTC", 2025, 4, 28, 0, 0), timestamp("Etc/UTC", 2025, 4, 30, 0, 0), timestamp("Etc/UTC", 2025, 5, 4, 0, 0), timestamp("Etc/UTC", 2025, 5, 8, 0, 0), timestamp("Etc/UTC", 2025, 5, 14, 20, 0), timestamp("Etc/UTC", 2025, 6, 8, 12, 0), timestamp("Etc/UTC", 2025, 6, 29, 12, 0), timestamp("Etc/UTC", 2025, 6, 29, 20, 0), timestamp("Etc/UTC", 2024, 12, 24, 20, 0), timestamp("Etc/UTC", 2024, 12, 29, 4, 0), timestamp("Etc/UTC", 2025, 1, 19, 8, 0), timestamp("Etc/UTC", 2025, 1, 19, 20, 0), timestamp("Etc/UTC", 2025, 1, 26, 12, 0), timestamp("Etc/UTC", 2025, 1, 30, 0, 0), timestamp("Etc/UTC", 2025, 2, 23, 4, 0), timestamp("Etc/UTC", 2025, 3, 2, 4, 0), timestamp("Etc/UTC", 2025, 3, 7, 8, 0), timestamp("Etc/UTC", 2025, 4, 2, 12, 0), timestamp("Etc/UTC", 2025, 4, 10, 0, 0), timestamp("Etc/UTC", 2025, 4, 28, 0, 0), timestamp("Etc/UTC", 2025, 4, 30, 4, 0), timestamp("Etc/UTC", 2025, 5, 4, 4, 0), timestamp("Etc/UTC", 2025, 5, 8, 0, 0), timestamp("Etc/UTC", 2025, 5, 15, 0, 0), timestamp("Etc/UTC", 2025, 6, 8, 12, 0), timestamp("Etc/UTC", 2025, 6, 29, 20, 0), timestamp("Etc/UTC", 2024, 12, 24, 20, 0), timestamp("Etc/UTC", 2024, 12, 29, 4, 0), timestamp("Etc/UTC", 2025, 1, 19, 8, 0), timestamp("Etc/UTC", 2025, 1, 19, 20, 0), timestamp("Etc/UTC", 2025, 1, 26, 20, 0), timestamp("Etc/UTC", 2025, 1, 30, 8, 0), timestamp("Etc/UTC", 2025, 3, 2, 4, 0), timestamp("Etc/UTC", 2025, 3, 7, 8, 0), timestamp("Etc/UTC", 2025, 4, 2, 20, 0), timestamp("Etc/UTC", 2025, 4, 4, 12, 0), timestamp("Etc/UTC", 2025, 4, 10, 0, 0), timestamp("Etc/UTC", 2025, 4, 28, 0, 0), timestamp("Etc/UTC", 2025, 4, 30, 4, 0), timestamp("Etc/UTC", 2025, 5, 3, 20, 0), timestamp("Etc/UTC", 2025, 5, 8, 0, 0), timestamp("Etc/UTC", 2025, 5, 15, 0, 0), timestamp("Etc/UTC", 2025, 6, 8, 20, 0), timestamp("Etc/UTC", 2025, 6, 29, 20, 0))
+var string[] dirs = array.from("SHORT", "SHORT", "SHORT", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "SHORT", "LONG", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG", "SHORT", "LONG", "SHORT", "SHORT", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "SHORT", "LONG", "SHORT", "SHORT", "LONG", "LONG", "LONG", "SHORT", "LONG", "SHORT", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "LONG", "SHORT", "SHORT", "SHORT", "LONG", "LONG", "LONG", "SHORT", "LONG", "SHORT", "SHORT")
+var string[] labs = array.from("ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_A", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_A/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B", "ENTRY_A/STOP_B/EXIT_B")
+
+f_visible(lab) =>
+    str.contains(lab, "ENTRY_A") and showEntryA or str.contains(lab, "ENTRY_B") and showEntryB or str.contains(lab, "ENTRY_C") and showEntryC
+
+f_exit_visible(lab) =>
+    str.contains(lab, "EXIT_A") and showExitA or str.contains(lab, "EXIT_B") and showExitB or str.contains(lab, "EXIT_C") and showExitC or str.contains(lab, "EXIT_D") and showExitD
+
+refLong = close > open and math.abs(close - open) > ta.median(math.abs(close - open), 10) and close >= low + (high - low) * 0.66
+refShort = close < open and math.abs(close - open) > ta.median(math.abs(close - open), 10) and close <= high - (high - low) * 0.66
+barcolor(refLong ? color.new(color.lime, 0) : refShort ? color.new(color.fuchsia, 0) : na)
+
+for i = 0 to array.size(starts) - 1
+    int st = array.get(starts, i)
+    int en = array.get(ends, i)
+    string dir = array.get(dirs, i)
+    string lab = array.get(labs, i)
+    if time == st and f_visible(lab)
+        line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=color.green, width=2)
+        if showLabels
+            label.new(time, high, "EXP-006 " + dir + " " + lab, xloc=xloc.bar_time, style=label.style_label_down, color=color.green, textcolor=color.white, size=size.tiny)
+    if time == en and f_exit_visible(lab)
+        line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=color.red, width=2)
+        if showLabels
+            label.new(time, low, "exit " + lab, xloc=xloc.bar_time, style=label.style_label_up, color=color.red, textcolor=color.white, size=size.tiny)

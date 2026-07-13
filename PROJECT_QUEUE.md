@@ -20,6 +20,27 @@
 
 ## DONE / REPORT_READY
 
+### EXP-006_EMA_TRADING_CYCLE
+
+Статус: DONE / REPORT_READY
+
+Вердикт: WEAK_EMA_CYCLE — 24 фиксированные комбинации EMA27/EMA200 торгового цикла были проверены на
+research-only данных ADAUSDT 4H. На TRAIN прошли shortlist-комбинации `ENTRY_A_STOP_A_EXIT_B`,
+`ENTRY_A_STOP_B_EXIT_B`, `ENTRY_A_STOP_A_EXIT_A`, но на TEMPORAL TEST ни одна не сохранила PF > 1.10:
+лучший PF temporal test = 0.784, max DD = -14.65%, total return = -8.40%. Настоящий holdout не открыт.
+Детали: `experiments/EXP-006_EMA_TRADING_CYCLE/REPORT.md`.
+
+Цель:
+Проверить полный практический EMA27/EMA200 цикл: режим, подготовка, вход, стоп, сопровождение и выход.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан; система не готова к отдельному holdout-тесту.
+
+---
+
 ### EXP-005H_CAUSAL_EVENT_GENERATOR
 
 Статус: DONE / BLOCKED
