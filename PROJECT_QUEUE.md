@@ -20,6 +20,28 @@
 
 ## DONE / REPORT_READY
 
+### EXP-006D_VISUAL_REVIEW
+
+Статус: DONE / REPORT_READY
+
+Вердикт: VISUAL_REVIEW_READY — создан отдельный Pine-аудит frozen holdout-сделок EXP-006D без нового
+backtest и без изменения правил. Все 31 сделки `ENTRY_A + STOP_A + EXIT_R5` из `holdout_trades_r5.csv`
+захардкожены в визуализаторе, `holdout_trade_map.csv` показывает `MATCH` для всех сделок,
+`visual_audit_mismatches.csv` не содержит расхождений. Детали:
+`experiments/EXP-006_EMA_TRADING_CYCLE/EXP-006D_FROZEN_HOLDOUT/VISUAL_REVIEW/REPORT.md`.
+
+Цель:
+Визуально проверить фактические входы, выходы, STOP_A, MFE/MAE, giveback, типы выходов и ambiguity cases
+на графике ADAUSDT 4H.
+
+Исполнитель:
+Claude Code
+
+Результат:
+Pine Script и audit CSV созданы; стратегия, правила и holdout-результат не менялись.
+
+---
+
 ### EXP-006D_FROZEN_HOLDOUT
 
 Статус: DONE / REPORT_READY
