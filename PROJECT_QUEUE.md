@@ -20,6 +20,31 @@
 
 ## DONE / REPORT_READY
 
+### EXP-006C_FROZEN_EXIT_ROBUSTNESS
+
+Статус: DONE / REPORT_READY
+
+Вердикт: EXIT_RULE_FROZEN_READY — аудит замороженных `EXIT_R2` и `EXIT_R5` без изменения `ENTRY_A`,
+`STOP_A`, EMA27/EMA200 и порогов подтвердил готовность кандидата `EXIT_R5` к отдельному frozen holdout-шагу.
+MFE capture пересчитан по буквальному правилу EXP-006C до `exit_time` включительно: manual audit mismatches = 0;
+одинаковая reused temporal median capture из EXP-006B оказалась артефактом прежней metric convention и после
+аудита не сохраняется. По всему research `EXIT_R5`: PF 1.827, total return 85.7%, max DD -14.4%, median MFE
+capture 0.141 против baseline -0.401, GOOD_ENTRY_BAD_EXIT 0.0% против baseline 13.2%, PF x2 = 1.593.
+Настоящий holdout не открыт. Детали:
+`experiments/EXP-006_EMA_TRADING_CYCLE/EXP-006C_FROZEN_EXIT_ROBUSTNESS/REPORT.md`.
+
+Цель:
+Проверить устойчивость уже найденных механизмов выхода `EXIT_R2` и `EXIT_R5` на блоках, rolling-origin,
+парных сделках, концентрации, LONG/SHORT и cost stress без изменения правил.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан; `EXIT_R5` можно рассматривать как frozen-ready кандидат для отдельного следующего шага.
+
+---
+
 ### EXP-006B_EXIT_RETENTION
 
 Статус: DONE / REPORT_READY

@@ -1,0 +1,85 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 3090 >>
+stream
+BT /F1 12 Tf 36 760 Td
+(# EXP-006C ? Frozen Exit Robustness Report) Tj 0 -14 Td
+() Tj 0 -14 Td
+(Verdict: **EXIT_RULE_FROZEN_READY**) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Boundary) Tj 0 -14 Td
+() Tj 0 -14 Td
+(- Frozen variants only: EXIT_R0, EXIT_R2, EXIT_R5.) Tj 0 -14 Td
+(- ENTRY_A, STOP_A, EMA27/EMA200 and thresholds unchanged.) Tj 0 -14 Td
+(- True holdout after 2025-07-01 04:00:00 was not used.) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## MFE Capture Audit) Tj 0 -14 Td
+() Tj 0 -14 Td
+(Manual audit mismatches: `0`.) Tj 0 -14 Td
+(Reused temporal median capture equality after EXP-006C metric audit: `False`.) Tj 0 -14 Td
+(The identical `-0.743992` median seen in EXP-006B does not persist after applying the literal EXP-00) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Entry Alignment) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| exit_variant | entry_records | common_entry_records | variant_specific_entries | comparison_mode |) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## All Research Metrics) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| exit_variant | trades | profit_factor | total_return | max_drawdown | median_mfe_capture | good_en) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Rolling Folds) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| scope | exit_variant | trades | sample_flag | profit_factor | total_return | median_mfe_capture | ) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Paired Differences) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| exit_variant | phase | n | share_better_than_R0 | median_return_diff | median_capture_diff | boots) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Concentration) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| exit_variant | total_return | return_without_top1 | return_without_top3 | top1_profit_share | top3) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Cost Robustness) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| exit_variant | blocks | pf_gt1_x1 | pf_gt1_x2 | pf_gt1_x3 |
+| --- | --- | --- | --- | --- |
+| EXIT) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Answers) Tj 0 -14 Td
+() Tj 0 -14 Td
+(1. MFE capture calculation is correct based on manual reconstruction.) Tj 0 -14 Td
+(2. The reused temporal median capture match from EXP-006B was a metric-convention artifact; after th) Tj 0 -14 Td
+(3. Entries match across variants in a common signal grid; this audit does not simulate missed re-ent) Tj 0 -14 Td
+(4. Quarterly behavior is in `quarterly_metrics.csv`; low-sample blocks are flagged.) Tj 0 -14 Td
+(5. Rolling positive fold counts are in `rolling_origin_metrics.csv`; see cost summary and report tab) Tj 0 -14 Td
+(6. Paired comparisons show whether R2/R5 improve common entries; bootstrap and sign-test approximati) Tj 0 -14 Td
+(7. Top-1/top-3 stress is in `concentration_stress.csv`.) Tj 0 -14 Td
+(8. Best-quarter dependency is reported as `pf_without_best_block`.) Tj 0 -14 Td
+(9. Cost x2/x3 robustness is in `cost_robustness_by_block.csv`.) Tj 0 -14 Td
+(10. LONG/SHORT metrics are in `direction_metrics.csv`.) Tj 0 -14 Td
+(11. R2/R5 robustness should be judged by concentration and rolling folds, not validation PF alone.) Tj 0 -14 Td
+(12. Holdout readiness verdict: `EXIT_RULE_FROZEN_READY`; ready candidate: `EXIT_R5`.) Tj 0 -14 Td
+(13. EXP-006B verdict should be treated as frozen-ready after this audit.) Tj 0 -14 Td
+ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000290 00000 n 
+trailer << /Size 5 /Root 1 0 R >>
+startxref
+3432
+%%EOF
