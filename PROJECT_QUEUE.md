@@ -20,6 +20,31 @@
 
 ## DONE / REPORT_READY
 
+### EXP-009_CAUSAL_MOVE_AGE
+
+Статус: DONE / REPORT_READY
+
+Вердикт: PARTIAL_CAUSAL_MOVE_AGE — построена причинная state machine active move age без PnL, stop/exit и
+данных 2025–2026. Проверены только фиксированные `START_A`, `START_B`, `START_C`. Лучшим по суммарной
+диагностике выбран `START_B`: найдено 6 из 12 reference moves, median start delay 83 бара, false active moves
+14, repeated-signal reduction 96.2%, blocked-example rejection 97.2%, максимум 2 causal entries на active move.
+`START_A` нашёл 9/12, но создал 67 false active moves; `START_C` нашёл 10/12, но median delay 52.5 бара и 38
+false active moves. Детали: `experiments/EXP-009_CAUSAL_MOVE_AGE/REPORT.md`.
+
+Цель:
+Преобразовать ретроспективную разметку EXP-008 в причинный механизм возраста движения с памятью
+`primary_entry_used` / `secondary_entry_used`.
+
+Исполнитель:
+Codex
+
+Результат:
+State machine, метрики START_A/B/C, matching к EXP-008, repeated-signal diagnostics, Pine-разметчик и PDF
+созданы. К backtest как торговой системе переходить рано: causal state частично решает повторные и поздние
+сигналы, но стартовые границы ещё плохо совпадают с reference moves.
+
+---
+
 ### EXP-008_MAJOR_MOVE_ENTRY_LABELING
 
 Статус: DONE / REPORT_READY

@@ -1,0 +1,4 @@
+detector,exp007_reference_signals,causal_entries,repeated_signal_reduction,note
+START_A,531,89,0.832391713747646,diagnostic count only; no PnL or trade simulation
+START_B,531,20,0.9623352165725048,diagnostic count only; no PnL or trade simulation
+START_C,531,52,0.9020715630885122,diagnostic count only; no PnL or trade simulation
