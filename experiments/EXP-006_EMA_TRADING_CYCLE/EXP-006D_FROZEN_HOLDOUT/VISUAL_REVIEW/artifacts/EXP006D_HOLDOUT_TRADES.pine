@@ -116,16 +116,9 @@ if barstate.islast
                 if mfe >= 1
                     label.new(mt, gp, "R5 active / 50% giveback", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.yellow, 10), textcolor=color.black, size=size.tiny)
             if showEntries
-                label.new(et, ep, "T" + str.tostring(n, "00") + " " + dir + "
-ENTRY
-price=" + f_num(ep), xloc=xloc.bar_time, style=dir == "LONG" ? label.style_label_up : label.style_label_down, color=color.new(c, 0), textcolor=color.white, size=size.small)
+                label.new(et, ep, "T" + str.tostring(n, "00") + " " + dir + "\nENTRY\nprice=" + f_num(ep), xloc=xloc.bar_time, style=dir == "LONG" ? label.style_label_up : label.style_label_down, color=color.new(c, 0), textcolor=color.white, size=size.small)
             if showExits
-                label.new(xt, xp, "T" + str.tostring(n, "00") + " EXIT
-reason=" + reason + "
-PnL=" + f_pct(pnl) + "
-PF contrib=" + f_pct(pnl) + "
-capture=" + f_num(cap) + "
-bars=" + str.tostring(bars), xloc=xloc.bar_time, style=label.style_label_left, color=color.new(winLoss, 0), textcolor=color.white, size=size.small)
+                label.new(xt, xp, "T" + str.tostring(n, "00") + " EXIT\nreason=" + reason + "\nPnL=" + f_pct(pnl) + "\nPF contrib=" + f_pct(pnl) + "\ncapture=" + f_num(cap) + "\nbars=" + str.tostring(bars), xloc=xloc.bar_time, style=label.style_label_left, color=color.new(winLoss, 0), textcolor=color.white, size=size.small)
             if showEMAWarning and reason == "EMA27_HYSTERESIS"
                 label.new(xt, xp, "EMA warning / hysteresis exit", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.aqua, 0), textcolor=color.black, size=size.tiny)
             if showRegime and reason == "REGIME_FLIP"
@@ -133,8 +126,7 @@ bars=" + str.tostring(bars), xloc=xloc.bar_time, style=label.style_label_left, c
             if reason == "STOP_A"
                 label.new(xt, sp, "STOP_A", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
             if amb
-                label.new(xt, xp, "INTRABAR AMBIGUITY
-STOP priority", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.fuchsia, 0), textcolor=color.white, size=size.tiny)
+                label.new(xt, xp, "INTRABAR AMBIGUITY\nSTOP priority", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.fuchsia, 0), textcolor=color.white, size=size.tiny)
             if showLabels and tags != "none"
                 label.new(xt, xp, tags, xloc=xloc.bar_time, style=label.style_label_right, color=color.new(color.blue, 15), textcolor=color.white, size=size.tiny)
 
