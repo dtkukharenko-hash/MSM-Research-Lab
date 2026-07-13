@@ -1,0 +1,49 @@
+{
+  "future_leakage_features": [
+    {
+      "feature": "last_correction_updated_extreme",
+      "issue": "EXP-010 measured whether the directional extreme updated within the next 20 bars after correction end, then attached it as a clustering input on later rows."
+    },
+    {
+      "feature": "last_correction_bars_to_update_extreme",
+      "issue": "EXP-010 measured bars until future directional extreme update after correction end, then attached it as a clustering input on later rows."
+    }
+  ],
+  "duplicate_checks_required": {
+    "ema27_slope_pct_vs_ema27_speed_pct": "ema27_speed_pct was identical in construction to ema27_slope_pct in EXP-010 before speed_change was selected.",
+    "ema200_slope_pct_vs_ema200_speed_pct": "ema200_speed_pct was identical in construction to ema200_slope_pct in EXP-010 before speed_change was selected."
+  },
+  "near_duplicate_features_abs_pearson_ge_0_98": [
+    {
+      "feature_a": "ema27_slope_pct",
+      "feature_b": "price_to_ema27_pct",
+      "pearson": 0.9999465644977049
+    },
+    {
+      "feature_a": "ema27_speed_change_pct",
+      "feature_b": "ema200_angle_change_deg",
+      "pearson": 0.9835738570811251
+    },
+    {
+      "feature_a": "ema200_slope_pct",
+      "feature_b": "price_to_ema200_pct",
+      "pearson": 0.9999961073693425
+    },
+    {
+      "feature_a": "ema200_angle_change_deg",
+      "feature_b": "ema200_speed_change_pct",
+      "pearson": 0.9921565402632389
+    }
+  ],
+  "correction_definition": "Continuous close-to-close movement against current EMA direction; first bar back in trend direction ended the correction.",
+  "correction_count": 655,
+  "correction_duration_mean": 1.6244274809160306,
+  "correction_duration_median": 1.0,
+  "correction_duration_p75": 2.0,
+  "correction_duration_p90": 3.0,
+  "one_bar_correction_fraction": 0.6,
+  "transition_matrix_method": {
+    "self_transitions_excluded": true,
+    "why_probability_1_not_market_sequence": "With self-transitions removed, two states can only change 1->2 or 2->1, so transition probability 1.00 is a counting artifact of excluding persistence, not evidence of a market sequence."
+  }
+}

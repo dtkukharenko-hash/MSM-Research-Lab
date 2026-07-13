@@ -20,6 +20,34 @@
 
 ## DONE / REPORT_READY
 
+### EXP-010A_CAUSAL_EMA_STATE_AUDIT
+
+Статус: DONE / REPORT_READY
+
+Вердикт: CAUSAL_EMA_STATE_STRUCTURE_FOUND — EXP-010 квалифицирован как разведочный:
+найдено, что его смешанный clustering включал post-correction outcome-поля
+`last_correction_updated_extreme` и `last_correction_bars_to_update_extreme`, а также дублирующую
+speed/slope конструкцию. EXP-010A построил исправленную двухслойную модель: Layer A — causal EMA backbone,
+Layer B — causal local price phase. Для backbone выбран `MODEL_RAW`, `k=2`: median silhouette `0.576`,
+median ARI `0.989`, p10 ARI `0.881`, min cluster fraction `0.119`; оба состояния повторяются на нескольких
+эпизодах. Local phase выделяет EXPANSION/PULLBACK/RECOVERY/RESUMPTION/CONTEXT_LOSS без ZigZag, без Irobot,
+без данных 2025+, без PnL и без торговых выводов. Детали:
+`experiments/EXP-010A_CAUSAL_EMA_STATE_AUDIT/REPORT.md`.
+
+Цель:
+Проверить, можно ли причинно различить локальную коррекцию внутри разных EMA backbone states и потерю
+трендового основания, не смешивая EMA-состояние и локальную фазу цены в одном clustering.
+
+Исполнитель:
+Codex
+
+Результат:
+TASK.md, REPORT.md, EXP-010 audit JSON, backbone/local/composite CSV, 30-seed clustering stability,
+full transition matrix with self-transitions, state-change matrix, dwell times, outcome-only evaluation,
+Pine audit viewer и PDF contact sheet созданы. Outcome fields сохранены отдельно и не входят в clustering.
+
+---
+
 ### EXP-010_EMA_STATE_MODEL
 
 Статус: DONE / REPORT_READY
@@ -31,6 +59,8 @@
 `price_to_ema27_pct`, `ema_distance_change_pct`, `last_correction_bars_to_update_extreme`,
 `last_correction_updated_extreme`. Переходы показывают чередование State 1 ↔ State 2,
 но не доказывают прогнозную цепочку. Торговые выводы, входы/выходы и PnL не рассчитывались.
+EXP-010A позже квалифицировал EXP-010 как разведочный результат: смешивание EMA-состояния, локального
+движения цены и post-correction outcome-полей требовало отдельного causal audit.
 Детали: `experiments/EXP-010_EMA_STATE_MODEL/REPORT.md`.
 
 Цель:

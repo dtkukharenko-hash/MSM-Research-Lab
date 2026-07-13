@@ -1,0 +1,5 @@
+from_state,to_state,state_change_count,state_change_probability
+1,1,0,0.0
+1,2,12,1.0
+2,1,12,1.0
+2,2,0,0.0

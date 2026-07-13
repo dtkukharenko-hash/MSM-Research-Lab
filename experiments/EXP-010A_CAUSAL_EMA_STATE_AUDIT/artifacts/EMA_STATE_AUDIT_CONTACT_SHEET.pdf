@@ -1,0 +1,75 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 993 >>
+stream
+BT
+/F1 15 Tf
+42 752 Td
+(EXP-010A EMA State Audit Contact Sheet) Tj
+/F1 9 Tf
+0 -20 Td
+(Required visual audit windows:) Tj
+0 -11 Td
+(1. 2023-10-01 to 2024-03-31) Tj
+0 -11 Td
+(2. Mid up-period corrections) Tj
+0 -11 Td
+(3. Late section of same up-period) Tj
+0 -11 Td
+(4. At least two down contexts) Tj
+0 -11 Td
+(5. One-bar correction examples) Tj
+0 -11 Td
+(6. Multi-bar corrections with recovery attempts) Tj
+0 -11 Td
+() Tj
+0 -11 Td
+(Verdict: CAUSAL_EMA_STATE_STRUCTURE_FOUND) Tj
+0 -11 Td
+(Selected: MODEL_RAW, k=2, seed=100) Tj
+0 -11 Td
+(Median silhouette: 0.576) Tj
+0 -11 Td
+(Median ARI: 0.989) Tj
+0 -11 Td
+(Corrections: 113, median duration=11.00, one-bar=0.000) Tj
+0 -11 Td
+() Tj
+0 -11 Td
+(Backbone state statistics:) Tj
+0 -11 Td
+(State 1 bars=2887 frac=0.881 ema200_12=-0.0079 pullback_frac=0.740) Tj
+0 -11 Td
+(State 2 bars=389 frac=0.119 ema200_12=0.3761 pullback_frac=0.681) Tj
+0 -11 Td
+() Tj
+0 -11 Td
+(Use EMA_STATE_AUDIT_VIEW.pine for chart inspection. No BUY/SELL labels.) Tj
+0 -11 Td
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+1355
+%%EOF
