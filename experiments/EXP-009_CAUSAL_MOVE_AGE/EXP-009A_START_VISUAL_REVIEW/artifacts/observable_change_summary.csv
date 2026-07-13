@@ -1,0 +1,8 @@
+metric,value,note
+first_observable_change_earlier_than_START_A,9,count of 12 reference moves
+first_observable_change_earlier_than_START_B,6,count of 12 reference moves
+first_observable_change_earlier_than_START_C,10,count of 12 reference moves
+observation_type_count_PRICE_EMA27_HOLD,8,repeated descriptive observation; not a detector
+observation_type_count_LOCAL_STRUCTURE_BREAK,4,repeated descriptive observation; not a detector
+observations_repeated_at_least_8_of_12,PRICE_EMA27_HOLD=8,descriptive only
+median_first_observable_delay_bars,3.0,bars from EXP-008 retrospective reference start

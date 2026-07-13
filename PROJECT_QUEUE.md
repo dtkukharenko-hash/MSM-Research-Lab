@@ -20,6 +20,32 @@
 
 ## DONE / REPORT_READY
 
+### EXP-009A_START_VISUAL_REVIEW
+
+Статус: DONE / REPORT_READY
+
+Вердикт: VISUAL_REVIEW_READY — создан отдельный визуальный аудит фиксированных `START_A`, `START_B`,
+`START_C` против 12 reference moves EXP-008 без нового detector, без PnL и без данных 2025–2026.
+Подтверждены исходные diagnostic counts EXP-009: `START_A` нашёл 9/12 и создал 67 false active moves,
+`START_B` нашёл 6/12 и создал 14 false active moves, `START_C` нашёл 10/12 и создал 38 false active moves.
+`FIRST_OBSERVABLE_CHANGE` чаще всего был `PRICE_EMA27_HOLD` (8/12), затем `LOCAL_STRUCTURE_BREAK` (4/12).
+Детали:
+`experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/REPORT.md`.
+
+Цель:
+Визуально разобрать, почему фиксированные causal starts появляются поздно или создают ложные active moves
+относительно 12 ретроспективных reference moves EXP-008.
+
+Исполнитель:
+Codex
+
+Результат:
+TASK.md, REPORT.md, CSV-аудиты, Pine viewer и 12-страничный PDF созданы. Аудит остаётся описательным:
+`FIRST_OBSERVABLE_CHANGE` не является новым detector, параметры START_A/B/C не менялись, переходить к PnL
+или backtest по этому шагу нельзя.
+
+---
+
 ### EXP-009_CAUSAL_MOVE_AGE
 
 Статус: DONE / REPORT_READY
