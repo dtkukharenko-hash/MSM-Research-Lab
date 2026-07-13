@@ -20,6 +20,30 @@
 
 ## DONE / REPORT_READY
 
+### EXP-006B_EXIT_RETENTION
+
+Статус: DONE / REPORT_READY
+
+Вердикт: EXIT_RETENTION_FOUND — при фиксированных `ENTRY_A + STOP_A` варианты удержания MFE показали
+улучшение именно механизма выхода. На DEVELOPMENT прошли `EXIT_R2` и `EXIT_R5`; на EXIT VALIDATION лучший
+перенос дал `EXIT_R5`: PF 3.135, median MFE capture 0.166 против baseline -0.008, GOOD_ENTRY_BAD_EXIT 0.0%
+против baseline 8.3%, max DD не ухудшился относительно baseline. REUSED TEMPORAL TEST не является
+независимым OOS, но показал согласованное улучшение PF относительно baseline. Настоящий holdout не открыт.
+Детали: `experiments/EXP-006_EMA_TRADING_CYCLE/EXP-006B_EXIT_RETENTION/REPORT.md`.
+
+Цель:
+Проверить, можно ли защитить уже возникший MFE после неизменного ENTRY_A, не меняя вход, EMA-режим и
+начальный STOP_A.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан; найден кандидат механизма удержания для отдельного следующего решения/проверки, без
+самовольного открытия holdout.
+
+---
+
 ### EXP-006A_ENTRY_EXIT_DIAGNOSIS
 
 Статус: DONE / REPORT_READY
