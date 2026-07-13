@@ -1,0 +1,73 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 854 >>
+stream
+BT
+/F1 16 Tf
+50 750 Td
+(EXP-010 EMA State Contact Sheet) Tj
+/F1 10 Tf
+0 -24 Td
+(Rows: raw=3300, clustered=3298, corrections=655) Tj
+0 -14 Td
+(Best k: 2) Tj
+0 -14 Td
+(Best silhouette: 0.406) Tj
+0 -14 Td
+(Top separating features:) Tj
+0 -14 Td
+(- ema200_slope_pct) Tj
+0 -14 Td
+(- price_to_ema200_pct) Tj
+0 -14 Td
+(- ema_distance_pct) Tj
+0 -14 Td
+(- ema27_slope_pct) Tj
+0 -14 Td
+(- price_to_ema27_pct) Tj
+0 -14 Td
+(- ema_distance_change_pct) Tj
+0 -14 Td
+(- last_correction_bars_to_update_extreme) Tj
+0 -14 Td
+(- last_correction_updated_extreme) Tj
+0 -14 Td
+() Tj
+0 -14 Td
+(Cluster statistics:) Tj
+0 -14 Td
+(State 1 bars=2916 ema27_slope=-0.0399 ema200_slope=-0.0100 corr_depth=2.025) Tj
+0 -14 Td
+(State 2 bars=382 ema27_slope=0.6007 ema200_slope=0.3862 corr_depth=2.801) Tj
+0 -14 Td
+() Tj
+0 -14 Td
+(No trading conclusions. State numbers only.) Tj
+0 -14 Td
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+1216
+%%EOF

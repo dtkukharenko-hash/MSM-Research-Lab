@@ -20,6 +20,32 @@
 
 ## DONE / REPORT_READY
 
+### EXP-010_EMA_STATE_MODEL
+
+Статус: DONE / REPORT_READY
+
+Вердикт: EMA_STATE_CLUSTERS_FOUND — по ADAUSDT 4H за 2023-07-01 → 2024-12-31,
+без Irobot и без данных 2025+, автоматически выделены 2 повторяющихся EMA-состояния рынка
+по OHLC, EMA27 и EMA200. Лучший k по silhouette = 2 (`0.406`). Наиболее различающие признаки:
+`ema200_slope_pct`, `price_to_ema200_pct`, `ema_distance_pct`, `ema27_slope_pct`,
+`price_to_ema27_pct`, `ema_distance_change_pct`, `last_correction_bars_to_update_extreme`,
+`last_correction_updated_extreme`. Переходы показывают чередование State 1 ↔ State 2,
+но не доказывают прогнозную цепочку. Торговые выводы, входы/выходы и PnL не рассчитывались.
+Детали: `experiments/EXP-010_EMA_STATE_MODEL/REPORT.md`.
+
+Цель:
+Проверить, описывают ли EMA27 и EMA200 состояние движения рынка, а не точки входа.
+
+Исполнитель:
+Codex
+
+Результат:
+TASK.md, REPORT.md, feature CSV, cluster CSV, cluster statistics, transition matrix,
+Pine state viewer и PDF contact sheet созданы. Использованы только OHLC, EMA27 и EMA200;
+ZigZag, Irobot, future data, backtest и торговая система не использовались.
+
+---
+
 ### EXP-009A_START_VISUAL_REVIEW
 
 Статус: DONE / REPORT_READY

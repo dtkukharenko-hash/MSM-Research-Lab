@@ -1,0 +1,5 @@
+from_state,to_state,transition_count,transition_probability
+1,1,0,0.0
+1,2,40,1.0
+2,1,40,1.0
+2,2,0,0.0
