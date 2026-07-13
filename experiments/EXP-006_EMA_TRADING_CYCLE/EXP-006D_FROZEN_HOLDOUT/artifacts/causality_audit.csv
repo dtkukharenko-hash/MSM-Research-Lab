@@ -1,0 +1,7 @@
+check_id,check_name,status,evidence,affected_trades
+C01,frozen specification written before holdout metrics,PASS,spec_hash=8068360398844bfcc47614cd5e1d6806bf94bbfe2d7f3e9224feeba1f3f9cee2,0
+C02,entries execute on next open,PASS,signal_time < entry_time for all trades,0
+C03,close exits execute on next open,PASS,exit logic returns next open for close-based exits,0
+C04,MFE bounded by entry to exit window,PASS,MFE updated only while position open,0
+C05,position occupancy blocks new entries,PASS,skipped_signals=5,0
+C06,intrabar ambiguities conservative,PASS,ambiguities=4 stop_priority,4

@@ -20,6 +20,29 @@
 
 ## DONE / REPORT_READY
 
+### EXP-006D_FROZEN_HOLDOUT
+
+Статус: DONE / REPORT_READY
+
+Вердикт: HOLDOUT_REJECTED — финальный независимый holdout для замороженной системы `ENTRY_A + STOP_A +
+EXIT_R5` открыт один раз и не подтвердил систему. Holdout `2025-07-01 04:00 UTC → 2026-07-01 00:00 UTC`
+теперь считается использованным для ветки EXP-006. EXIT_R5: 31 сделка, PF 0.656, total return -10.6%,
+max DD -14.2%, costs x2 PF 0.509, return without top-1 -14.6%, top-3 profit share 48.5%. Causality audit
+PASS; 4 intrabar ambiguity cases resolved conservatively and не меняют verdict. Следствие: `ENTRY_A +
+STOP_A + EXIT_R5` закрывается, не дорабатывать на этом holdout. Детали:
+`experiments/EXP-006_EMA_TRADING_CYCLE/EXP-006D_FROZEN_HOLDOUT/REPORT.md`.
+
+Цель:
+Один раз проверить полностью замороженную EMA trading cycle систему на настоящем нетронутом holdout.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан; paper trading не разрешён, параметры/правила не менять по этому holdout.
+
+---
+
 ### EXP-006C_FROZEN_EXIT_ROBUSTNESS
 
 Статус: DONE / REPORT_READY

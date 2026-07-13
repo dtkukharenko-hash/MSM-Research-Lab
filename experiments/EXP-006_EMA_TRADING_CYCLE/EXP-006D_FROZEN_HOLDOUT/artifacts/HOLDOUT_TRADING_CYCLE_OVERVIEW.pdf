@@ -1,0 +1,86 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 2873 >>
+stream
+BT /F1 12 Tf 36 760 Td
+(# EXP-006D ? Frozen Holdout Report) Tj 0 -14 Td
+() Tj 0 -14 Td
+(Verdict: **HOLDOUT_REJECTED**) Tj 0 -14 Td
+() Tj 0 -14 Td
+(Frozen specification hash: `8068360398844bfcc47614cd5e1d6806bf94bbfe2d7f3e9224feeba1f3f9cee2`) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Boundary) Tj 0 -14 Td
+() Tj 0 -14 Td
+(- Holdout: 2025-07-01 04:00:00 -> 2026-07-01 00:00:00.) Tj 0 -14 Td
+(- System: `ENTRY_A + STOP_A + EXIT_R5`.) Tj 0 -14 Td
+(- This holdout is now consumed for this branch and must not be reused as an independent tuning set.) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Primary EXIT_R5 Metrics) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| trades | long_trades | short_trades | win_rate | profit_factor | total_return | max_drawdown | fin) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Exit Comparison) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| exit_variant | trades | profit_factor | total_return | max_drawdown | median_mfe_capture | good_en) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Cost Stress) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| exit_variant | cost_mult | trades | profit_factor | total_return | max_drawdown |
+| --- | --- | --) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Direction Metrics) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| direction | trades | profit_factor | total_return | max_drawdown | median_mfe_capture | pf_cost_x2) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Quarterly Metrics) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| quarter | trades | sample_flag | profit_factor | total_return | max_drawdown | pf_cost_x2 | long_t) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Causality Audit) Tj 0 -14 Td
+() Tj 0 -14 Td
+(| check_id | check_name | status | evidence | affected_trades |
+| --- | --- | --- | --- | --- |
+| C0) Tj 0 -14 Td
+() Tj 0 -14 Td
+(## Answers) Tj 0 -14 Td
+() Tj 0 -14 Td
+(1. Frozen specification: `ENTRY_A + STOP_A + EXIT_R5`, hash `8068360398844bfcc47614cd5e1d6806bf94bbf) Tj 0 -14 Td
+(2. Holdout had not been used in EXP-006/006A/006B/006C; EXP-006D consumes it once.) Tj 0 -14 Td
+(3. Signals: 37.) Tj 0 -14 Td
+(4. Executed trades with position occupancy: 31.) Tj 0 -14 Td
+(5. Signals skipped due to open position: 5.) Tj 0 -14 Td
+(6. EXIT_R5 PF `0.656`, return `-10.60%`, DD `-14.23%`.) Tj 0 -14 Td
+(7. costs x2 PF `0.509`, costs x3 PF `0.392`.) Tj 0 -14 Td
+(8. Return without top-1 `-14.58%`, without top-3 `-18.79%`.) Tj 0 -14 Td
+(9. Top-3 profit share `48.5%`.) Tj 0 -14 Td
+(10. LONG/SHORT are shown in `direction_metrics.csv`.) Tj 0 -14 Td
+(11. Quarterly distribution is shown in `quarterly_metrics.csv`.) Tj 0 -14 Td
+(12. MFE retention is shown in `mfe_capture.csv`.) Tj 0 -14 Td
+(13. Implementation ambiguities: 4.) Tj 0 -14 Td
+(14. Ambiguities use conservative stop priority and do not change verdict.) Tj 0 -14 Td
+(15. Frozen EXIT_R5 result: `HOLDOUT_REJECTED`.) Tj 0 -14 Td
+(16. Paper trading: not approved by this verdict.) Tj 0 -14 Td
+(17. Remaining limits: single asset, 4H timeframe, one consumed holdout, no parameter tuning on this ) Tj 0 -14 Td
+ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000290 00000 n 
+trailer << /Size 5 /Root 1 0 R >>
+startxref
+3215
+%%EOF

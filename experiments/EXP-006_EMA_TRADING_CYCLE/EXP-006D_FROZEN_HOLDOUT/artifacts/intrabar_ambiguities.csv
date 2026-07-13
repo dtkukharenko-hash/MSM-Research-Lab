@@ -1,0 +1,5 @@
+trade_id,timestamp,levels_crossed,ambiguity_type,conservative_resolution,optimistic_result,conservative_result,verdict_impact,exit_variant
+H_EXIT_R0_0015,2026-01-13 12:00:00,STOP_A,STOP_AND_OTHER_EXIT_OR_FAVORABLE_LEVEL,STOP_A_PRIORITY,close_exit_or_favorable_first,stop_at_stop_price,none,EXIT_R0
+H_EXIT_R0_0017,2026-02-13 12:00:00,STOP_A,STOP_AND_OTHER_EXIT_OR_FAVORABLE_LEVEL,STOP_A_PRIORITY,close_exit_or_favorable_first,stop_at_stop_price,none,EXIT_R0
+H_EXIT_R0_0022,2026-04-22 00:00:00,STOP_A,STOP_AND_OTHER_EXIT_OR_FAVORABLE_LEVEL,STOP_A_PRIORITY,close_exit_or_favorable_first,stop_at_stop_price,none,EXIT_R0
+H_EXIT_R5_0018,2026-02-13 12:00:00,STOP_A,STOP_AND_OTHER_EXIT_OR_FAVORABLE_LEVEL,STOP_A_PRIORITY,close_exit_or_favorable_first,stop_at_stop_price,none,EXIT_R5

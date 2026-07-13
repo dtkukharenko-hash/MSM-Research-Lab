@@ -1,0 +1,39 @@
+{
+  "asset": "ADAUSDT",
+  "costs": {
+    "fee_per_side": 0.001,
+    "slippage_per_side": 0.0005,
+    "stress": [
+      2,
+      3
+    ]
+  },
+  "expected_artifacts": [
+    "holdout_signals.csv",
+    "holdout_trades_r5.csv",
+    "holdout_metrics.csv",
+    "causality_audit.csv",
+    "intrabar_ambiguities.csv"
+  ],
+  "experiment": "EXP-006D_FROZEN_HOLDOUT",
+  "frozen_specification_hash_sha256": "8068360398844bfcc47614cd5e1d6806bf94bbfe2d7f3e9224feeba1f3f9cee2",
+  "function_source_hash_sha256": "3789fff18776d9d83f30396eca3ba467ca7ac5f911e8a952b3f111c1f4349072",
+  "holdout": {
+    "end": "2026-07-01 00:00:00",
+    "start": "2025-07-01 04:00:00"
+  },
+  "indicators": [
+    "EMA27",
+    "EMA200",
+    "ATR14"
+  ],
+  "position": {
+    "capital": 1000.0,
+    "compounding": true,
+    "max_positions": 1,
+    "size": "100%"
+  },
+  "priority": "STOP_A has priority on ambiguous intrabar bars; conservative execution.",
+  "system": "ENTRY_A + STOP_A + EXIT_R5",
+  "timeframe": "4H"
+}
