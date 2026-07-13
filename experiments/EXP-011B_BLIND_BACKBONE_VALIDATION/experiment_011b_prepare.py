@@ -214,6 +214,7 @@ var int[] ends = array.from({ends})
 f_visible(string id) =>
     selectedBlindId == "ALL" or id == selectedBlindId
 
+bool anyWindowArea = false
 for i = 0 to array.size(ids) - 1
     string id = array.get(ids, i)
     int st = array.get(starts, i)
@@ -223,14 +224,15 @@ for i = 0 to array.size(ids) - 1
     bool inWindow = time >= st and time <= en
     bool atStart = time >= st and time[1] < st
     bool atEnd = time >= en and time[1] < en
-    if visible and showWindowArea and inWindow
-        bgcolor(color.new(color.yellow, 88))
+    anyWindowArea := anyWindowArea or (visible and showWindowArea and inWindow)
     if visible and showWindowStart and atStart
         line.new(st, low, st, high, xloc=xloc.bar_time, extend=extend.both, color=color.new(color.green, 0), style=line.style_solid, width=1)
         if showBlindId
             label.new(st, high, id, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.green, 0), textcolor=color.white, size=size.small)
     if visible and showWindowEnd and atEnd
         line.new(en, low, en, high, xloc=xloc.bar_time, extend=extend.both, color=color.new(color.red, 0), style=line.style_solid, width=1)
+
+bgcolor(anyWindowArea ? color.new(color.yellow, 88) : na)
 '''
 
 
