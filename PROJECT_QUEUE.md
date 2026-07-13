@@ -20,6 +20,33 @@
 
 ## DONE / REPORT_READY
 
+### EXP-011_MULTISCALE_EMA_TREND_BACKBONE
+
+Статус: DONE / REPORT_READY
+
+Вердикт: NO_TRANSFERABLE_TREND_MODEL — абсолютная EMA-state модель на 4H/1H построена причинно по
+ADAUSDT Binance spot за 2023-07-01 → 2024-12-31 без Irobot, без clustering, без ZigZag, без PnL и без
+торговых правил. Выбран `MODEL_B`: формулы одинаково применимы на 4H и 1H, но строгий перенос не
+подтверждён, потому что `TYPE_A` случаев найдено только 2 при требовании 8. `TYPE_B` найдено 8,
+mirror-down найдено 6, `LOWER_OPPOSES_PARENT` занимает 21.46% 1H-баров, переключаемость остаётся в
+заданных пределах: 4H 10.52 и 1H 11.08 changes/100 bars. Следующий допустимый шаг — только
+research-only проверка относительных scale relations, не входов/выходов. Детали:
+`experiments/EXP-011_MULTISCALE_EMA_TREND_BACKBONE/REPORT.md`.
+
+Цель:
+Проверить, переносится ли причинная EMA trend-state модель между 4H и 1H и можно ли описывать
+мульти-масштабное состояние рынка через EMA27/EMA200 без ручной разметки, входов, выходов и PnL.
+
+Исполнитель:
+Codex
+
+Результат:
+TASK.md, REPORT.md, 1H/4H OHLC, EMA feature CSV, model states, model comparison, state statistics,
+dwell times, multiscale state mapping, scale-relation matrices, visual review windows, Pine viewer и
+PDF contact sheet созданы. Данные после 2024-12-31 не использовались; `docs/DEFINITIONS.md` не менялся.
+
+---
+
 ### EXP-010A_CAUSAL_EMA_STATE_AUDIT
 
 Статус: DONE / REPORT_READY

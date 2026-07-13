@@ -1,0 +1,64 @@
+//@version=6
+indicator("EXP-011 Multiscale EMA Trend View", overlay=true, max_labels_count=500)
+
+show1HState = input.bool(true, "show1HState")
+show4HState = input.bool(true, "show4HState")
+showScaleRelation = input.bool(true, "showScaleRelation")
+showEMA1H = input.bool(true, "showEMA1H")
+showEMA4H = input.bool(true, "showEMA4H")
+showStateLabels = input.bool(true, "showStateLabels")
+showOnlyTransitions = input.bool(false, "showOnlyTransitions")
+
+f_raw_state(float e27, float e200, float s27, float s200, float s200chg, float dchg, float epsF, float epsS, float epsD) =>
+    bool warm = na(s27) or na(s200) or na(s200chg) or na(dchg) or na(epsF) or na(epsS) or na(epsD)
+    string st = "TRANSITION"
+    if warm
+        st := "WARMUP"
+    else if e27 > e200 and s200 > epsS
+        st := s27 > epsF and dchg > epsD ? "UP_EXPANDING" : s27 >= -epsF and math.abs(dchg) <= epsD ? "UP_STABLE" : s27 < -epsF or dchg < -epsD or s200chg < -epsS ? "UP_WEAKENING" : "TRANSITION"
+    else if e27 < e200 and s200 < -epsS
+        st := s27 < -epsF and dchg < -epsD ? "DOWN_EXPANDING" : s27 <= epsF and math.abs(dchg) <= epsD ? "DOWN_STABLE" : s27 > epsF or dchg > epsD or s200chg > epsS ? "DOWN_WEAKENING" : "TRANSITION"
+    st
+
+f_dir(string st) =>
+    str.startswith(st, "UP") ? "UP" : str.startswith(st, "DOWN") ? "DOWN" : "TRANSITION"
+
+f_color(string st) =>
+    str.startswith(st, "UP") ? color.new(color.green, 86) : str.startswith(st, "DOWN") ? color.new(color.red, 86) : color.new(color.gray, 88)
+
+f_state() =>
+    float e27 = ta.ema(close, 27)
+    float e200 = ta.ema(close, 200)
+    float dist = (e27 - e200) / e200 * 100.0
+    float s27 = (e27 / e27[6] - 1.0) / 6.0 * 100.0
+    float s200 = (e200 / e200[24] - 1.0) / 24.0 * 100.0
+    float s200chg = s200 - s200[12]
+    float dchg = dist - dist[6]
+    float epsF = 1.5 * ta.median(math.abs(ta.change(s27)), 120)
+    float epsS = 1.5 * ta.median(math.abs(ta.change(s200)), 120)
+    float epsD = 1.5 * ta.median(math.abs(ta.change(dist)), 120)
+    f_raw_state(e27, e200, s27, s200, s200chg, dchg, epsF, epsS, epsD)
+
+string st1 = f_state()
+string st4 = request.security(syminfo.tickerid, "240", f_state()[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+float ema27_1 = ta.ema(close, 27)
+float ema200_1 = ta.ema(close, 200)
+float ema27_4 = request.security(syminfo.tickerid, "240", ta.ema(close, 27)[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+float ema200_4 = request.security(syminfo.tickerid, "240", ta.ema(close, 200)[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off)
+
+plot(showEMA1H ? ema27_1 : na, "EMA27 1H", color=color.aqua)
+plot(showEMA1H ? ema200_1 : na, "EMA200 1H", color=color.orange)
+plot(showEMA4H ? ema27_4 : na, "EMA27 4H confirmed", color=color.new(color.aqua, 45), linewidth=2)
+plot(showEMA4H ? ema200_4 : na, "EMA200 4H confirmed", color=color.new(color.orange, 45), linewidth=2)
+
+string d1 = f_dir(st1)
+string d4 = f_dir(st4)
+string rel = d4 == "TRANSITION" ? "PARENT_TRANSITION" : d1 == "TRANSITION" ? "LOWER_TRANSITION" : d4 == "UP" and d1 == "UP" ? "ALIGNED_UP" : d4 == "DOWN" and d1 == "DOWN" ? "ALIGNED_DOWN" : "LOWER_OPPOSES_PARENT"
+bool changed = st1 != st1[1] or st4 != st4[1] or rel != rel[1]
+
+bgcolor(show4HState and (not showOnlyTransitions or changed) ? f_color(st4) : na)
+if showStateLabels and changed
+    if show1HState
+        label.new(time, low, st1, xloc=xloc.bar_time, style=label.style_label_up, color=f_color(st1), textcolor=color.white, size=size.tiny)
+    if showScaleRelation and rel == "LOWER_OPPOSES_PARENT"
+        label.new(time, high, rel, xloc=xloc.bar_time, style=label.style_label_down, color=color.yellow, textcolor=color.black, size=size.tiny)

@@ -1,0 +1,4 @@
+timeframe_1h,model,available_bars_1h,state_changes_per_100_bars_1h,transition_fraction_1h,largest_state_fraction_1h,directed_median_dwell_1h,state_count_1h,states_multi_quarter_1h,states_repeated_nonconsecutive_1h,timeframe_4h,available_bars_4h,state_changes_per_100_bars_4h,transition_fraction_4h,largest_state_fraction_4h,directed_median_dwell_4h,state_count_4h,states_multi_quarter_4h,states_repeated_nonconsecutive_4h,selected
+1H,MODEL_A,13056,5.4993872549019605,0.37974877450980393,0.37974877450980393,16.0,3,3,3,4H,3156,5.164765525982256,0.34157160963244615,0.37896070975918883,16.0,3,3,3,False
+1H,MODEL_B,13056,11.075367647058822,0.04411764705882353,0.22035845588235295,5.0,7,7,7,4H,3156,10.519645120405578,0.03770595690747782,0.26045627376425856,5.0,7,7,7,True
+1H,MODEL_C,13055,8.579088471849866,0.052317119877441594,0.22229031022596707,7.0,7,7,7,4H,3155,8.304278922345484,0.045641838351822506,0.26497622820919176,8.0,7,7,7,False
