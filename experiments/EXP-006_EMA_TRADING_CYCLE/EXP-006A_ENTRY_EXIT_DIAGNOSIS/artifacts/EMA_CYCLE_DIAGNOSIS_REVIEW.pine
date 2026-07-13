@@ -1,0 +1,39 @@
+//@version=6
+indicator("EXP-006A EMA Cycle Diagnosis Review", overlay=true, max_lines_count=500, max_labels_count=500)
+
+// Diagnostic markup only. Uses EXP-006 temporal-test trades for ENTRY_A_STOP_A_EXIT_B.
+showLabels = input.bool(true, "show labels")
+showStops = input.bool(true, "show stops")
+
+ema27 = ta.ema(close, 27)
+ema200 = ta.ema(close, 200)
+plot(ema27, "EMA27", color=color.aqua)
+plot(ema200, "EMA200", color=color.orange)
+
+slope20 = ema200 - ema200[20]
+bull = close > ema200 and slope20 > 0 and ema27 > ema200
+bear = close < ema200 and slope20 < 0 and ema27 < ema200
+bgcolor(bull ? color.new(color.green, 92) : bear ? color.new(color.red, 92) : color.new(color.gray, 95))
+
+var int[] starts = array.from(timestamp("Etc/UTC", 2024, 12, 21, 12, 0), timestamp("Etc/UTC", 2024, 12, 27, 16, 0), timestamp("Etc/UTC", 2025, 1, 18, 12, 0), timestamp("Etc/UTC", 2025, 1, 19, 16, 0), timestamp("Etc/UTC", 2025, 1, 26, 12, 0), timestamp("Etc/UTC", 2025, 1, 28, 16, 0), timestamp("Etc/UTC", 2025, 2, 23, 0, 0), timestamp("Etc/UTC", 2025, 2, 23, 12, 0), timestamp("Etc/UTC", 2025, 3, 4, 8, 0), timestamp("Etc/UTC", 2025, 4, 1, 20, 0), timestamp("Etc/UTC", 2025, 4, 3, 0, 0), timestamp("Etc/UTC", 2025, 4, 27, 20, 0), timestamp("Etc/UTC", 2025, 4, 28, 20, 0), timestamp("Etc/UTC", 2025, 5, 3, 16, 0), timestamp("Etc/UTC", 2025, 5, 7, 16, 0), timestamp("Etc/UTC", 2025, 5, 13, 8, 0), timestamp("Etc/UTC", 2025, 6, 7, 12, 0), timestamp("Etc/UTC", 2025, 6, 29, 4, 0))
+var int[] ends = array.from(timestamp("Etc/UTC", 2024, 12, 24, 20, 0), timestamp("Etc/UTC", 2024, 12, 29, 4, 0), timestamp("Etc/UTC", 2025, 1, 19, 8, 0), timestamp("Etc/UTC", 2025, 1, 19, 20, 0), timestamp("Etc/UTC", 2025, 1, 26, 12, 0), timestamp("Etc/UTC", 2025, 1, 30, 0, 0), timestamp("Etc/UTC", 2025, 2, 23, 4, 0), timestamp("Etc/UTC", 2025, 3, 2, 4, 0), timestamp("Etc/UTC", 2025, 3, 7, 8, 0), timestamp("Etc/UTC", 2025, 4, 2, 12, 0), timestamp("Etc/UTC", 2025, 4, 10, 0, 0), timestamp("Etc/UTC", 2025, 4, 28, 0, 0), timestamp("Etc/UTC", 2025, 4, 30, 4, 0), timestamp("Etc/UTC", 2025, 5, 4, 4, 0), timestamp("Etc/UTC", 2025, 5, 8, 0, 0), timestamp("Etc/UTC", 2025, 5, 15, 0, 0), timestamp("Etc/UTC", 2025, 6, 8, 12, 0), timestamp("Etc/UTC", 2025, 6, 29, 20, 0))
+var float[] stops = array.from(0.99750000, 0.91430000, 1.04810000, 1.00590000, 0.99430000, 0.96780000, 0.78460000, 0.78900000, 0.75670000, 0.69420000, 0.70980000, 0.68990000, 0.68160000, 0.68810000, 0.68870000, 0.77110000, 0.67190000, 0.56840000)
+var string[] types = array.from("EARLY_EXIT", "GOOD_ENTRY_BAD_EXIT", "GOOD_ENTRY_BAD_EXIT", "LATE_ENTRY", "GOOD_ENTRY_BAD_EXIT", "GOOD_ENTRY_BAD_EXIT", "GOOD_ENTRY_BAD_EXIT", "MIXED", "LATE_ENTRY", "GOOD_ENTRY_BAD_EXIT", "EARLY_EXIT", "LATE_ENTRY", "LATE_ENTRY", "GOOD_ENTRY_BAD_EXIT", "LATE_EXIT", "LATE_EXIT", "GOOD_ENTRY_BAD_EXIT", "LATE_EXIT")
+var string[] dirs = array.from("SHORT", "SHORT", "LONG", "LONG", "SHORT", "SHORT", "SHORT", "SHORT", "LONG", "SHORT", "SHORT", "LONG", "LONG", "LONG", "SHORT", "LONG", "SHORT", "SHORT")
+
+for i = 0 to array.size(starts) - 1
+    int st = array.get(starts, i)
+    int en = array.get(ends, i)
+    float sp = array.get(stops, i)
+    string typ = array.get(types, i)
+    string dir = array.get(dirs, i)
+    if time == st
+        line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=color.green, width=2)
+        if showLabels
+            label.new(time, high, dir + " " + typ, xloc=xloc.bar_time, style=label.style_label_down, color=color.green, textcolor=color.white, size=size.tiny)
+    if time == en
+        line.new(time, low, time, high, xloc=xloc.bar_time, extend=extend.both, color=color.red, width=2)
+        if showLabels
+            label.new(time, low, "exit " + typ, xloc=xloc.bar_time, style=label.style_label_up, color=color.red, textcolor=color.white, size=size.tiny)
+    if showStops and time >= st and time <= en
+        line.new(st, sp, en, sp, xloc=xloc.bar_time, color=color.new(color.red, 40), style=line.style_dotted)

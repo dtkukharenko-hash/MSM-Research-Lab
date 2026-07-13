@@ -20,6 +20,30 @@
 
 ## DONE / REPORT_READY
 
+### EXP-006A_ENTRY_EXIT_DIAGNOSIS
+
+Статус: DONE / REPORT_READY
+
+Вердикт: ENTRY_VALID_EXIT_FAILURE — диагностика трёх shortlisted комбинаций EXP-006 показала, что
+`ENTRY_A_STOP_A_EXIT_B` на TEMPORAL TEST всё ещё давал доступный положительный путь: на горизонте 24 бара
+`+1 ATR` достигался раньше `-1 ATR` в 55.6% сделок, BAD_ENTRY = 0.0%, но GOOD_ENTRY_BAD_EXIT = 44.4%,
+а средняя отдача MFE до фактического выхода выросла до 147.3%. Главная проблема — удержание/выход, а не
+немедленный отказ входа. Настоящий holdout не открыт. Детали:
+`experiments/EXP-006_EMA_TRADING_CYCLE/EXP-006A_ENTRY_EXIT_DIAGNOSIS/REPORT.md`.
+
+Цель:
+Понять, почему сильный TRAIN-результат EXP-006 не перенёсся на TEMPORAL TEST: вход, выход, stop, режим или
+сочетание факторов.
+
+Исполнитель:
+Claude Code
+
+Результат:
+REPORT.md создан; следующий эксперимент можно ставить только по диагностированной причине, без немедленного
+придумывания новых правил.
+
+---
+
 ### EXP-006_EMA_TRADING_CYCLE
 
 Статус: DONE / REPORT_READY
