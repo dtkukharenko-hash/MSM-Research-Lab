@@ -43,4 +43,16 @@ Forbidden: SHORT analysis, data after 2024-01-08, future outcomes, ZigZag, clust
 - `REVIEW_INSTRUCTIONS.md`
 - `REPORT.md`
 
+## R2 Outputs
+
+R2 preserves V1 in `long_conflict_sections_v1_snapshot.csv` and adds full dispute sections:
+
+- `long_dispute_sections_v2.csv`
+- `long_dispute_events_v2.csv`
+- `conflict_bar_features_v2.csv`
+- `boundary_revision_comparison.csv`
+- `manual_full_section_review.csv`
+
+R2 status: `AWAITING_TW_FULL_SECTION_REVIEW`.
+
 Commit message: `EXP-011B discover long conflict windows`.

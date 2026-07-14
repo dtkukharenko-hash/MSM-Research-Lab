@@ -1,0 +1,8 @@
+section_id,auto_last_aligned_end,auto_dispute_start,auto_first_core_trigger,auto_resolution_candidate,auto_dispute_end,auto_resolution_kind,valid_dispute_section,last_aligned_assessment,dispute_start_assessment,corrected_dispute_start,core_trigger_assessment,dispute_end_assessment,corrected_dispute_end,resolution_kind_assessment,split_required,merge_required,merge_with_section,missing_preceding_events,missing_following_events,source_difference_suspected,comment
+LC001,2023-10-31 08:00:00,2023-10-31 12:00:00,2023-10-31 16:00:00,2023-11-01 16:00:00,2023-11-02 00:00:00,RECOVERED_LONG,,,,,,,,,,,,,,,
+LC002,2023-11-12 12:00:00,2023-11-12 16:00:00,2023-11-13 08:00:00,2023-11-19 12:00:00,2023-11-19 20:00:00,RECOVERED_LONG,,,,,,,,,,,,,,,
+LC003,2023-11-21 00:00:00,2023-11-21 04:00:00,2023-11-21 12:00:00,2023-11-22 20:00:00,2023-11-23 08:00:00,RECOVERED_LONG,,,,,,,,,,,,,,,
+LC004,2023-11-26 04:00:00,2023-11-26 08:00:00,2023-11-26 16:00:00,2023-12-01 16:00:00,2023-12-02 04:00:00,RECOVERED_LONG,,,,,,,,,,,,,,,
+LC005,2023-12-10 20:00:00,2023-12-11 00:00:00,2023-12-11 16:00:00,2023-12-12 04:00:00,2023-12-12 12:00:00,RECOVERED_LONG,,,,,,,,,,,,,,,
+LC006,2023-12-15 08:00:00,2023-12-15 12:00:00,2023-12-15 20:00:00,2023-12-21 08:00:00,2023-12-21 20:00:00,RECOVERED_LONG,,,,,,,,,,,,,,,
+LC007,2023-12-22 20:00:00,2023-12-23 00:00:00,2023-12-23 04:00:00,2024-01-06 16:00:00,2024-01-07 00:00:00,NEW_DOWN_CONFIGURATION,,,,,,,,,,,,,,,

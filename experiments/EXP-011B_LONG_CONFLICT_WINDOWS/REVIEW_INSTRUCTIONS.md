@@ -1,6 +1,6 @@
-# EXP-011B Long Conflict Boundary Review
+# EXP-011B R2 Full Section Review
 
-Status: AWAITING_TW_BOUNDARY_REVIEW
+Status: AWAITING_TW_FULL_SECTION_REVIEW
 
 ## Workflow
 
@@ -9,31 +9,29 @@ Status: AWAITING_TW_BOUNDARY_REVIEW
 3. Add your own EMA27 and EMA200.
 4. Add `artifacts/LONG_CONFLICT_WINDOWS.pine`.
 5. Select `LC001`, `LC002`, and so on.
-6. Fill `artifacts/manual_boundary_review.csv`.
+6. Review the whole process, not only the strict trigger.
+7. Fill `artifacts/manual_full_section_review.csv`.
 
-## Check Only Boundaries
+## Check Each LC
 
-For each section, answer:
-
-- Was there a LONG context before the section?
-- Is the start of the conflict correct?
-- Should it start earlier?
-- Should it start later?
-- Is the end of the conflict correct?
-- Should it end earlier?
-- Should it end later?
-- Should the section be split?
-- Should it be merged with a neighboring section?
-- Is a conflict missing between sections?
+- Is a stable aligned long visible before `D`?
+- Did loss of alignment start earlier than `D`?
+- Is `D` the first dispute bar?
+- Is `T` inside an already-started process?
+- Does the yellow area avoid ending on a temporary bounce?
+- Is there a clear stable state after `E`?
+- Should the section continue further?
+- Should it merge with a neighboring LC?
+- Are events missing to the left or right?
 
 ## Do Not Analyze Yet
 
-- Why the move continued.
-- Why a transition happened.
-- Which section is stronger.
-- What the section predicts.
-- Trading entries, exits, stops, risk, or PnL.
+- Causes of later movement.
+- Technical Ratings.
+- Forecasts.
+- Trading actions.
+- Final conflict classification.
 
 ## Source Note
 
-The automatic windows were generated from EXP-011 Binance spot 4H OHLC. Manual review is expected on Bybit ADAUSDT Perpetual Contract 4H, so small bar-level differences are possible.
+Automatic windows use EXP-011 Binance spot 4H OHLC. Manual review is expected on Bybit ADAUSDT Perpetual Contract 4H, so some candles and boundaries may differ by one or more bars.

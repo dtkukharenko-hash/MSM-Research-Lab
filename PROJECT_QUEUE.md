@@ -26,18 +26,20 @@
 
 ### EXP-011B_LONG_CONFLICT_WINDOWS
 
-Статус: AWAITING_TW_BOUNDARY_REVIEW
+Статус: AWAITING_TW_FULL_SECTION_REVIEW
 
-EXP-011B автоматически выделил LONG-конфликтные участки на 4H по ADAUSDT за 2023-10-18 → 2024-01-08
-по сохранённым EXP-011 Binance spot OHLC. Найдено 124 `CORE_CONFLICT_TRIGGER`, 10 raw-конфликтов и
-6 объединённых LC-участков. SHORT не анализировался, период после 2024-01-08 не использовался,
-`BACKBONE_C`, ZigZag, clustering, high/low условия, PnL/backtest и торговые метки не применялись.
+EXP-011B V1 нашёл строгие `CORE_TRIGGER`, но границы участков оказались неполными: левая граница
+начиналась на уже подтверждённом конфликте, а правая могла закончиться на техническом reset или
+EMA27/EMA200 cross. EXP-011B R2 сохранил V1 snapshot и расширил участки до полного спорного процесса:
+`LAST_ALIGNED_RUN` → `DISPUTE_START` → `CORE_TRIGGER` → `RESOLUTION_CANDIDATE` → `DISPUTE_END`.
+Найдено 7 R2 LC-участков: 6 `RECOVERED_LONG`, 1 `NEW_DOWN_CONFIGURATION`, `OPEN_AT_TRAIN_END` = 0.
+CORE_TRIGGER и EMA-cross считаются внутренними событиями, не финальной классификацией.
 
 Следующее действие:
-Проверить границы `LC001`–`LC006` вручную в TradingView на Bybit ADAUSDT Perpetual Contract 4H через
-`experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_CONFLICT_WINDOWS.pine` и заполнить
-`experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/manual_boundary_review.csv`. Только после ручной
-проверки границ переходить к window-by-window structural analysis.
+Проверить полные участки `LC001`–`LC007` вручную в TradingView на Bybit ADAUSDT Perpetual Contract 4H
+через `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_CONFLICT_WINDOWS.pine` и заполнить
+`experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/manual_full_section_review.csv`. Technical Ratings
+TradingView добавлять только после фиксации границ.
 
 ---
 
