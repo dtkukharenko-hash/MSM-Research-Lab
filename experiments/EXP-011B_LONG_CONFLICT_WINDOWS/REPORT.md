@@ -1,8 +1,8 @@
 # EXP-011B — LONG CONFLICT WINDOW DISCOVERY
 
-Status: AWAITING_TW_EPISODE_CHAIN_REVIEW
+Status: AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW
 
-Verdict: AWAITING_TW_EPISODE_CHAIN_REVIEW
+Verdict: AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW
 
 ## Data
 
@@ -12,39 +12,52 @@ Exchange/source: Binance public spot klines inherited from EXP-011. Symbol: ADAU
 
 Research period: `2023-10-18 00:00:00 UTC` through `2024-01-08 23:59:59.999 UTC`. Bars in period: `498`. Pine uses 4H `open_time` boundaries.
 
-## R3 Dispute Episode Chains
+## R4 Adaptive Recovery Strength
 
-R2 expanded the windows correctly to the left and right, but its `3 of 4 recovered_long_bar` criterion was too short to separate a true exit from an internal bounce. R3 keeps the same causal EMA and CORE_TRIGGER formulas, treats that condition as `RECOVERY_ATTEMPT`, and requires a fixed `24`-bar probation before the section can close.
+R3 used one fixed 24-bar probation for every recovery attempt. That was too blunt: weak internal bounces can still need long confirmation, while a strong recovery can justify closing the dispute section earlier and allowing the next dispute start to become a new section.
 
-- R2 sections: `7`
+R4 keeps the R2/R3 EMA, DISPUTE_START and CORE_TRIGGER logic, and adds ATR14 using Wilder-style RMA (`ewm alpha = 1/14`). Recovery strength has six causal components: price separation from EMA27, EMA27 acceleration, EMA-gap expansion, alignment persistence, structural clearance above the prior conflict ceiling, and price persistence above EMA27.
+
 - R3 sections: `3`
-- R3 episodes: `10`
-- RECOVERY_ATTEMPT: `9`
-- FAILED_RECOVERY: `7`
-- CONFIRMED_RECOVERED_LONG: `2`
-- NEW_CONFIGURATION_ATTEMPT: `1`
-- NEW_CONFIGURATION_FAILED: `0`
-- CONFIRMED_NEW_DOWN_CONFIGURATION: `1`
-- OPEN_AT_TRAIN_END: `0`
-- Mean section duration to effective exit, bars: `94.67`
-- Mean episodes per section: `3.33`
-- Mean bars from effective exit to confirmation: `21.00`
+- R4 sections: `6`
+- Episodes: `12`
+- WEAK_RECOVERY: `0`
+- MODERATE_RECOVERY: `1`
+- STRONG_RECOVERY: `10`
+- Failed moderate recovery: `1`
+- Failed strong recovery: `5`
+- Confirmed moderate recovery: `0`
+- Confirmed strong recovery: `5`
+- Confirmed new down configuration: `1`
 
-## R2 To R3 Merges
+## R3 To R4 Mapping
 
-- `LC002;LC003;LC004` -> `LC002`
-- `LC005;LC006;LC007` -> `LC003`
+Split R3 sections:
 
-Acceptance test `LC002 + LC003 + LC004`: `PASS`.
+- `LC002` -> `LC002;LC003` (`adaptive recovery confirmed split`)
+- `LC003` -> `LC004;LC005;LC006` (`adaptive recovery confirmed split`)
 
-LC006/LC007 check: `LC003: LC005;LC006;LC007`.
+Kept R3 sections:
 
-## R3 Sections
+- `LC001` -> `LC001`
 
-- `LC001`: source `LC001`, D `2023-10-31 12:00:00`, E `2023-11-01 16:00:00`, C `2023-11-06 00:00:00`, `CONFIRMED_RECOVERED_LONG`, episodes `1`
-- `LC002`: source `LC002;LC003;LC004`, D `2023-11-12 16:00:00`, E `2023-12-01 16:00:00`, C `2023-12-06 04:00:00`, `CONFIRMED_RECOVERED_LONG`, episodes `4`
-- `LC003`: source `LC005;LC006;LC007`, D `2023-12-11 00:00:00`, E `2024-01-06 16:00:00`, C `2024-01-08 08:00:00`, `CONFIRMED_NEW_DOWN_CONFIGURATION`, episodes `5`
+## Acceptance Tests
+
+- `NOVEMBER_CHAIN_PRESERVED`: `FAIL` — 2 R4 sections
+- `DECEMBER_STRONG_RECOVERY_SPLIT`: `PASS` — 3 R4 sections
+- `EXPECTED_FOUR_SECTIONS`: `FAIL` — 6 R4 sections
+- `NO_DATE_HARDCODING`: `PASS` — general chronological builder
+- `NO_FUTURE_PERIOD_USED`: `PASS` — period slice ends at configured END
+
+## R4 Sections
+
+- `LC001`: source R3 `LC001`, source R2 `LC001`, D `2023-10-31 12:00:00`, E `2023-11-01 16:00:00`, C `2023-11-03 00:00:00`, `CONFIRMED_STRONG_RECOVERY`, recovery `STRONG_RECOVERY`, score `5`, episodes `1`
+- `LC002`: source R3 `LC002`, source R2 `LC002`, D `2023-11-12 16:00:00`, E `2023-11-19 12:00:00`, C `2023-11-20 20:00:00`, `CONFIRMED_STRONG_RECOVERY`, recovery `STRONG_RECOVERY`, score `5`, episodes `2`
+- `LC003`: source R3 `LC002`, source R2 `LC003;LC004`, D `2023-11-21 04:00:00`, E `2023-12-01 16:00:00`, C `2023-12-03 04:00:00`, `CONFIRMED_STRONG_RECOVERY`, recovery `STRONG_RECOVERY`, score `5`, episodes `3`
+- `LC004`: source R3 `LC003`, source R2 `LC005`, D `2023-12-11 00:00:00`, E `2023-12-13 12:00:00`, C `2023-12-15 00:00:00`, `CONFIRMED_STRONG_RECOVERY`, recovery `STRONG_RECOVERY`, score `5`, episodes `2`
+- `LC005`: source R3 `LC003`, source R2 `LC006`, D `2023-12-15 12:00:00`, E `2023-12-21 08:00:00`, C `2023-12-22 20:00:00`, `CONFIRMED_STRONG_RECOVERY`, recovery `STRONG_RECOVERY`, score `5`, episodes `1`
+- `LC006`: source R3 `LC003`, source R2 `LC007`, D `2023-12-23 00:00:00`, E `2024-01-06 16:00:00`, C `2024-01-08 08:00:00`, `CONFIRMED_NEW_DOWN_CONFIGURATION`, recovery ``, score ``, episodes `3`
 
 ## Constraints
 
-No data after `2024-01-08 23:59:59.999 UTC` was used. No date-specific exceptions, ZigZag, clustering, BACKBONE_C, Technical Ratings, forecast, PnL, backtest, trading action, or `docs/DEFINITIONS.md` change. EMA27 and EMA200 are not plotted in the R3 Pine; the Pine only displays fixed timestamps from CSV.
+No data after `2024-01-08 23:59:59.999 UTC` was used. No date-specific exceptions, section-id exceptions, ZigZag, clustering, BACKBONE_C, Technical Ratings, forecast, PnL, backtest, trading action, or `docs/DEFINITIONS.md` change. EMA27 and EMA200 are not plotted in the R4 Pine; the Pine only displays fixed timestamps and price bounds from CSV.

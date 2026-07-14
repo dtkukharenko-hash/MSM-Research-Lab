@@ -1,22 +1,24 @@
-# EXP-011B R3 Episode Chain Review
+# EXP-011B R4 Adaptive Recovery Review
 
-Status: AWAITING_TW_EPISODE_CHAIN_REVIEW
+Status: AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW
 
 ## Workflow
 
 1. Open Bybit ADAUSDT Perpetual Contract.
 2. Select 4H.
 3. Add your own EMA27 and EMA200.
-4. Add `artifacts/LONG_DISPUTE_EPISODE_CHAINS_R3.pine`.
-5. Select one R3 `LC` at a time.
-6. Review the chain `D -> episode -> R -> possible F -> next episode -> final E -> C`.
-7. Fill `artifacts/manual_episode_chain_review.csv`.
+4. Add `artifacts/LONG_DISPUTE_ADAPTIVE_RECOVERY_R4.pine`.
+5. Select one R4 `LC` at a time.
+6. Review `D -> episode -> W/M/S -> possible F -> E -> C`.
+7. Fill `artifacts/manual_adaptive_recovery_review.csv`.
 
 ## Event Legend
 
 - `D`: DISPUTE_START.
 - `T`: CORE_TRIGGER.
-- `R`: RECOVERY_ATTEMPT.
+- `W`: WEAK_RECOVERY.
+- `M`: MODERATE_RECOVERY.
+- `S`: STRONG_RECOVERY.
 - `F`: FAILED_RECOVERY.
 - `N`: NEW_CONFIGURATION_ATTEMPT.
 - `X`: EMA27/EMA200 cross down.
@@ -24,15 +26,16 @@ Status: AWAITING_TW_EPISODE_CHAIN_REVIEW
 - `C`: EXIT_CONFIRMATION.
 - `O`: OPEN_AT_TRAIN_END.
 
-## Check Each R3 LC
+## Check Each R4 LC
 
-- Are internal episodes merged correctly?
-- Was the section closed on a real exit rather than a local bounce?
-- Are failed recoveries marked at the right return of dispute?
-- Is dispute absent after `E` through `C`?
-- Does the new clear state persist through `C`?
-- Should this section merge with a neighboring LC?
-- Should it split into separate sections?
+- Is `D` the first dispute start?
+- Is the recovery class weak, moderate, or strong?
+- Does strong recovery create a genuinely independent next section?
+- Was the November process kept as one section?
+- Was the early December conflict separated from the later long conflict?
+- Does the yellow dispute area end at `E`?
+- Is the light probation area only between `E` and `C`?
+- Is `C` understood as causal confirmation, not the factual end of dispute movement?
 
 ## Do Not Analyze Yet
 

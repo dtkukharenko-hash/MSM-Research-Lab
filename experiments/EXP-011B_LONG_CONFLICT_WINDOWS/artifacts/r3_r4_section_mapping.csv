@@ -1,0 +1,4 @@
+r3_section_id,r4_section_ids,r4_section_count,split_occurred,split_confirmation_time,split_recovery_class,split_recovery_strength_score,mapping_reason,source_r2_sections
+LC001,LC001,1,False,,,,kept as single R4 section,LC001
+LC002,LC002;LC003,2,True,2023-11-20 20:00:00,STRONG_RECOVERY,5,adaptive recovery confirmed split,LC002;LC003;LC004
+LC003,LC004;LC005;LC006,3,True,2023-12-15 00:00:00,STRONG_RECOVERY,5,adaptive recovery confirmed split,LC005;LC006;LC007

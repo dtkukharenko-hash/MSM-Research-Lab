@@ -1,0 +1,6 @@
+test_id,test_name,expected_result,actual_result,status,details
+NOVEMBER_CHAIN_PRESERVED,R3 November chain remains one R4 section,one R4 section for R3 source containing LC002;LC003;LC004,2 R4 sections,FAIL,LC002;LC003
+DECEMBER_STRONG_RECOVERY_SPLIT,R3 December chain splits after adaptive recovery,at least two R4 sections for R3 source containing LC005;LC006;LC007,3 R4 sections,PASS,LC004;LC005;LC006
+EXPECTED_FOUR_SECTIONS,Development period visual structure has four R4 sections,4 R4 sections,6 R4 sections,FAIL,LC001;LC002;LC003;LC004;LC005;LC006
+NO_DATE_HARDCODING,No algorithmic date or section-id exceptions,no hardcoded dates or LC ids in section builder,general chronological builder,PASS,acceptance IDs are checked only after calculation
+NO_FUTURE_PERIOD_USED,No bars after development cutoff,no data after 2024-01-08 23:59:59.999,period slice ends at configured END,PASS,2024-01-08 23:59:59.999000

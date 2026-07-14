@@ -26,23 +26,25 @@
 
 ### EXP-011B_LONG_CONFLICT_WINDOWS
 
-Статус: AWAITING_TW_EPISODE_CHAIN_REVIEW
+Статус: AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW
 
-EXP-011B V1 нашёл строгие `CORE_TRIGGER`, R2 правильно расширил окна влево и вправо, но ошибочно
-принимал краткие восстановления `3 of 4 recovered_long_bar` за окончательный выход. EXP-011B R3
-вводит `DISPUTE_SECTION`, `DISPUTE_EPISODE`, `RECOVERY_ATTEMPT`, `FAILED_RECOVERY`,
-`EFFECTIVE_EXIT` и `EXIT_CONFIRMATION` с фиксированным `RECOVERY_PROBATION_BARS = 24`.
-R2 сохранён snapshot-файлами. R3 автоматически объединил 7 R2 LC-участков в 3 цепочки episodes:
-`LC002+LC003+LC004` прошли обязательный acceptance test как один section; `LC005+LC006+LC007`
-также объединены общей логикой failed recovery / confirmed new down configuration. Найдено 10
-episodes, 9 recovery attempts, 7 failed recoveries, 2 `CONFIRMED_RECOVERED_LONG`,
-1 `CONFIRMED_NEW_DOWN_CONFIGURATION`, `OPEN_AT_TRAIN_END` = 0.
+EXP-011B V1 нашёл строгие `CORE_TRIGGER`; R2 расширил окна; R3 правильно объединил внутренние
+ноябрьские episodes, но слишком агрессивно объединил декабрьские конфликты из-за единого
+24-барного probation. EXP-011B R4 добавил `recovery_strength_score`, `WEAK_RECOVERY`,
+`MODERATE_RECOVERY`, `STRONG_RECOVERY` и adaptive probation: 6 баров для strong, 12 баров
+для moderate, weak остаётся внутренним восстановлением. R3 artifacts сохранены snapshot-файлами.
+Общая R4-логика разделила декабрьский R3 `LC003`, но также разделила ноябрьский R3 `LC002`,
+поэтому acceptance results: `NOVEMBER_CHAIN_PRESERVED = FAIL`,
+`DECEMBER_STRONG_RECOVERY_SPLIT = PASS`, `EXPECTED_FOUR_SECTIONS = FAIL`. Получено 6 R4 sections,
+12 episodes, 10 strong recoveries, 1 moderate recovery, 5 confirmed strong recoveries и
+1 confirmed new down configuration. Хардкод дат/LC для исправления не применялся.
 
 Следующее действие:
-Проверить R3 цепочки `LC001`–`LC003` вручную в TradingView на Bybit ADAUSDT Perpetual Contract 4H
-через `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_DISPUTE_EPISODE_CHAINS_R3.pine`
-и заполнить `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/manual_episode_chain_review.csv`.
-Technical Ratings TradingView добавлять только после утверждения section и episode boundaries.
+Проверить R4 adaptive recovery sections в TradingView через
+`experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_DISPUTE_ADAPTIVE_RECOVERY_R4.pine`,
+заполнить `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/manual_adaptive_recovery_review.csv`
+и отдельно решить, нужно ли ужесточать recovery strength / probation rules для сохранения ноябрьской
+цепочки. Technical Ratings TradingView добавлять только после утверждения границ sections.
 
 ---
 

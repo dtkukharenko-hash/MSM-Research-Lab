@@ -6,7 +6,7 @@ Automatically discover all potential LONG conflict sections on ADAUSDT 4H for:
 
 `2023-10-18 00:00:00 UTC` through `2024-01-08 23:59:59 UTC`.
 
-Current status: `AWAITING_TW_EPISODE_CHAIN_REVIEW`.
+Current status: `AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW`.
 
 This phase does not classify continuation/reversal, does not validate BACKBONE_C, does not seek entries/exits, and does not calculate PnL.
 
@@ -74,3 +74,26 @@ R3 preserves R2 snapshots and treats the R2 `3 of 4 recovered_long_bar` rule as 
 R3 status: `AWAITING_TW_EPISODE_CHAIN_REVIEW`.
 
 Commit message: `EXP-011B chain dispute episodes and confirm exits`.
+
+## R4 Outputs
+
+R4 preserves R3 snapshots and adds adaptive recovery strength:
+
+- `long_dispute_sections_r3_snapshot.csv`
+- `dispute_episodes_r3_snapshot.csv`
+- `recovery_attempts_r3_snapshot.csv`
+- `LONG_DISPUTE_EPISODE_CHAINS_R3_SNAPSHOT.pine`
+- `long_dispute_sections_r4.csv`
+- `dispute_episodes_r4.csv`
+- `recovery_attempts_r4.csv`
+- `recovery_strength_components_r4.csv`
+- `new_configuration_attempts_r4.csv`
+- `conflict_bar_features_r4.csv`
+- `r3_r4_section_mapping.csv`
+- `r4_acceptance_tests.csv`
+- `manual_adaptive_recovery_review.csv`
+- `LONG_DISPUTE_ADAPTIVE_RECOVERY_R4.pine`
+
+R4 status: `AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW`.
+
+Commit message: `EXP-011B add adaptive recovery strength and split sections`.

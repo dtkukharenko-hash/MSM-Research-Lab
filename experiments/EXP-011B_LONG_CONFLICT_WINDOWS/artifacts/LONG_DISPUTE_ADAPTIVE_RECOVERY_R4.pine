@@ -1,0 +1,82 @@
+//@version=6
+indicator("EXP-011B Adaptive Recovery Sections R4", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=100)
+
+showDisputeArea = input.bool(true, "showDisputeArea")
+showRecoveryProbation = input.bool(true, "showRecoveryProbation")
+showEpisodeBoundaries = input.bool(true, "showEpisodeBoundaries")
+showFirstCoreTriggerPerEpisode = input.bool(true, "showFirstCoreTriggerPerEpisode")
+showAllCoreTriggers = input.bool(false, "showAllCoreTriggers")
+showWeakRecoveries = input.bool(true, "showWeakRecoveries")
+showModerateRecoveries = input.bool(true, "showModerateRecoveries")
+showStrongRecoveries = input.bool(true, "showStrongRecoveries")
+showFailedRecoveries = input.bool(true, "showFailedRecoveries")
+showEmaCrossEvents = input.bool(true, "showEmaCrossEvents")
+showEffectiveExit = input.bool(true, "showEffectiveExit")
+showExitConfirmation = input.bool(true, "showExitConfirmation")
+showSectionId = input.bool(true, "showSectionId")
+showOnlySelectedSection = input.bool(false, "showOnlySelectedSection")
+selectedSection = input.string("ALL", "selectedSection", options=["ALL", "LC001", "LC002", "LC003", "LC004", "LC005", "LC006"])
+
+var string[] sectionIds = array.from("LC001", "LC002", "LC003", "LC004", "LC005", "LC006")
+var int[] disputeStarts = array.from(1698753600000, 1699804800000, 1700539200000, 1702252800000, 1702641600000, 1703289600000)
+var int[] effectiveExits = array.from(1698854400000, 1700395200000, 1701446400000, 1702468800000, 1703145600000, 1704556800000)
+var int[] exitConfirmations = array.from(1698969600000, 1700510400000, 1701576000000, 1702598400000, 1703275200000, 1704700800000)
+var float[] boxTops = array.from(0.30290500, 0.41297500, 0.39983000, 0.63985500, 0.64755500, 0.68574500)
+var float[] boxBottoms = array.from(0.28299500, 0.33652500, 0.35297000, 0.50444500, 0.53854500, 0.49115500)
+var string[] eventSectionIds = array.from("LC001", "LC001", "LC001", "LC001", "LC001", "LC001", "LC001", "LC001", "LC001", "LC001", "LC001", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC002", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC003", "LC004", "LC004", "LC004", "LC004", "LC004", "LC004", "LC004", "LC004", "LC004", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC005", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006", "LC006")
+var string[] eventTypes = array.from("DISPUTE_START", "EPISODE_START", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "STRONG_RECOVERY", "EFFECTIVE_EXIT", "EXIT_CONFIRMATION", "DISPUTE_START", "EPISODE_START", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "STRONG_RECOVERY", "FAILED_RECOVERY", "EPISODE_START", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "STRONG_RECOVERY", "EFFECTIVE_EXIT", "EXIT_CONFIRMATION", "DISPUTE_START", "EPISODE_START", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "MODERATE_RECOVERY", "FAILED_RECOVERY", "EPISODE_START", "STRONG_RECOVERY", "FAILED_RECOVERY", "EPISODE_START", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "STRONG_RECOVERY", "EFFECTIVE_EXIT", "EXIT_CONFIRMATION", "DISPUTE_START", "EPISODE_START", "CORE_TRIGGER", "STRONG_RECOVERY", "FAILED_RECOVERY", "EPISODE_START", "STRONG_RECOVERY", "EFFECTIVE_EXIT", "EXIT_CONFIRMATION", "DISPUTE_START", "EPISODE_START", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "STRONG_RECOVERY", "EFFECTIVE_EXIT", "EXIT_CONFIRMATION", "DISPUTE_START", "EPISODE_START", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "STRONG_RECOVERY", "FAILED_RECOVERY", "EPISODE_START", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "STRONG_RECOVERY", "FAILED_RECOVERY", "EPISODE_START", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "CORE_TRIGGER", "EMA_CROSS", "NEW_CONFIGURATION_ATTEMPT", "EFFECTIVE_EXIT", "EXIT_CONFIRMATION")
+var int[] eventTimes = array.from(1698753600000, 1698753600000, 1698768000000, 1698782400000, 1698796800000, 1698811200000, 1698825600000, 1698840000000, 1698854400000, 1698854400000, 1698969600000, 1699804800000, 1699804800000, 1699862400000, 1699876800000, 1699891200000, 1699905600000, 1699920000000, 1699934400000, 1699948800000, 1699963200000, 1699977600000, 1699992000000, 1700006400000, 1700020800000, 1700064000000, 1700164800000, 1700164800000, 1700164800000, 1700193600000, 1700222400000, 1700236800000, 1700251200000, 1700265600000, 1700280000000, 1700294400000, 1700308800000, 1700395200000, 1700395200000, 1700510400000, 1700539200000, 1700539200000, 1700568000000, 1700582400000, 1700596800000, 1700611200000, 1700625600000, 1700640000000, 1700654400000, 1700683200000, 1700899200000, 1700899200000, 1700913600000, 1701014400000, 1701014400000, 1701014400000, 1701043200000, 1701057600000, 1701072000000, 1701086400000, 1701100800000, 1701115200000, 1701129600000, 1701144000000, 1701158400000, 1701172800000, 1701259200000, 1701288000000, 1701302400000, 1701316800000, 1701331200000, 1701345600000, 1701360000000, 1701374400000, 1701388800000, 1701403200000, 1701446400000, 1701446400000, 1701576000000, 1702252800000, 1702252800000, 1702310400000, 1702353600000, 1702468800000, 1702468800000, 1702468800000, 1702468800000, 1702598400000, 1702641600000, 1702641600000, 1702670400000, 1702756800000, 1702785600000, 1702800000000, 1702814400000, 1702828800000, 1702843200000, 1702857600000, 1702872000000, 1702886400000, 1702900800000, 1702915200000, 1702987200000, 1703001600000, 1703016000000, 1703030400000, 1703044800000, 1703059200000, 1703102400000, 1703145600000, 1703145600000, 1703275200000, 1703289600000, 1703289600000, 1703304000000, 1703318400000, 1703332800000, 1703347200000, 1703448000000, 1703462400000, 1703476800000, 1703491200000, 1703592000000, 1703606400000, 1703635200000, 1703649600000, 1703678400000, 1703793600000, 1703793600000, 1703793600000, 1703808000000, 1703822400000, 1703851200000, 1703865600000, 1703880000000, 1703894400000, 1703908800000, 1703923200000, 1703937600000, 1703952000000, 1703966400000, 1703980800000, 1703995200000, 1704009600000, 1704024000000, 1704038400000, 1704052800000, 1704067200000, 1704081600000, 1704096000000, 1704110400000, 1704124800000, 1704225600000, 1704225600000, 1704225600000, 1704240000000, 1704254400000, 1704268800000, 1704283200000, 1704297600000, 1704312000000, 1704326400000, 1704340800000, 1704369600000, 1704384000000, 1704398400000, 1704412800000, 1704427200000, 1704441600000, 1704556800000, 1704556800000, 1704556800000, 1704700800000)
+var int[] eventCoreOrdinals = array.from(0, 0, 1, 2, 3, 4, 5, 6, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0)
+var string[] episodeSectionIds = array.from("LC001", "LC002", "LC002", "LC003", "LC003", "LC003", "LC004", "LC004", "LC005", "LC006", "LC006", "LC006")
+var int[] episodeStarts = array.from(1698753600000, 1699804800000, 1700164800000, 1700539200000, 1700899200000, 1701014400000, 1702252800000, 1702468800000, 1702641600000, 1703289600000, 1703793600000, 1704225600000)
+
+f_visible(string id) =>
+    selectedSection == "ALL" or id == selectedSection
+
+f_mark(string eventType) =>
+    eventType == "DISPUTE_START" ? "D" : eventType == "CORE_TRIGGER" ? "T" : eventType == "WEAK_RECOVERY" ? "W" : eventType == "MODERATE_RECOVERY" ? "M" : eventType == "STRONG_RECOVERY" ? "S" : eventType == "FAILED_RECOVERY" ? "F" : eventType == "EMA_CROSS" ? "X" : eventType == "EFFECTIVE_EXIT" ? "E" : eventType == "EXIT_CONFIRMATION" ? "C" : eventType == "NEW_CONFIGURATION_ATTEMPT" ? "N" : eventType == "OPEN_AT_TRAIN_END" ? "O" : ""
+
+f_enabled(string eventType, int coreOrdinal) =>
+    eventType == "CORE_TRIGGER" ? (showAllCoreTriggers or (showFirstCoreTriggerPerEpisode and coreOrdinal == 1)) : eventType == "WEAK_RECOVERY" ? showWeakRecoveries : eventType == "MODERATE_RECOVERY" ? showModerateRecoveries : eventType == "STRONG_RECOVERY" ? showStrongRecoveries : eventType == "FAILED_RECOVERY" ? showFailedRecoveries : eventType == "EMA_CROSS" ? showEmaCrossEvents : eventType == "EFFECTIVE_EXIT" ? showEffectiveExit : eventType == "EXIT_CONFIRMATION" ? showExitConfirmation : eventType == "DISPUTE_START" ? true : eventType == "NEW_CONFIGURATION_ATTEMPT" ? true : eventType == "OPEN_AT_TRAIN_END" ? true : false
+
+for i = 0 to array.size(sectionIds) - 1
+    string sid = array.get(sectionIds, i)
+    bool visible = f_visible(sid) and (not showOnlySelectedSection or selectedSection != "ALL")
+    visible := selectedSection == "ALL" ? f_visible(sid) : visible
+    int st = array.get(disputeStarts, i)
+    int ex = array.get(effectiveExits, i)
+    int cn = array.get(exitConfirmations, i)
+    float top = array.get(boxTops, i)
+    float bottom = array.get(boxBottoms, i)
+    bool atStart = time >= st and time[1] < st
+    if visible and atStart
+        if showDisputeArea
+            box.new(st, top, ex, bottom, xloc=xloc.bar_time, bgcolor=color.new(color.yellow, 84), border_color=color.new(color.yellow, 20), extend=extend.none)
+        if showRecoveryProbation
+            box.new(ex, top, cn, bottom, xloc=xloc.bar_time, bgcolor=color.new(color.aqua, 92), border_color=color.new(color.aqua, 40), extend=extend.none)
+        line.new(st, bottom, st, top, xloc=xloc.bar_time, color=color.new(color.yellow, 0), width=2)
+        if showEffectiveExit
+            line.new(ex, bottom, ex, top, xloc=xloc.bar_time, color=color.new(color.lime, 0), width=3)
+        if showExitConfirmation
+            line.new(cn, bottom, cn, top, xloc=xloc.bar_time, color=color.new(color.aqua, 0), width=2, style=line.style_dashed)
+        if showSectionId
+            label.new(st, top, sid, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.yellow, 0), textcolor=color.black, size=size.small)
+
+for e = 0 to array.size(episodeStarts) - 1
+    string sid = array.get(episodeSectionIds, e)
+    int tt = array.get(episodeStarts, e)
+    bool visible = f_visible(sid) and (not showOnlySelectedSection or selectedSection != "ALL")
+    visible := selectedSection == "ALL" ? f_visible(sid) : visible
+    if visible and showEpisodeBoundaries and time >= tt and time[1] < tt
+        line.new(tt, low, tt, high, xloc=xloc.bar_time, color=color.new(color.gray, 25), style=line.style_dotted, width=1)
+
+for j = 0 to array.size(eventTimes) - 1
+    string sid = array.get(eventSectionIds, j)
+    string eventType = array.get(eventTypes, j)
+    int tt = array.get(eventTimes, j)
+    int coreOrdinal = array.get(eventCoreOrdinals, j)
+    bool visible = f_visible(sid) and (not showOnlySelectedSection or selectedSection != "ALL")
+    visible := selectedSection == "ALL" ? f_visible(sid) : visible
+    string mark = f_mark(eventType)
+    if visible and f_enabled(eventType, coreOrdinal) and mark != "" and time >= tt and time[1] < tt
+        label.new(tt, close, mark, xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.black, 0), textcolor=color.white, size=size.tiny)

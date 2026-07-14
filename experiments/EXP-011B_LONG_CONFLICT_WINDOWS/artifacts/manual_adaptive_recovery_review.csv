@@ -1,0 +1,7 @@
+section_id,source_r3_section,auto_dispute_start,auto_effective_exit,auto_exit_confirmation,auto_resolution_kind,auto_recovery_class,auto_recovery_strength_score,dispute_start_correct,recovery_class_correct,effective_exit_correct,confirmation_correct,section_split_correct,should_merge_with_previous,should_merge_with_next,should_split_again,corrected_dispute_start,corrected_effective_exit,corrected_confirmation,comment
+LC001,LC001,2023-10-31 12:00:00,2023-11-01 16:00:00,2023-11-03 00:00:00,CONFIRMED_STRONG_RECOVERY,STRONG_RECOVERY,5,,,,,,,,,,,,
+LC002,LC002,2023-11-12 16:00:00,2023-11-19 12:00:00,2023-11-20 20:00:00,CONFIRMED_STRONG_RECOVERY,STRONG_RECOVERY,5,,,,,,,,,,,,
+LC003,LC002,2023-11-21 04:00:00,2023-12-01 16:00:00,2023-12-03 04:00:00,CONFIRMED_STRONG_RECOVERY,STRONG_RECOVERY,5,,,,,,,,,,,,
+LC004,LC003,2023-12-11 00:00:00,2023-12-13 12:00:00,2023-12-15 00:00:00,CONFIRMED_STRONG_RECOVERY,STRONG_RECOVERY,5,,,,,,,,,,,,
+LC005,LC003,2023-12-15 12:00:00,2023-12-21 08:00:00,2023-12-22 20:00:00,CONFIRMED_STRONG_RECOVERY,STRONG_RECOVERY,5,,,,,,,,,,,,
+LC006,LC003,2023-12-23 00:00:00,2024-01-06 16:00:00,2024-01-08 08:00:00,CONFIRMED_NEW_DOWN_CONFIGURATION,,,,,,,,,,,,,,
