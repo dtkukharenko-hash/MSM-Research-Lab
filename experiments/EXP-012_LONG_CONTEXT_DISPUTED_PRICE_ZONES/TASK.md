@@ -1,9 +1,7 @@
-# EXP-012 — LONG CONTEXT DISPUTED PRICE ZONES
+# EXP-012 R2 - ACCEPTED BOUNDARY STATE
 
-Status: AWAITING_TW_PRICE_ZONE_REVIEW
+Status: AWAITING_TW_ACCEPTED_BOUNDARY_REVIEW
 
-Goal: detect causal horizontal disputed price zones inside LONG context on ADAUSDT 4H for 2023-10-18 through 2024-01-08.
+Goal: revise EXP-012 so horizontal disputed price zones use robust body-based boundaries and a strictly causal accepted-boundary state machine.
 
-This experiment replaces EMA-centered conflict-window closure with price-defined zone bounds and accepted outside movement. It makes no trading, prediction, PnL, or backtest claim.
-
-Outputs are stored in `artifacts/`.
+R2 separates wick `EXCURSION`, body/close-based `ACCEPTED_EXTENSION`, and persistent `ACCEPTED_EXIT`. EMA27 and EMA200 remain context/diagnostics only. There is no trading, prediction, PnL, or backtest claim.

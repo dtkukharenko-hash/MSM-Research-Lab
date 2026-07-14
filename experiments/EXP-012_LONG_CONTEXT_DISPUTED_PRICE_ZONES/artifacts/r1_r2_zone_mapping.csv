@@ -1,0 +1,7 @@
+r1_zone_id,r2_zone_id,r1_resolution_kind,r2_resolution_kind,mapping_reason
+Z001,Z001,ACCEPTED_UPSIDE_EXIT,ACCEPTED_UPSIDE_EXIT_R2,overlap by causal bar span
+Z002,Z002,ACCEPTED_UPSIDE_EXIT,ACCEPTED_UPSIDE_EXIT_R2,overlap by causal bar span
+Z002,Z003,ACCEPTED_UPSIDE_EXIT,ACCEPTED_UPSIDE_EXIT_R2,overlap by causal bar span
+Z003,Z004,OPEN_AT_TRAIN_END,ACCEPTED_UPSIDE_EXIT_R2,overlap by causal bar span
+Z003,Z005,OPEN_AT_TRAIN_END,ACCEPTED_DOWNSIDE_EXIT_R2,overlap by causal bar span
+Z003,Z006,OPEN_AT_TRAIN_END,ACCEPTED_DOWNSIDE_EXIT_R2,overlap by causal bar span

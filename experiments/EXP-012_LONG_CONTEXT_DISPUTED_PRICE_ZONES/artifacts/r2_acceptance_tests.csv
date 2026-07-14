@@ -1,0 +1,13 @@
+test_id,test_name,expected_result,actual_result,status,details
+EXPECTED_THREE_PRIMARY_ZONES,manual review currently suggests three broad zones,3 zones,6 zones,FAIL,Z001;Z002;Z003;Z004;Z005;Z006
+FIRST_ZONE_COMPACT,first zone remains independent and compact,one LC001 zone,1 matching zone(s),PASS,ACCEPTED_UPSIDE_EXIT_R2
+NOVEMBER_SINGLE_ZONE,November remains one horizontal disputed zone,one LC002 zone,2 matching zone(s),FAIL,ACCEPTED_UPSIDE_EXIT_R2;ACCEPTED_UPSIDE_EXIT_R2
+DECEMBER_JANUARY_SINGLE_ZONE,December-January remains one zone until accepted downside movement,one LC003 zone,3 matching zone(s),FAIL,ACCEPTED_UPSIDE_EXIT_R2;ACCEPTED_DOWNSIDE_EXIT_R2;ACCEPTED_DOWNSIDE_EXIT_R2
+DECEMBER_DOWNSIDE_EXIT_ACCEPTED,primary R2 tests whether December-January gets accepted DOWN exit,accepted downside exit,True,PASS,ACCEPTED_UPSIDE_EXIT_R2;ACCEPTED_DOWNSIDE_EXIT_R2;ACCEPTED_DOWNSIDE_EXIT_R2
+DOWNSIDE_EXIT_EARLIER_THAN_R1,compare only after run,R2 earlier than R1,R2 2023-12-13 16:00:00 vs R1 2024-01-08 20:00:00,PASS,post-run diagnostic
+NO_POST_FAILURE_DATA_USED,rejected attempts stop at decision bar,last_data_timestamp_used == decision_open_time,True,PASS,attempt rows audited
+NO_WICK_ONLY_BOUNDARY_EXPANSION,boundary updates use accepted-extension bodies,no wick-only update,True,PASS,accepted extensions audited
+NO_DATE_HARDCODING,No date hardcoding,general algorithm,general chronological builder,PASS,dates used only in acceptance diagnostics and period cutoff
+NO_PRICE_HARDCODING,No price hardcoding,bounds from bodies/closes,body median estimators and accepted extensions,PASS,no manual prices used
+NO_ZONE_ID_HARDCODING,No zone id hardcoding,general algorithm,section IDs used only in diagnostics,PASS,post-run mapping checks
+NO_FUTURE_PERIOD_USED,No future period used,no data after 2024-01-08,period slice ends at 2024-01-08 23:59:59.999000,PASS,2024-01-08 23:59:59.999000

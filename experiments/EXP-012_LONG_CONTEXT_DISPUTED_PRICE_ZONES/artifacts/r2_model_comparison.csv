@@ -1,0 +1,3 @@
+model,zone_count,accepted_upside_exit_count,accepted_downside_exit_count,open_at_train_end_count,outside_candidate_count,accepted_extension_count,rejected_wick_or_single_excursion_count
+ACCEPTED_EXTENSION_BODY_BOUNDS,6,4,2,0,13,4,3
+FIXED_BODY_BOUNDS_BASELINE,7,5,2,0,14,0,3
