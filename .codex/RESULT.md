@@ -1,87 +1,113 @@
 # Latest Codex Result
 
-- task_id: `EXP-012-LONG-CONTEXT-DISPUTED-PRICE-ZONES`
-- task_status: `AWAITING_TW_PRICE_ZONE_REVIEW`
-- implementation_commit_sha: `5b00b2ee291985dc68a9f58faefa9ea58db08c9f`
+- task_id: `EXP-012-R2-ACCEPTED-BOUNDARY-STATE`
+- task_status: `AWAITING_TW_ACCEPTED_BOUNDARY_REVIEW`
+- implementation_commit_sha: `6dd4fcb427cab7a09dc4dfe7b964840dcde3464c`
 - implementation_push_status: `PUSHED origin/main`
 - result_commit_status: `PUSHED origin/main`
 
 ## Summary
 
-Implemented EXP-012 as a new research-only experiment that detects causal horizontal disputed price zones inside LONG context on ADAUSDT 4H for `2023-10-18` through `2024-01-08`.
+Implemented EXP-012 R2 accepted-boundary state model. R2 preserves R1 snapshots, separates wick references from accepted body boundaries, replaces R1 full-window exit evaluation with a sequential bar-by-bar outside-state machine, and distinguishes `EXCURSION`, `ACCEPTED_EXTENSION`, and `ACCEPTED_EXIT`.
 
-The detector uses OHLC-derived EMA27/EMA200 context diagnostics, causal upper/lower price bounds, failed outside-close boundary expansion, and six-bar accepted outside movement. It does not create trading entries, exits, stops, PnL, backtest, forecasts, Technical Ratings, ZigZag, clustering, or BACKBONE_C logic.
+Primary model: `ACCEPTED_EXTENSION_BODY_BOUNDS`.
+Baseline: `FIXED_BODY_BOUNDS_BASELINE`.
 
-EXP-012 produced 3 zones and is ready for TradingView price-zone review.
+The model accepted January downside movement, but it did not preserve the manually expected three broad zones. This is recorded as acceptance-test failure rather than hidden by date/price fitting.
 
 ## Created files
 
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/TASK.md`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/REPORT.md`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/REVIEW_INSTRUCTIONS.md`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012.py`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/LONG_CONTEXT_DISPUTED_PRICE_ZONES.pine`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/acceptance_tests.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/long_context_disputed_zones.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/manual_zone_review.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r5_zone_mapping.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_bar_features.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_boundary_events.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_exit_attempts.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/LONG_CONTEXT_DISPUTED_PRICE_ZONES_R1_SNAPSHOT.pine`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/LONG_CONTEXT_DISPUTED_PRICE_ZONES_R2.pine`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/fixed_body_bounds_baseline.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/long_context_disputed_zones_r1_snapshot.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/long_context_disputed_zones_r2.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/manual_accepted_boundary_review.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r1_r2_zone_mapping.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r2_acceptance_tests.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r2_model_comparison.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_accepted_extensions_r2.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_bar_features_r2.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_boundary_events_r1_snapshot.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_boundary_events_r2.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_exit_attempts_r1_snapshot.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_outside_state_attempts_r2.csv`
 
 ## Modified files
 
 - `PROJECT_QUEUE.md`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/REPORT.md`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/REVIEW_INSTRUCTIONS.md`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/TASK.md`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012.py`
 
 ## Tests run
 
 - `git pull --ff-only origin main`
 - `python3 experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012.py`
 - `python3 -m py_compile experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012.py`
-- Determinism check: repeated generator run produced identical SHA-256 hashes for generated docs and artifacts.
-- Date cutoff scan: no artifact timestamp exceeded `2024-01-09 00:00:00` open-time boundary or `2024-01-08 23:59:59.999000` close-time boundary.
-- Pine scan: no `strategy(`, `plot(`, `ema27`, `ema200`, or `showEMA`; Pine file is 72 lines.
-- Manual review CSV user-field emptiness check: PASS.
+- Determinism check: repeated generator run produced identical SHA-256 hashes for generated R2 docs and artifacts.
+- R2 artifact date cutoff scan: no timestamp exceeded `2024-01-09 00:00:00` open-time boundary or `2024-01-08 23:59:59.999000` close-time boundary.
+- Pine R2 scan: no `strategy(`, `plot(`, `ema27`, `ema200`, or `showEMA`; Pine file is 82 lines.
+- Manual accepted-boundary review CSV user-field emptiness check: PASS.
+- R1 snapshot existence check: PASS.
 - Forbidden-path diff check for `docs/DEFINITIONS.md`, EXP-011, EXP-011A, and EXP-011B: empty.
 - `git diff --cached --check`
 - Cached forbidden-path diff check for `docs/DEFINITIONS.md`, EXP-011, EXP-011A, EXP-011B, and EXP009A Pine: empty.
 
 ## Acceptance results
 
-- `EXPECTED_THREE_ZONES`: `PASS` — `3 zones`
-- `FIRST_ZONE_PRESERVED`: `PASS` — `1 matching zone(s): Z001`
-- `NOVEMBER_SINGLE_ZONE`: `PASS` — `1 matching zone(s): Z002`
-- `DECEMBER_JANUARY_SINGLE_ZONE`: `PASS` — `1 matching zone(s): Z003`
-- `LC003_EARLIER_DOWNSIDE_EXIT_THAN_R5`: `FAIL` — `zone 2024-01-08 20:00:00 vs R5 2024-01-06 16:00:00`
+- `EXPECTED_THREE_PRIMARY_ZONES`: `FAIL` - `6 zones`
+- `FIRST_ZONE_COMPACT`: `PASS` - `1 matching zone(s)`
+- `NOVEMBER_SINGLE_ZONE`: `FAIL` - `2 matching zone(s)`
+- `DECEMBER_JANUARY_SINGLE_ZONE`: `FAIL` - `3 matching zone(s)`
+- `DECEMBER_DOWNSIDE_EXIT_ACCEPTED`: `PASS` - `True`
+- `DOWNSIDE_EXIT_EARLIER_THAN_R1`: `PASS` - `R2 2023-12-13 16:00:00 vs R1 2024-01-08 20:00:00`
+- `NO_POST_FAILURE_DATA_USED`: `PASS`
+- `NO_WICK_ONLY_BOUNDARY_EXPANSION`: `PASS`
 - `NO_DATE_HARDCODING`: `PASS`
-- `NO_PRICE_BOUND_HARDCODING`: `PASS`
-- `NO_SECTION_ID_HARDCODING`: `PASS`
+- `NO_PRICE_HARDCODING`: `PASS`
+- `NO_ZONE_ID_HARDCODING`: `PASS`
 - `NO_FUTURE_PERIOD_USED`: `PASS`
 
 ## Metrics
 
-- Zones: `3`
-- Exit attempts: `6`
-- Accepted upside exits: `2`
-- Accepted downside exits: `0`
-- Failed upside exits: `3`
-- Failed downside exits: `1`
+- R1 zones: `3`
+- Primary R2 zones: `6`
+- Fixed-bound baseline zones: `7`
+- Primary outside candidates: `13`
+- Primary accepted upside exits: `4`
+- Primary accepted downside exits: `2`
+- Primary accepted extensions: `4`
+- Primary rejected wick/single excursions: `3`
+- Baseline outside candidates: `14`
+- Baseline accepted upside exits: `5`
+- Baseline accepted downside exits: `2`
 
-Zones:
+Primary R2 zones:
 
-- `Z001`: R5 `LC001`, start `2023-10-31 12:00:00`, bounds `0.284500` to `0.304600`, effective exit `2023-11-01 20:00:00`, confirmation `2023-11-02 16:00:00`, `ACCEPTED_UPSIDE_EXIT`, boundary updates `0`
-- `Z002`: R5 `LC002`, start `2023-11-12 16:00:00`, bounds `0.350000` to `0.415000`, effective exit `2023-12-05 16:00:00`, confirmation `2023-12-06 12:00:00`, `ACCEPTED_UPSIDE_EXIT`, boundary updates `2`
-- `Z003`: R5 `LC003`, start `2023-12-11 00:00:00`, bounds `0.464300` to `0.680000`, effective marker `2024-01-08 20:00:00`, confirmation marker `2024-01-08 20:00:00`, `OPEN_AT_TRAIN_END`, boundary updates `2`
+- `Z001`: initial body bounds `0.289500`-`0.303100`, final `0.287500`-`0.303100`, exit `UP`, effective `2023-11-02 04:00:00`, confirmation `2023-11-02 16:00:00`, `ACCEPTED_UPSIDE_EXIT_R2`
+- `Z002`: initial body bounds `0.356800`-`0.390500`, final `0.356800`-`0.390500`, exit `UP`, effective `2023-11-24 00:00:00`, confirmation `2023-11-24 12:00:00`, `ACCEPTED_UPSIDE_EXIT_R2`
+- `Z003`: initial body bounds `0.373900`-`0.394900`, final `0.373900`-`0.397600`, exit `UP`, effective `2023-12-04 00:00:00`, confirmation `2023-12-04 16:00:00`, `ACCEPTED_UPSIDE_EXIT_R2`
+- `Z004`: initial body bounds `0.532800`-`0.624300`, final `0.532800`-`0.624300`, exit `UP`, effective `2023-12-13 16:00:00`, confirmation `2023-12-14 04:00:00`, `ACCEPTED_UPSIDE_EXIT_R2`
+- `Z005`: initial body bounds `0.600400`-`0.667500`, final `0.600400`-`0.667500`, exit `DOWN`, effective `2023-12-17 04:00:00`, confirmation `2023-12-17 16:00:00`, `ACCEPTED_DOWNSIDE_EXIT_R2`
+- `Z006`: initial body bounds `0.559900`-`0.622000`, final `0.559900`-`0.661500`, exit `DOWN`, effective `2024-01-03 16:00:00`, confirmation `2024-01-04 04:00:00`, `ACCEPTED_DOWNSIDE_EXIT_R2`
+
+R1/R2 mapping:
+
+- R1 `Z001` -> R2 `Z001`
+- R1 `Z002` -> R2 `Z002`, `Z003`
+- R1 `Z003` -> R2 `Z004`, `Z005`, `Z006`
 
 ## Warnings
 
-- `LC003_EARLIER_DOWNSIDE_EXIT_THAN_R5` failed. The horizontal price-zone detector kept Z003 open at the development-period end instead of producing an earlier accepted downside exit than R5.
-- Automatic outputs use Binance spot ADAUSDT 4H; manual review is expected on Bybit ADAUSDT Perpetual Contract 4H, so individual candle boundaries may differ.
+- Primary R2 failed the manual-structure diagnostics for three broad zones, November single zone, and December-January single zone. The model is stricter and splits accepted outside states earlier than the current manual expectation.
+- Binance spot OHLC was used for automatic outputs; manual review is expected on Bybit ADAUSDT Perpetual Contract 4H, so individual candle boundaries may differ.
 - Existing unrelated EXP009A Pine modification remains unstaged and uncommitted.
 
 ## Final git status
 
-After implementation push and before this result update:
+After implementation push and before this result commit:
 
 ```text
  M experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine
