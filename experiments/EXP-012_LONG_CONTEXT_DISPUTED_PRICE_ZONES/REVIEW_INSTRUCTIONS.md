@@ -10,4 +10,6 @@ Status: AWAITING_TW_ACCEPTED_BOUNDARY_REVIEW
 
 Check whether body-based initial ranges match the visually accepted price area better than wick extremes, whether any single wick incorrectly moved a boundary, whether accepted extensions show repeated price acceptance, whether the January downside move is recognized as an accepted outside state, whether effective exit and causal confirmation are separated, and whether the fixed-bound baseline or accepted-extension primary better preserves the broad zone without swallowing the exit.
 
+Optional EMA27 band markers are disabled by default. If enabled, `EU` means confirmed EMA27 exit upward away from EMA200, `ED` means confirmed EMA27 exit downward toward EMA200, and `EG` means other confirmed EMA27 geometry. These markers are diagnostics only and do not define price boundaries or zone closure.
+
 Do not analyze prediction, entries, exits, stops, forecasts, Technical Ratings, or PnL.

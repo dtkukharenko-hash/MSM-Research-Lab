@@ -11,3 +11,8 @@ NO_DATE_HARDCODING,No date hardcoding,general algorithm,general chronological bu
 NO_PRICE_HARDCODING,No price hardcoding,bounds from bodies/closes,body median estimators and accepted extensions,PASS,no manual prices used
 NO_ZONE_ID_HARDCODING,No zone id hardcoding,general algorithm,section IDs used only in diagnostics,PASS,post-run mapping checks
 NO_FUTURE_PERIOD_USED,No future period used,no data after 2024-01-08,period slice ends at 2024-01-08 23:59:59.999000,PASS,2024-01-08 23:59:59.999000
+NOVEMBER_EMA27_EXIT_UP_AWAY,November accepted upside exit coincides with EMA27 up-away departure,EMA27_EXIT_UP_AWAY_FROM_EMA200,True,PASS,diagnostic layer only
+DECEMBER_EMA27_EXIT_DOWN_TOWARD_EMA200,December-January downside process has EMA27 down-toward departure,EMA27_EXIT_DOWN_TOWARD_EMA200,True,PASS,diagnostic layer only
+EMA_GEOMETRY_NEVER_DEFINES_PRICE_BOUNDARY,EMA geometry does not define price boundaries,price body bounds only,True,PASS,EMA fields are diagnostics only
+EMA_DEPARTURE_CAUSAL_NO_CURRENT_BAR_IN_PRIOR_BAND,Prior EMA27 band excludes current bar,shifted prior band,True,PASS,rolling band uses shift(1)
+NO_EMA_ONLY_ZONE_CLOSE,EMA departure never closes a zone alone,price resolution_kind only,True,PASS,zone closes come from price attempts

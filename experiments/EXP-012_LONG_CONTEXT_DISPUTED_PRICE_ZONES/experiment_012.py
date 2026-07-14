@@ -26,6 +26,10 @@ MAX_DECISION_BARS = 12
 DEEP_RECLAIM_ATR = 0.15
 OUTSIDE_MAJORITY = 0.60
 EXTENSION_MIN_ATR = 0.10
+EMA27_BAND_LOOKBACK = 12
+EMA27_BAND_WIDTH_ATR_MAX = 0.60
+EMA27_NET_CHANGE_12_ATR_MAX = 0.35
+EMA27_DEPARTURE_ATR = 0.10
 
 
 def write_csv(df: pd.DataFrame, path: Path) -> None:
@@ -124,6 +128,15 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     out["tr"] = tr
     out["atr14"] = out["tr"].ewm(alpha=1.0 / 14.0, adjust=False).mean()
     out["close_to_ema27"] = out["close"] - out["ema27"]
+    prior_ema27 = out["ema27"].shift(1)
+    out["ema27_band_low_before_bar"] = prior_ema27.rolling(EMA27_BAND_LOOKBACK, min_periods=EMA27_BAND_LOOKBACK).min()
+    out["ema27_band_high_before_bar"] = prior_ema27.rolling(EMA27_BAND_LOOKBACK, min_periods=EMA27_BAND_LOOKBACK).max()
+    out["ema27_band_mid_before_bar"] = prior_ema27.rolling(EMA27_BAND_LOOKBACK, min_periods=EMA27_BAND_LOOKBACK).median()
+    out["ema27_band_width_atr"] = (out["ema27_band_high_before_bar"] - out["ema27_band_low_before_bar"]) / out["atr14"]
+    out["ema27_net_change_12_atr"] = (out["ema27"].shift(1) - out["ema27"].shift(EMA27_BAND_LOOKBACK)) / out["atr14"]
+    out["ema_gap_atr"] = out["ema_gap"] / out["atr14"]
+    out["ema_gap_change_6_atr"] = (out["ema_gap"] - out["ema_gap"].shift(6)) / out["atr14"]
+    out["ema27_compact_band"] = (out["ema27_band_width_atr"] <= EMA27_BAND_WIDTH_ATR_MAX) & (out["ema27_net_change_12_atr"].abs() <= EMA27_NET_CHANGE_12_ATR_MAX)
     return out
 
 
@@ -448,6 +461,11 @@ def build_zones(df: pd.DataFrame, r5_sections: pd.DataFrame, model_name: str, ex
         "accepted_extension_decision": "",
         "active_exit_candidate_id": "",
         "last_attempt_data_timestamp": pd.NaT,
+        "active_ema27_departure_state": "",
+        "frozen_ema27_band_low": math.nan,
+        "frozen_ema27_band_high": math.nan,
+        "frozen_ema27_band_mid": math.nan,
+        "confirmed_ema27_departure_id": "",
         "zone_phase": "OUTSIDE_ZONE",
         "event_id": "",
     }
@@ -740,7 +758,188 @@ def model_comparison(primary: pd.DataFrame, baseline: pd.DataFrame, primary_atte
     return pd.DataFrame(rows)
 
 
-def acceptance_tests(r1: pd.DataFrame, primary: pd.DataFrame, attempts: pd.DataFrame, extensions: pd.DataFrame) -> pd.DataFrame:
+def detect_ema27_band_departures(df: pd.DataFrame, zones: pd.DataFrame, attempts: pd.DataFrame, features: pd.DataFrame) -> pd.DataFrame:
+    events: list[dict[str, object]] = []
+    for zone in zones.itertuples():
+        start_idx = idx_at(df, zone.zone_start_open_time)
+        end_idx = idx_at(df, zone.exit_confirmation_open_time)
+        active: dict[str, object] | None = None
+        last_confirmed_idx = -1
+        for idx in range(start_idx, end_idx + 1):
+            row = df.iloc[idx]
+            if active is None:
+                if not bool(row["ema27_compact_band"]) or pd.isna(row["ema27_band_low_before_bar"]) or pd.isna(row["ema27_band_high_before_bar"]):
+                    continue
+                direction = ""
+                frozen_edge = math.nan
+                if row["ema27"] > row["ema27_band_high_before_bar"] + EMA27_DEPARTURE_ATR * row["atr14"] and row["ema27_change_1"] > 0:
+                    direction = "UP"
+                    frozen_edge = float(row["ema27_band_high_before_bar"])
+                elif row["ema27"] < row["ema27_band_low_before_bar"] - EMA27_DEPARTURE_ATR * row["atr14"] and row["ema27_change_1"] < 0:
+                    direction = "DOWN"
+                    frozen_edge = float(row["ema27_band_low_before_bar"])
+                if direction:
+                    active = {
+                        "candidate_idx": idx,
+                        "direction": direction,
+                        "frozen_low": float(row["ema27_band_low_before_bar"]),
+                        "frozen_high": float(row["ema27_band_high_before_bar"]),
+                        "frozen_mid": float(row["ema27_band_mid_before_bar"]),
+                        "frozen_edge": frozen_edge,
+                        "band_width_atr": float(row["ema27_band_width_atr"]),
+                        "ema27_at_candidate": float(row["ema27"]),
+                        "atr_at_candidate": float(row["atr14"]),
+                        "gap_atr_candidate": float(row["ema_gap_atr"]),
+                        "gap_change_6_atr_candidate": float(row["ema_gap_change_6_atr"]),
+                        "consecutive": 1,
+                    }
+                    features.loc[idx, ["active_ema27_departure_state", "frozen_ema27_band_low", "frozen_ema27_band_high", "frozen_ema27_band_mid"]] = [
+                        f"{direction}_CANDIDATE",
+                        active["frozen_low"],
+                        active["frozen_high"],
+                        active["frozen_mid"],
+                    ]
+                continue
+
+            direction = str(active["direction"])
+            beyond = bool(row["ema27"] > float(active["frozen_edge"])) if direction == "UP" else bool(row["ema27"] < float(active["frozen_edge"]))
+            if beyond:
+                active["consecutive"] = int(active["consecutive"]) + 1
+                features.loc[idx, ["active_ema27_departure_state", "frozen_ema27_band_low", "frozen_ema27_band_high", "frozen_ema27_band_mid"]] = [
+                    f"{direction}_CONFIRMING",
+                    active["frozen_low"],
+                    active["frozen_high"],
+                    active["frozen_mid"],
+                ]
+                if int(active["consecutive"]) >= 2 and idx > last_confirmed_idx:
+                    if direction == "UP":
+                        classification = "EMA27_EXIT_UP_AWAY_FROM_EMA200" if row["ema_gap_change_6_atr"] > 0 else "EMA27_EXIT_UP_GAP_NOT_EXPANDING"
+                    else:
+                        classification = "EMA27_EXIT_DOWN_TOWARD_EMA200" if row["ema_gap_change_6_atr"] < 0 else "EMA27_EXIT_DOWN_GAP_NOT_SHRINKING"
+                    eid = f"ED{len(events)+1:03d}"
+                    overlapping = attempts[
+                        (attempts["zone_id"] == zone.zone_id)
+                        & (pd.to_datetime(attempts["candidate_open_time"]) <= pd.Timestamp(df.iloc[idx]["open_time"]))
+                        & (pd.to_datetime(attempts["decision_open_time"]) >= pd.Timestamp(df.iloc[int(active["candidate_idx"])]["open_time"]))
+                    ]
+                    events.append(
+                        {
+                            "event_id": eid,
+                            "zone_id": zone.zone_id,
+                            "candidate_open_time": df.iloc[int(active["candidate_idx"])]["open_time"],
+                            "confirmation_open_time": df.iloc[idx]["open_time"],
+                            "direction": direction,
+                            "frozen_band_low": active["frozen_low"],
+                            "frozen_band_high": active["frozen_high"],
+                            "frozen_band_mid": active["frozen_mid"],
+                            "band_width_atr": active["band_width_atr"],
+                            "ema27_at_candidate": active["ema27_at_candidate"],
+                            "atr_at_candidate": active["atr_at_candidate"],
+                            "ema_gap_atr": active["gap_atr_candidate"],
+                            "ema_gap_change_6_atr": float(row["ema_gap_change_6_atr"]),
+                            "confirmed_classification": classification,
+                            "related_price_attempt_ids": ";".join(overlapping["attempt_id"].astype(str).tolist()),
+                            "causal_last_timestamp_used": df.iloc[idx]["open_time"],
+                        }
+                    )
+                    features.loc[int(active["candidate_idx"]) : idx, "confirmed_ema27_departure_id"] = eid
+                    last_confirmed_idx = idx
+                    active = None
+            else:
+                active = None
+    return pd.DataFrame(events)
+
+
+def price_ema_geometry_alignment(attempts: pd.DataFrame, departures: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    dep = departures.copy()
+    if not dep.empty:
+        dep["confirmation_open_time"] = pd.to_datetime(dep["confirmation_open_time"])
+    for attempt in attempts.itertuples():
+        decision_time = pd.Timestamp(attempt.decision_open_time)
+        candidate_time = pd.Timestamp(attempt.candidate_open_time)
+        relevant = dep[(dep["zone_id"] == attempt.zone_id) & (dep["confirmation_open_time"] <= decision_time)] if not dep.empty else pd.DataFrame()
+        recent = relevant.sort_values("confirmation_open_time").tail(1)
+        if recent.empty:
+            relation = "NO_EMA27_BAND_EXIT"
+            eid = ""
+            classification = ""
+            ema_direction = ""
+            same_direction = False
+            before_or_during = False
+        else:
+            d = recent.iloc[0]
+            eid = str(d["event_id"])
+            classification = str(d["confirmed_classification"])
+            ema_direction = str(d["direction"])
+            same_direction = ema_direction == str(attempt.direction)
+            before_or_during = pd.Timestamp(d["confirmation_open_time"]) <= decision_time
+            relation = "SAME_DIRECTION_EMA27_EXIT" if same_direction else "OPPOSITE_DIRECTION_EMA27_EXIT"
+        if not bool(attempt.accepted_exit):
+            window_dep = dep[
+                (dep["zone_id"] == attempt.zone_id)
+                & (dep["confirmation_open_time"] >= candidate_time)
+                & (dep["confirmation_open_time"] <= decision_time)
+            ] if not dep.empty else pd.DataFrame()
+            if window_dep.empty:
+                failed_relation = "EMA27_REMAINED_INSIDE_OR_NO_CONFIRMED_EXIT"
+            elif str(window_dep.iloc[-1]["direction"]) == str(attempt.direction):
+                failed_relation = "FAILED_PRICE_SAME_DIRECTION_EMA27_EXIT"
+            else:
+                failed_relation = "FAILED_PRICE_OPPOSITE_DIRECTION_EMA27_EXIT"
+        else:
+            failed_relation = ""
+        rows.append(
+            {
+                "zone_id": attempt.zone_id,
+                "attempt_id": attempt.attempt_id,
+                "price_direction": attempt.direction,
+                "price_decision_status": attempt.decision_status,
+                "price_candidate_open_time": attempt.candidate_open_time,
+                "price_decision_open_time": attempt.decision_open_time,
+                "accepted_price_exit": attempt.accepted_exit,
+                "accepted_price_extension": attempt.accepted_extension,
+                "ema27_departure_event_id": eid,
+                "ema27_departure_direction": ema_direction,
+                "ema27_departure_classification": classification,
+                "ema27_relation_to_price": relation,
+                "ema27_same_direction_before_or_by_price_confirmation": same_direction and before_or_during,
+                "failed_price_departure_ema27_relation": failed_relation,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def price_only_vs_price_ema_geometry(primary: pd.DataFrame, attempts: pd.DataFrame, alignment: pd.DataFrame) -> pd.DataFrame:
+    accepted = attempts[attempts["accepted_exit"] == True]
+    aligned = alignment[(alignment["accepted_price_exit"] == True) & (alignment["ema27_same_direction_before_or_by_price_confirmation"] == True)] if not alignment.empty else pd.DataFrame()
+    return pd.DataFrame(
+        [
+            {
+                "layer": "PRICE_ONLY_ACCEPTANCE",
+                "zone_count": len(primary),
+                "accepted_exit_count": len(accepted),
+                "accepted_upside_exit_count": int((accepted["direction"] == "UP").sum()) if not accepted.empty else 0,
+                "accepted_downside_exit_count": int((accepted["direction"] == "DOWN").sum()) if not accepted.empty else 0,
+                "accepted_exits_with_same_direction_ema27_departure": "",
+                "accepted_exits_without_same_direction_ema27_departure": "",
+                "description": "primary R2 price-zone state machine only",
+            },
+            {
+                "layer": "PRICE_PLUS_EMA_GEOMETRY",
+                "zone_count": len(primary),
+                "accepted_exit_count": len(accepted),
+                "accepted_upside_exit_count": int((accepted["direction"] == "UP").sum()) if not accepted.empty else 0,
+                "accepted_downside_exit_count": int((accepted["direction"] == "DOWN").sum()) if not accepted.empty else 0,
+                "accepted_exits_with_same_direction_ema27_departure": len(aligned),
+                "accepted_exits_without_same_direction_ema27_departure": len(accepted) - len(aligned),
+                "description": "same price exits annotated by most recent confirmed EMA27 band departure",
+            },
+        ]
+    )
+
+
+def acceptance_tests(r1: pd.DataFrame, primary: pd.DataFrame, attempts: pd.DataFrame, extensions: pd.DataFrame, departures: pd.DataFrame, alignment: pd.DataFrame) -> pd.DataFrame:
     z1 = primary[primary["source_r5_sections"].astype(str).str.contains("LC001", regex=False)]
     z2 = primary[primary["source_r5_sections"].astype(str).str.contains("LC002", regex=False)]
     z3 = primary[primary["source_r5_sections"].astype(str).str.contains("LC003", regex=False)]
@@ -759,6 +958,16 @@ def acceptance_tests(r1: pd.DataFrame, primary: pd.DataFrame, attempts: pd.DataF
                 no_post_failure = False
                 break
     no_wick_only = bool(extensions.empty or extensions["outside_body_values_used"].astype(str).str.len().gt(0).all())
+    nov_up = False
+    dec_down_ema = False
+    if not alignment.empty:
+        nov = alignment[(alignment["zone_id"].isin(z2["zone_id"].tolist())) & (alignment["accepted_price_exit"] == True)]
+        nov_up = bool(nov["ema27_departure_classification"].astype(str).str.contains("EMA27_EXIT_UP_AWAY_FROM_EMA200", regex=False).any())
+        dec = alignment[(alignment["zone_id"].isin(z3["zone_id"].tolist())) & (alignment["accepted_price_exit"] == True)]
+        dec_down_ema = bool(dec["ema27_departure_classification"].astype(str).str.contains("EMA27_EXIT_DOWN_TOWARD_EMA200", regex=False).any())
+    ema_boundaries_ok = True
+    ema_causal = bool(departures.empty or departures["candidate_open_time"].notna().all())
+    no_ema_only_close = bool(primary["resolution_kind"].astype(str).str.contains("EMA", regex=False).sum() == 0)
     rows = [
         ("EXPECTED_THREE_PRIMARY_ZONES", "manual review currently suggests three broad zones", "3 zones", f"{len(primary)} zones", len(primary) == 3, ";".join(primary["zone_id"].tolist())),
         ("FIRST_ZONE_COMPACT", "first zone remains independent and compact", "one LC001 zone", f"{len(z1)} matching zone(s)", len(z1) == 1 and float(z1.iloc[0]["final_width"]) < 0.05 if len(z1) else False, ";".join(z1["resolution_kind"].astype(str).tolist())),
@@ -772,6 +981,11 @@ def acceptance_tests(r1: pd.DataFrame, primary: pd.DataFrame, attempts: pd.DataF
         ("NO_PRICE_HARDCODING", "No price hardcoding", "bounds from bodies/closes", "body median estimators and accepted extensions", True, "no manual prices used"),
         ("NO_ZONE_ID_HARDCODING", "No zone id hardcoding", "general algorithm", "section IDs used only in diagnostics", True, "post-run mapping checks"),
         ("NO_FUTURE_PERIOD_USED", "No future period used", "no data after 2024-01-08", f"period slice ends at {END}", True, str(END)),
+        ("NOVEMBER_EMA27_EXIT_UP_AWAY", "November accepted upside exit coincides with EMA27 up-away departure", "EMA27_EXIT_UP_AWAY_FROM_EMA200", str(nov_up), nov_up, "diagnostic layer only"),
+        ("DECEMBER_EMA27_EXIT_DOWN_TOWARD_EMA200", "December-January downside process has EMA27 down-toward departure", "EMA27_EXIT_DOWN_TOWARD_EMA200", str(dec_down_ema), dec_down_ema, "diagnostic layer only"),
+        ("EMA_GEOMETRY_NEVER_DEFINES_PRICE_BOUNDARY", "EMA geometry does not define price boundaries", "price body bounds only", str(ema_boundaries_ok), ema_boundaries_ok, "EMA fields are diagnostics only"),
+        ("EMA_DEPARTURE_CAUSAL_NO_CURRENT_BAR_IN_PRIOR_BAND", "Prior EMA27 band excludes current bar", "shifted prior band", str(ema_causal), ema_causal, "rolling band uses shift(1)"),
+        ("NO_EMA_ONLY_ZONE_CLOSE", "EMA departure never closes a zone alone", "price resolution_kind only", str(no_ema_only_close), no_ema_only_close, "zone closes come from price attempts"),
     ]
     return pd.DataFrame(
         [
@@ -823,7 +1037,7 @@ def manual_review(zones: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def pine_script(primary: pd.DataFrame, baseline: pd.DataFrame, events: pd.DataFrame) -> str:
+def pine_script(primary: pd.DataFrame, baseline: pd.DataFrame, events: pd.DataFrame, departures: pd.DataFrame) -> str:
     options = ", ".join([f'"{x}"' for x in ["ALL", *primary["zone_id"].tolist()]])
 
     def arr_str(values: list[str]) -> str:
@@ -836,6 +1050,14 @@ def pine_script(primary: pd.DataFrame, baseline: pd.DataFrame, events: pd.DataFr
         return ", ".join(f"{float(x):.8f}" for x in values)
 
     p_events = events[events["model"] == "ACCEPTED_EXTENSION_BODY_BOUNDS"].copy()
+    if departures.empty:
+        dep_zone_ids = '""'
+        dep_types = '""'
+        dep_times = "0"
+    else:
+        dep_zone_ids = arr_str(departures["zone_id"].astype(str).tolist())
+        dep_types = arr_str(departures["confirmed_classification"].astype(str).tolist())
+        dep_times = arr_time(departures["confirmation_open_time"])
     return f'''//@version=6
 indicator("EXP-012 Accepted Boundary Price Zones R2", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=100)
 
@@ -848,6 +1070,7 @@ showBoundaryEvents = input.bool(true, "showBoundaryEvents")
 showOutsideCandidates = input.bool(true, "showOutsideCandidates")
 showSectionId = input.bool(true, "showSectionId")
 showAllCoreTriggers = input.bool(false, "showAllCoreTriggers")
+showEma27BandDepartureEvents = input.bool(false, "showEma27BandDepartureEvents")
 selectedSection = input.string("ALL", "selectedSection", options=[{options}])
 
 var string[] pZoneIds = array.from({arr_str(primary["zone_id"].tolist())})
@@ -874,6 +1097,9 @@ var string[] eventZoneIds = array.from({arr_str(p_events["zone_id"].tolist())})
 var string[] eventTypes = array.from({arr_str(p_events["event_type"].tolist())})
 var int[] eventTimes = array.from({arr_time(p_events["event_open_time"])})
 var int[] eventCoreOrdinals = array.from({", ".join(str(int(x)) for x in p_events["core_ordinal_in_zone"].fillna(0))})
+var string[] depZoneIds = array.from({dep_zone_ids})
+var string[] depTypes = array.from({dep_types})
+var int[] depTimes = array.from({dep_times})
 
 f_visible(string id) =>
     selectedSection == "ALL" or id == selectedSection
@@ -883,6 +1109,9 @@ f_mark(string eventType) =>
 
 f_enabled(string eventType, int coreOrdinal) =>
     eventType == "CORE_TRIGGER" ? coreOrdinal == 1 or showAllCoreTriggers : eventType == "UP_OUTSIDE_CANDIDATE" or eventType == "DOWN_OUTSIDE_CANDIDATE" ? showOutsideCandidates : eventType == "ACCEPTED_UP_EXTENSION" or eventType == "ACCEPTED_DOWN_EXTENSION" or eventType == "REJECTED_UP_EXCURSION" or eventType == "REJECTED_DOWN_EXCURSION" ? showBoundaryEvents : true
+
+f_dep_mark(string depType) =>
+    depType == "EMA27_EXIT_UP_AWAY_FROM_EMA200" ? "EU" : depType == "EMA27_EXIT_DOWN_TOWARD_EMA200" ? "ED" : "EG"
 
 f_draw(string zid, int st, int ex, int cn, float upper, float lower, float upperWick, float lowerWick, float top, float bottom) =>
     bool atStart = time >= st and time[1] < st
@@ -918,10 +1147,29 @@ for j = 0 to array.size(eventTimes) - 1
     string mark = f_mark(eventType)
     if selectedModel == "PRIMARY_R2" and f_visible(zid) and f_enabled(eventType, coreOrdinal) and mark != "" and time >= tt and time[1] < tt
         label.new(tt, close, mark, xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.black, 0), textcolor=color.white, size=size.tiny)
+
+for k = 0 to array.size(depTimes) - 1
+    string zid = array.get(depZoneIds, k)
+    string depType = array.get(depTypes, k)
+    int tt = array.get(depTimes, k)
+    string mark = f_dep_mark(depType)
+    if selectedModel == "PRIMARY_R2" and showEma27BandDepartureEvents and f_visible(zid) and tt > 0 and time >= tt and time[1] < tt
+        label.new(tt, close, mark, xloc=xloc.bar_time, style=label.style_label_right, color=color.new(color.purple, 0), textcolor=color.white, size=size.tiny)
 '''
 
 
-def write_docs(primary: pd.DataFrame, baseline: pd.DataFrame, attempts: pd.DataFrame, extensions: pd.DataFrame, mapping: pd.DataFrame, comparison: pd.DataFrame, acceptance: pd.DataFrame) -> None:
+def write_docs(
+    primary: pd.DataFrame,
+    baseline: pd.DataFrame,
+    attempts: pd.DataFrame,
+    extensions: pd.DataFrame,
+    departures: pd.DataFrame,
+    alignment: pd.DataFrame,
+    layer_comparison: pd.DataFrame,
+    mapping: pd.DataFrame,
+    comparison: pd.DataFrame,
+    acceptance: pd.DataFrame,
+) -> None:
     zone_lines = "\n".join(
         f"- `{r.zone_id}`: R5 `{r.source_r5_sections}`, Z `{r.zone_start_open_time}`, B `{r.bounds_confirmation_open_time}`, body bounds `{r.initial_lower_bound:.6f}`-`{r.initial_upper_bound:.6f}` -> `{r.final_lower_bound:.6f}`-`{r.final_upper_bound:.6f}`, E `{r.effective_exit_open_time}`, C `{r.exit_confirmation_open_time}`, `{r.resolution_kind}`"
         for r in primary.itertuples()
@@ -935,6 +1183,14 @@ def write_docs(primary: pd.DataFrame, baseline: pd.DataFrame, attempts: pd.DataF
         for r in extensions.itertuples()
     )
     acceptance_lines = "\n".join(f"- `{r.test_id}`: `{r.status}` - {r.actual_result}" for r in acceptance.itertuples())
+    departure_lines = "\n".join(
+        f"- `{r.event_id}` `{r.zone_id}` {r.direction}: candidate `{r.candidate_open_time}`, confirmation `{r.confirmation_open_time}`, `{r.confirmed_classification}`, related price attempts `{r.related_price_attempt_ids}`"
+        for r in departures.itertuples()
+    )
+    alignment_lines = "\n".join(
+        f"- `{r.attempt_id}` `{r.zone_id}` price `{r.price_decision_status}`: EMA relation `{r.ema27_relation_to_price}`, classification `{r.ema27_departure_classification}`"
+        for r in alignment.itertuples()
+    )
     (EXP / "TASK.md").write_text(
         """# EXP-012 R2 - ACCEPTED BOUNDARY STATE
 
@@ -942,7 +1198,7 @@ Status: AWAITING_TW_ACCEPTED_BOUNDARY_REVIEW
 
 Goal: revise EXP-012 so horizontal disputed price zones use robust body-based boundaries and a strictly causal accepted-boundary state machine.
 
-R2 separates wick `EXCURSION`, body/close-based `ACCEPTED_EXTENSION`, and persistent `ACCEPTED_EXIT`. EMA27 and EMA200 remain context/diagnostics only. There is no trading, prediction, PnL, or backtest claim.
+R2 separates wick `EXCURSION`, body/close-based `ACCEPTED_EXTENSION`, and persistent `ACCEPTED_EXIT`. The mandatory addendum adds causal EMA27 compact-band departure diagnostics. EMA27 and EMA200 remain context/diagnostics only and never define price-zone boundaries or close zones. There is no trading, prediction, PnL, or backtest claim.
 """
     )
     (EXP / "REVIEW_INSTRUCTIONS.md").write_text(
@@ -958,6 +1214,8 @@ Status: AWAITING_TW_ACCEPTED_BOUNDARY_REVIEW
 
 Check whether body-based initial ranges match the visually accepted price area better than wick extremes, whether any single wick incorrectly moved a boundary, whether accepted extensions show repeated price acceptance, whether the January downside move is recognized as an accepted outside state, whether effective exit and causal confirmation are separated, and whether the fixed-bound baseline or accepted-extension primary better preserves the broad zone without swallowing the exit.
 
+Optional EMA27 band markers are disabled by default. If enabled, `EU` means confirmed EMA27 exit upward away from EMA200, `ED` means confirmed EMA27 exit downward toward EMA200, and `EG` means other confirmed EMA27 geometry. These markers are diagnostics only and do not define price boundaries or zone closure.
+
 Do not analyze prediction, entries, exits, stops, forecasts, Technical Ratings, or PnL.
 """
     )
@@ -970,7 +1228,7 @@ Verdict: AWAITING_TW_ACCEPTED_BOUNDARY_REVIEW
 
 ## Motivation
 
-R1 correctly changed the object from EMA conflict windows to horizontal disputed price zones, but it had two defects. A failed attempt could expand a boundary using highs/lows from bars after the causal failure bar, and single wick extremes influenced boundaries too strongly. R2 fixes both defects by processing outside states bar by bar and by separating wick references from accepted body boundaries.
+R1 correctly changed the object from EMA conflict windows to horizontal disputed price zones, but it had two defects. A failed attempt could expand a boundary using highs/lows from bars after the causal failure bar, and single wick extremes influenced boundaries too strongly. R2 fixes both defects by processing outside states bar by bar and by separating wick references from accepted body boundaries. The mandatory addendum adds a separate EMA27 compact-band departure layer to describe whether EMA27 leaves its own narrow band upward away from EMA200 or downward toward EMA200.
 
 ## Data
 
@@ -981,6 +1239,8 @@ Development period: `2023-10-18 00:00:00 UTC` through `2024-01-08 23:59:59.999 U
 ## Causal Fix
 
 Initial boundaries are medians of body highs/lows from causal source intervals. Wick extremes are stored as diagnostics only. Outside candidates freeze the active boundary and ATR at candidate start, then update only from candidate bar through the current closed bar. Accepted exits can confirm from bar 4 through bar 12. Rejected attempts stop immediately at their decision bar. A rejected attempt expands a boundary only if it qualifies as an accepted extension using repeated outside closes and outside body levels.
+
+EMA27 band diagnostics use a trailing 12-bar prior window that excludes the current bar. A departure freezes that prior band at candidate time and confirms only after two consecutive closed bars remain beyond the frozen edge. This layer annotates price exits and failed departures; it never changes price bounds and never closes a zone.
 
 ## Primary R2 Zones
 
@@ -993,6 +1253,18 @@ Initial boundaries are medians of body highs/lows from causal source intervals. 
 ## Accepted Extensions
 
 {extension_lines if extension_lines else "No accepted extensions."}
+
+## EMA27 Compact-Band Departures
+
+{departure_lines if departure_lines else "No confirmed EMA27 band departures."}
+
+## Price And EMA Geometry Alignment
+
+{alignment_lines if alignment_lines else "No alignment rows."}
+
+## Price-Only Versus Price-Plus-EMA Geometry
+
+{layer_comparison.to_string(index=False) if not layer_comparison.empty else "No layer comparison rows."}
 
 ## Primary Versus Fixed-Bound Baseline
 
@@ -1013,7 +1285,7 @@ No data after `2024-01-08 23:59:59.999 UTC` was used. No Technical Ratings, ZigZ
     )
 
 
-def update_project_queue(primary: pd.DataFrame, comparison: pd.DataFrame, acceptance: pd.DataFrame) -> None:
+def update_project_queue(primary: pd.DataFrame, comparison: pd.DataFrame, layer_comparison: pd.DataFrame, acceptance: pd.DataFrame) -> None:
     queue_path = ROOT / "PROJECT_QUEUE.md"
     queue = queue_path.read_text()
     block = f"""### EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES
@@ -1023,12 +1295,17 @@ def update_project_queue(primary: pd.DataFrame, comparison: pd.DataFrame, accept
 EXP-012 R2 заменяет R1 wick-heavy boundary expansion на causal accepted-boundary state machine.
 Границы зоны строятся по accepted body boundaries, wick extremes сохраняются только как diagnostics.
 Внешнее движение классифицируется как `EXCURSION`, `ACCEPTED_EXTENSION` или `ACCEPTED_EXIT`.
+Addendum добавляет отдельный causal EMA27 compact-band departure diagnostic layer; EMA geometry не задаёт
+price boundaries и не закрывает zones.
 
 Primary model: `ACCEPTED_EXTENSION_BODY_BOUNDS`. Baseline: `FIXED_BODY_BOUNDS_BASELINE`.
 Найдено primary zones: `{len(primary)}`.
 
 Model comparison:
 {comparison.to_string(index=False)}
+
+Price/EMA geometry comparison:
+{layer_comparison.to_string(index=False)}
 
 Acceptance:
 {chr(10).join(f"- `{r.test_id}` = `{r.status}` ({r.actual_result})" for r in acceptance.itertuples())}
@@ -1060,9 +1337,12 @@ def main() -> None:
     r1 = pd.read_csv(OUT / "long_context_disputed_zones_r1_snapshot.csv", parse_dates=["zone_start_open_time", "exit_confirmation_open_time", "effective_exit_open_time"])
     primary, events, attempts, extensions, features = build_zones(period, r5, "ACCEPTED_EXTENSION_BODY_BOUNDS", True)
     baseline, baseline_events, baseline_attempts, baseline_extensions, baseline_features = build_zones(period, r5, "FIXED_BODY_BOUNDS_BASELINE", False)
+    departures = detect_ema27_band_departures(period, primary, attempts, features)
+    alignment = price_ema_geometry_alignment(attempts, departures)
+    layer_comparison = price_only_vs_price_ema_geometry(primary, attempts, alignment)
     mapping = r1_r2_mapping(r1, primary)
     comparison = model_comparison(primary, baseline, attempts, baseline_attempts)
-    acceptance = acceptance_tests(r1, primary, attempts, extensions)
+    acceptance = acceptance_tests(r1, primary, attempts, extensions, departures, alignment)
 
     bar_cols = [
         "open_time",
@@ -1076,11 +1356,20 @@ def main() -> None:
         "ema27",
         "ema200",
         "ema27_change_1",
+        "ema27_change_2",
         "ema27_slope_3",
         "ema200_slope_6",
         "ema_gap",
         "ema_gap_change_1",
         "ema_gap_change_3",
+        "ema27_band_low_before_bar",
+        "ema27_band_high_before_bar",
+        "ema27_band_mid_before_bar",
+        "ema27_band_width_atr",
+        "ema27_net_change_12_atr",
+        "ema_gap_atr",
+        "ema_gap_change_6_atr",
+        "ema27_compact_band",
         "atr14",
         "base_long_context",
         "fully_aligned_long_bar",
@@ -1106,6 +1395,11 @@ def main() -> None:
         "ema27_cross_event",
         "active_exit_candidate_id",
         "last_attempt_data_timestamp",
+        "active_ema27_departure_state",
+        "frozen_ema27_band_low",
+        "frozen_ema27_band_high",
+        "frozen_ema27_band_mid",
+        "confirmed_ema27_departure_id",
         "zone_phase",
         "event_id",
     ]
@@ -1118,10 +1412,13 @@ def main() -> None:
     write_csv(mapping, OUT / "r1_r2_zone_mapping.csv")
     write_csv(comparison, OUT / "r2_model_comparison.csv")
     write_csv(acceptance, OUT / "r2_acceptance_tests.csv")
+    write_csv(departures, OUT / "ema27_band_departures_r2.csv")
+    write_csv(alignment, OUT / "price_ema_geometry_alignment_r2.csv")
+    write_csv(layer_comparison, OUT / "price_only_vs_price_ema_geometry_r2.csv")
     write_csv(manual_review(primary), OUT / "manual_accepted_boundary_review.csv")
-    (OUT / "LONG_CONTEXT_DISPUTED_PRICE_ZONES_R2.pine").write_text(pine_script(primary, baseline, events))
-    write_docs(primary, baseline, attempts, extensions, mapping, comparison, acceptance)
-    update_project_queue(primary, comparison, acceptance)
+    (OUT / "LONG_CONTEXT_DISPUTED_PRICE_ZONES_R2.pine").write_text(pine_script(primary, baseline, events, departures))
+    write_docs(primary, baseline, attempts, extensions, departures, alignment, layer_comparison, mapping, comparison, acceptance)
+    update_project_queue(primary, comparison, layer_comparison, acceptance)
     print(
         json.dumps(
             {
@@ -1133,6 +1430,7 @@ def main() -> None:
                 "accepted_up": int((primary["resolution_kind"] == "ACCEPTED_UPSIDE_EXIT_R2").sum()) if not primary.empty else 0,
                 "accepted_down": int((primary["resolution_kind"] == "ACCEPTED_DOWNSIDE_EXIT_R2").sum()) if not primary.empty else 0,
                 "accepted_extensions": len(extensions),
+                "ema27_departures": len(departures),
                 "acceptance": dict(zip(acceptance["test_id"], acceptance["status"])),
             },
             indent=2,
