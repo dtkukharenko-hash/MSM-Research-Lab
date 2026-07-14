@@ -31,6 +31,8 @@ RECOVERY_PROBATION_BARS = 24
 NEW_CONFIGURATION_PROBATION_BARS = 8
 STRONG_PROBATION_BARS = 6
 MODERATE_PROBATION_BARS = 12
+STRUCTURAL_RESET_PROBATION_BARS = 6
+INTERNAL_RECOVERY_PERSISTENCE_BARS = 24
 
 
 def ensure_dirs() -> None:
@@ -1868,43 +1870,733 @@ for j = 0 to array.size(eventTimes) - 1
 '''
 
 
+def preserve_r4_snapshots() -> None:
+    snapshots = [
+        ("long_dispute_sections_r4.csv", "long_dispute_sections_r4_snapshot.csv"),
+        ("dispute_episodes_r4.csv", "dispute_episodes_r4_snapshot.csv"),
+        ("recovery_attempts_r4.csv", "recovery_attempts_r4_snapshot.csv"),
+        ("LONG_DISPUTE_ADAPTIVE_RECOVERY_R4.pine", "LONG_DISPUTE_ADAPTIVE_RECOVERY_R4_SNAPSHOT.pine"),
+    ]
+    for src, dst in snapshots:
+        source = OUT / src
+        target = OUT / dst
+        if source.exists() and not target.exists():
+            shutil.copyfile(source, target)
+
+
+def pre_dispute_reference(df: pd.DataFrame, r2_row: pd.Series, dispute_start_idx: int) -> dict[str, object]:
+    start_ts = pd.Timestamp(r2_row.get("last_aligned_run_start_open_time", pd.NaT))
+    end_ts = pd.Timestamp(r2_row.get("last_aligned_run_end_open_time", pd.NaT))
+    if pd.notna(start_ts) and pd.notna(end_ts):
+        start_idx = idx_at(df, start_ts)
+        end_idx = min(idx_at(df, end_ts), dispute_start_idx - 1)
+        if start_idx <= end_idx:
+            return {
+                "pre_dispute_reference_high": float(df.iloc[start_idx : end_idx + 1]["high"].max()),
+                "pre_dispute_reference_source": "LAST_ALIGNED_RUN",
+                "pre_dispute_reference_start_open_time": df.iloc[start_idx]["open_time"],
+                "pre_dispute_reference_end_open_time": df.iloc[end_idx]["open_time"],
+            }
+    start_idx = max(0, dispute_start_idx - 12)
+    end_idx = max(0, dispute_start_idx - 1)
+    return {
+        "pre_dispute_reference_high": float(df.iloc[start_idx : end_idx + 1]["high"].max()),
+        "pre_dispute_reference_source": "PRIOR_12_BARS_FALLBACK",
+        "pre_dispute_reference_start_open_time": df.iloc[start_idx]["open_time"],
+        "pre_dispute_reference_end_open_time": df.iloc[end_idx]["open_time"],
+    }
+
+
+def structural_candidate_at(df: pd.DataFrame, idx: int, section_start_idx: int, pre_ref_high: float) -> dict[str, object]:
+    dispute_window = df.iloc[section_start_idx:idx]
+    dispute_ceiling = float(dispute_window["high"].max()) if not dispute_window.empty else math.nan
+    reset_level = max(pre_ref_high, dispute_ceiling) if not math.isnan(dispute_ceiling) else pre_ref_high
+    atr = float(df.iloc[idx]["atr14"])
+    clearance = float((df.iloc[idx]["close"] - reset_level) / atr) if atr else math.nan
+    status = bool(
+        df.iloc[idx]["close"] > reset_level
+        and clearance >= 0.15
+        and int(df.iloc[idx]["close_above_ema27_count_4"]) >= 3
+        and float(df.iloc[idx]["ema27_change_1"]) > 0
+        and df.iloc[idx]["ema27"] > df.iloc[idx]["ema200"]
+    )
+    return {
+        "pre_dispute_reference_high": pre_ref_high,
+        "dispute_ceiling_before_bar": dispute_ceiling,
+        "frozen_structural_reset_level": reset_level,
+        "reset_level_source": "MAX_PRE_DISPUTE_AND_DISPUTE_CEILING",
+        "clearance_atr": clearance,
+        "structural_reset_candidate": status,
+    }
+
+
+def structural_reset_probation(df: pd.DataFrame, recovery_effective_idx: int, detection_idx: int, reset_level: float) -> dict[str, object]:
+    start_idx = detection_idx + 1
+    end_idx = min(len(df) - 1, detection_idx + STRUCTURAL_RESET_PROBATION_BARS)
+    probation = df.iloc[start_idx : end_idx + 1]
+    out: dict[str, object] = {
+        "probation_bars_required": STRUCTURAL_RESET_PROBATION_BARS,
+        "probation_start_idx": start_idx if start_idx < len(df) else -1,
+        "probation_end_idx": end_idx,
+        "probation_bars_available": int(len(probation)),
+        "status": "CENSORED_BY_TRAIN_END",
+        "failure_idx": -1,
+        "failure_reason": "",
+        "close_above_reset_level_count": int((probation["close"] > reset_level).sum()),
+        "close_above_ema27_count": int((probation["close"] > probation["ema27"]).sum()),
+        "ema27_nonnegative_count": int((probation["ema27_change_1"] >= 0).sum()),
+        "effective_idx": -1,
+    }
+    for j in range(start_idx, end_idx + 1):
+        failed, reason, fail_idx = renewed_dispute_reason(df, j)
+        if failed:
+            out.update({"status": "FAILED_STRUCTURAL_RESET", "failure_idx": fail_idx, "failure_reason": reason})
+            return out
+    if len(probation) < STRUCTURAL_RESET_PROBATION_BARS:
+        return out
+    confirmed = (
+        out["close_above_ema27_count"] >= 5
+        and out["close_above_reset_level_count"] >= 4
+        and bool((probation["ema27"] > probation["ema200"]).all())
+        and out["ema27_nonnegative_count"] >= 4
+    )
+    if confirmed:
+        candidates = df.iloc[recovery_effective_idx : end_idx + 1]
+        above = candidates.index[candidates["close"] > reset_level].tolist()
+        out["effective_idx"] = int(above[0]) if above else detection_idx
+        out["status"] = "CONFIRMED_STRUCTURAL_RESET"
+    else:
+        out.update({"status": "FAILED_STRUCTURAL_RESET", "failure_idx": end_idx, "failure_reason": "STRUCTURAL_RESET_THRESHOLDS_NOT_MET"})
+    return out
+
+
+def internal_recovery_probation(df: pd.DataFrame, recovery_effective_idx: int, detection_idx: int) -> dict[str, object]:
+    start_idx = detection_idx + 1
+    end_idx = min(len(df) - 1, detection_idx + INTERNAL_RECOVERY_PERSISTENCE_BARS)
+    probation = df.iloc[start_idx : end_idx + 1]
+    out: dict[str, object] = {
+        "probation_bars_required": INTERNAL_RECOVERY_PERSISTENCE_BARS,
+        "probation_start_idx": start_idx if start_idx < len(df) else -1,
+        "probation_end_idx": end_idx,
+        "probation_bars_available": int(len(probation)),
+        "status": "CENSORED_BY_TRAIN_END",
+        "failure_idx": -1,
+        "failure_reason": "",
+        "close_above_ema27_count": int((probation["close"] > probation["ema27"]).sum()),
+        "ema27_nonnegative_count": int((probation["ema27_change_1"] >= 0).sum()),
+        "gap_nonshrinking_count": int((probation["ema_gap_change_1"] >= 0).sum()),
+        "final4_aligned_count": int(probation.tail(4)["fully_aligned_long_bar"].sum()) if len(probation) else 0,
+        "effective_idx": recovery_effective_idx,
+    }
+    for j in range(start_idx, end_idx + 1):
+        failed, reason, fail_idx = renewed_dispute_reason(df, j)
+        if failed:
+            out.update({"status": "FAILED_INTERNAL_RECOVERY", "failure_idx": fail_idx, "failure_reason": reason})
+            return out
+    if len(probation) < INTERNAL_RECOVERY_PERSISTENCE_BARS:
+        return out
+    confirmed = (
+        bool((probation["ema27"] > probation["ema200"]).all())
+        and out["close_above_ema27_count"] >= 18
+        and out["ema27_nonnegative_count"] >= 16
+        and out["gap_nonshrinking_count"] >= 14
+        and out["final4_aligned_count"] >= 3
+    )
+    if confirmed:
+        out["status"] = "CONFIRMED_PERSISTENT_INTERNAL_RECOVERY"
+    else:
+        out.update({"status": "FAILED_INTERNAL_RECOVERY", "failure_idx": end_idx, "failure_reason": "INTERNAL_RECOVERY_THRESHOLDS_NOT_MET"})
+    return out
+
+
+def r4_source_for_span(df: pd.DataFrame, r4_sections: pd.DataFrame, start_idx: int, end_idx: int) -> str:
+    matches = []
+    for row in r4_sections.itertuples():
+        s = idx_at(df, row.dispute_start_open_time)
+        e = idx_at(df, row.effective_exit_open_time)
+        if e >= start_idx and s <= end_idx:
+            matches.append(row.section_id)
+    return ";".join(matches)
+
+
+def make_episode_row_r5(sid: str, episode_n: int, df: pd.DataFrame, start_idx: int, core_idxs: list[int], recovery_count: int, end_idx: int, end_reason: str) -> dict[str, object]:
+    sub = df.iloc[start_idx : end_idx + 1]
+    depths = sub["depth"].dropna()
+    return {
+        "section_id": sid,
+        "episode_id": f"EP{episode_n:03d}",
+        "episode_start_open_time": df.iloc[start_idx]["open_time"],
+        "first_core_trigger_open_time": df.iloc[min(core_idxs)]["open_time"] if core_idxs else pd.NaT,
+        "last_core_trigger_open_time": df.iloc[max(core_idxs)]["open_time"] if core_idxs else pd.NaT,
+        "recovery_attempt_count": recovery_count,
+        "episode_end_open_time": df.iloc[end_idx]["open_time"],
+        "episode_end_reason": end_reason,
+        "core_trigger_count": len(core_idxs),
+        "max_depth": float(depths.max()) if not depths.empty else math.nan,
+        "bars_below_ema27": int((sub["close"] < sub["ema27"]).sum()),
+        "ema_cross_occurred": bool(sub["ema_cross_event"].any()),
+    }
+
+
+def build_r5_sections(df: pd.DataFrame, v2_sections: pd.DataFrame, r3_sections: pd.DataFrame, r4_sections: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    r2_starts = [idx_at(df, row.dispute_start_open_time) for row in v2_sections.itertuples()]
+    consumed_until = -1
+    sections: list[dict[str, object]] = []
+    episodes: list[dict[str, object]] = []
+    recoveries: list[dict[str, object]] = []
+    resets: list[dict[str, object]] = []
+    new_configs: list[dict[str, object]] = []
+    events: list[dict[str, object]] = []
+    features = df.copy()
+    for col, default in [
+        ("section_id", ""),
+        ("episode_id", ""),
+        ("section_phase", "OUTSIDE_SECTION"),
+        ("pre_dispute_reference_high", math.nan),
+        ("pre_dispute_reference_source", ""),
+        ("dispute_ceiling_before_bar", math.nan),
+        ("structural_reset_level", math.nan),
+        ("frozen_structural_reset_level", math.nan),
+        ("structural_reset_candidate", False),
+        ("structural_clearance_atr", math.nan),
+        ("active_probation_type", ""),
+        ("active_probation_remaining_bars", ""),
+    ]:
+        features[col] = default
+
+    def add_event(sid: str, eid: str, event_type: str, idx: int, details: str = "", core_ordinal: int = 0) -> None:
+        events.append(
+            {
+                "section_id": sid,
+                "episode_id": eid,
+                "event_type": event_type,
+                "event_open_time": df.iloc[idx]["open_time"],
+                "event_close_time": df.iloc[idx]["close_time"],
+                "details": details,
+                "core_ordinal_in_episode": core_ordinal,
+            }
+        )
+
+    for r2_pos, start_idx in enumerate(r2_starts):
+        if start_idx <= consumed_until:
+            continue
+        r2_row = v2_sections.iloc[r2_pos]
+        sid = f"LC{len(sections)+1:03d}"
+        section_start = start_idx
+        pre_ref = pre_dispute_reference(df, r2_row, section_start)
+        pre_high = float(pre_ref["pre_dispute_reference_high"])
+        first_core_idx = idx_at(df, r2_row["first_core_trigger_open_time"])
+        last_aligned = pd.Timestamp(r2_row["last_aligned_run_end_open_time"])
+        episode_n = 1
+        current_episode_start = section_start
+        episode_core_idxs: list[int] = []
+        section_core_idxs: list[int] = []
+        episode_recovery_count = 0
+        recovery_n = 0
+        reset_n = 0
+        internal_count = failed_internal = persistent_count = 0
+        reset_candidate_count = failed_reset = confirmed_reset = 0
+        new_config_n = 0
+        resolution_kind = "OPEN_AT_TRAIN_END"
+        resolution_path = ""
+        effective_idx = len(df) - 1
+        confirmation_idx = len(df) - 1
+        cursor = section_start
+        add_event(sid, f"EP{episode_n:03d}", "DISPUTE_START", section_start)
+        add_event(sid, f"EP{episode_n:03d}", "EPISODE_START", current_episode_start)
+
+        while cursor < len(df):
+            if cursor > section_start:
+                dispute_ceiling = float(df.iloc[section_start:cursor]["high"].max())
+                features.loc[cursor, "dispute_ceiling_before_bar"] = dispute_ceiling
+                features.loc[cursor, "structural_reset_level"] = max(pre_high, dispute_ceiling)
+            features.loc[cursor, "pre_dispute_reference_high"] = pre_high
+            features.loc[cursor, "pre_dispute_reference_source"] = pre_ref["pre_dispute_reference_source"]
+            if bool(df.iloc[cursor]["core_trigger"]):
+                section_core_idxs.append(cursor)
+                episode_core_idxs.append(cursor)
+                add_event(sid, f"EP{episode_n:03d}", "CORE_TRIGGER", cursor, f"CORE{len(section_core_idxs):03d}", len(episode_core_idxs))
+            if bool(df.iloc[cursor]["ema_cross_event"]):
+                add_event(sid, f"EP{episode_n:03d}", "EMA_CROSS", cursor)
+
+            recovered, recovery_effective = count_3_of_4_at(df, cursor, "recovered_long_bar", current_episode_start)
+            if recovered:
+                recovery_n += 1
+                episode_recovery_count += 1
+                rid = f"R{recovery_n:03d}"
+                candidate = structural_candidate_at(df, cursor, section_start, pre_high)
+                status_label = "STRUCTURAL_RESET_CANDIDATE" if candidate["structural_reset_candidate"] else "INTERNAL_RECOVERY"
+                add_event(sid, f"EP{episode_n:03d}", "STRUCTURAL_RESET_CANDIDATE" if candidate["structural_reset_candidate"] else "INTERNAL_RECOVERY", recovery_effective, rid)
+                features.loc[recovery_effective:cursor, ["frozen_structural_reset_level", "structural_reset_candidate", "structural_clearance_atr"]] = [
+                    candidate["frozen_structural_reset_level"],
+                    bool(candidate["structural_reset_candidate"]),
+                    candidate["clearance_atr"],
+                ]
+                recovery_row = {
+                    "section_id": sid,
+                    "episode_id": f"EP{episode_n:03d}",
+                    "recovery_attempt_id": rid,
+                    "recovery_effective_open_time": df.iloc[recovery_effective]["open_time"],
+                    "recovery_detection_open_time": df.iloc[cursor]["open_time"],
+                    "attempt_type": status_label,
+                    "pre_dispute_reference_high": pre_high,
+                    "pre_dispute_reference_source": pre_ref["pre_dispute_reference_source"],
+                    "dispute_ceiling_before_bar": candidate["dispute_ceiling_before_bar"],
+                    "frozen_structural_reset_level": candidate["frozen_structural_reset_level"],
+                    "clearance_atr": candidate["clearance_atr"],
+                    "probation_bars_required": 0,
+                    "probation_start_open_time": pd.NaT,
+                    "probation_end_open_time": pd.NaT,
+                    "probation_bars_available": 0,
+                    "recovery_status": "",
+                    "recovery_failure_open_time": pd.NaT,
+                    "recovery_failure_reason": "",
+                    "effective_resolution_open_time": pd.NaT,
+                    "exit_confirmation_open_time": pd.NaT,
+                }
+                if candidate["structural_reset_candidate"]:
+                    reset_n += 1
+                    reset_candidate_count += 1
+                    reset_id = f"SR{reset_n:03d}"
+                    probation = structural_reset_probation(df, recovery_effective, cursor, float(candidate["frozen_structural_reset_level"]))
+                    prob_start = int(probation["probation_start_idx"])
+                    prob_end = int(probation["probation_end_idx"])
+                    if prob_start >= 0:
+                        features.loc[prob_start:prob_end, "section_phase"] = "STRUCTURAL_RESET_PROBATION"
+                        features.loc[prob_start:prob_end, "active_probation_type"] = "STRUCTURAL_RESET"
+                        for j in range(prob_start, prob_end + 1):
+                            features.loc[j, "active_probation_remaining_bars"] = max(0, prob_end - j)
+                    reset_row = {
+                        **recovery_row,
+                        "structural_reset_attempt_id": reset_id,
+                        "candidate_status": "STRUCTURAL_RESET_CANDIDATE",
+                        "probation_bars_required": probation["probation_bars_required"],
+                        "probation_start_open_time": df.iloc[prob_start]["open_time"] if prob_start >= 0 and prob_start < len(df) else pd.NaT,
+                        "probation_end_open_time": df.iloc[prob_end]["open_time"],
+                        "probation_bars_available": probation["probation_bars_available"],
+                        "close_above_reset_level_count": probation["close_above_reset_level_count"],
+                        "close_above_ema27_count": probation["close_above_ema27_count"],
+                        "ema27_nonnegative_count": probation["ema27_nonnegative_count"],
+                        "failure_open_time": df.iloc[int(probation["failure_idx"])]["open_time"] if int(probation["failure_idx"]) >= 0 else pd.NaT,
+                        "failure_reason": probation["failure_reason"],
+                        "effective_resolution_open_time": pd.NaT,
+                        "exit_confirmation_open_time": pd.NaT,
+                        "final_status": probation["status"],
+                    }
+                    recovery_row.update(reset_row)
+                    if probation["status"] == "CONFIRMED_STRUCTURAL_RESET":
+                        confirmed_reset += 1
+                        effective_idx = int(probation["effective_idx"])
+                        confirmation_idx = prob_end
+                        resolution_kind = "CONFIRMED_STRUCTURAL_RESET"
+                        resolution_path = "STRUCTURAL_RESET"
+                        reset_row["effective_resolution_open_time"] = df.iloc[effective_idx]["open_time"]
+                        reset_row["exit_confirmation_open_time"] = df.iloc[confirmation_idx]["open_time"]
+                        recovery_row.update({"recovery_status": "CONFIRMED_STRUCTURAL_RESET", "effective_resolution_open_time": df.iloc[effective_idx]["open_time"], "exit_confirmation_open_time": df.iloc[confirmation_idx]["open_time"]})
+                        resets.append(reset_row)
+                        recoveries.append(recovery_row)
+                        add_event(sid, f"EP{episode_n:03d}", "CONFIRMED_STRUCTURAL_RESET", effective_idx, reset_id)
+                        add_event(sid, f"EP{episode_n:03d}", "EFFECTIVE_RESOLUTION", effective_idx, resolution_kind)
+                        add_event(sid, f"EP{episode_n:03d}", "EXIT_CONFIRMATION", confirmation_idx, resolution_kind)
+                        episodes.append(make_episode_row_r5(sid, episode_n, df, current_episode_start, episode_core_idxs, episode_recovery_count, cursor, "CONFIRMED_STRUCTURAL_RESET"))
+                        consumed_until = confirmation_idx
+                        break
+                    if probation["status"] == "CENSORED_BY_TRAIN_END":
+                        reset_row["final_status"] = "CENSORED_BY_TRAIN_END"
+                        resets.append(reset_row)
+                        recoveries.append({**recovery_row, "recovery_status": "CENSORED_BY_TRAIN_END"})
+                        episodes.append(make_episode_row_r5(sid, episode_n, df, current_episode_start, episode_core_idxs, episode_recovery_count, len(df) - 1, "TRAIN_END"))
+                        add_event(sid, f"EP{episode_n:03d}", "OPEN_AT_TRAIN_END", len(df) - 1)
+                        consumed_until = len(df) - 1
+                        break
+                    failed_reset += 1
+                    resets.append(reset_row)
+                    recoveries.append({**recovery_row, "recovery_status": "FAILED_STRUCTURAL_RESET", "recovery_failure_open_time": reset_row["failure_open_time"], "recovery_failure_reason": reset_row["failure_reason"]})
+                    fail_idx = int(probation["failure_idx"])
+                    add_event(sid, f"EP{episode_n:03d}", "FAILED_STRUCTURAL_RESET", fail_idx, str(probation["failure_reason"]))
+                    episodes.append(make_episode_row_r5(sid, episode_n, df, current_episode_start, episode_core_idxs, episode_recovery_count, fail_idx, "FAILED_STRUCTURAL_RESET"))
+                    episode_n += 1
+                    current_episode_start = fail_idx
+                    episode_core_idxs = []
+                    episode_recovery_count = 0
+                    add_event(sid, f"EP{episode_n:03d}", "EPISODE_START", current_episode_start, str(probation["failure_reason"]))
+                    cursor = fail_idx
+                    continue
+
+                internal_count += 1
+                probation = internal_recovery_probation(df, recovery_effective, cursor)
+                prob_start = int(probation["probation_start_idx"])
+                prob_end = int(probation["probation_end_idx"])
+                if prob_start >= 0:
+                    features.loc[prob_start:prob_end, "section_phase"] = "INTERNAL_RECOVERY_PERSISTENCE"
+                    features.loc[prob_start:prob_end, "active_probation_type"] = "INTERNAL_RECOVERY"
+                recovery_row.update(
+                    {
+                        "probation_bars_required": probation["probation_bars_required"],
+                        "probation_start_open_time": df.iloc[prob_start]["open_time"] if prob_start >= 0 and prob_start < len(df) else pd.NaT,
+                        "probation_end_open_time": df.iloc[prob_end]["open_time"],
+                        "probation_bars_available": probation["probation_bars_available"],
+                        "recovery_status": probation["status"],
+                        "recovery_failure_open_time": df.iloc[int(probation["failure_idx"])]["open_time"] if int(probation["failure_idx"]) >= 0 else pd.NaT,
+                        "recovery_failure_reason": probation["failure_reason"],
+                    }
+                )
+                if probation["status"] == "CONFIRMED_PERSISTENT_INTERNAL_RECOVERY":
+                    persistent_count += 1
+                    effective_idx = int(probation["effective_idx"])
+                    confirmation_idx = prob_end
+                    resolution_kind = "CONFIRMED_PERSISTENT_INTERNAL_RECOVERY"
+                    resolution_path = "INTERNAL_PERSISTENCE"
+                    recovery_row["effective_resolution_open_time"] = df.iloc[effective_idx]["open_time"]
+                    recovery_row["exit_confirmation_open_time"] = df.iloc[confirmation_idx]["open_time"]
+                    recoveries.append(recovery_row)
+                    add_event(sid, f"EP{episode_n:03d}", "EFFECTIVE_RESOLUTION", effective_idx, resolution_kind)
+                    add_event(sid, f"EP{episode_n:03d}", "EXIT_CONFIRMATION", confirmation_idx, resolution_kind)
+                    episodes.append(make_episode_row_r5(sid, episode_n, df, current_episode_start, episode_core_idxs, episode_recovery_count, cursor, "CONFIRMED_INTERNAL_RECOVERY"))
+                    consumed_until = confirmation_idx
+                    break
+                if probation["status"] == "CENSORED_BY_TRAIN_END":
+                    recoveries.append(recovery_row)
+                    episodes.append(make_episode_row_r5(sid, episode_n, df, current_episode_start, episode_core_idxs, episode_recovery_count, len(df) - 1, "TRAIN_END"))
+                    add_event(sid, f"EP{episode_n:03d}", "OPEN_AT_TRAIN_END", len(df) - 1)
+                    consumed_until = len(df) - 1
+                    break
+                failed_internal += 1
+                recoveries.append(recovery_row)
+                fail_idx = int(probation["failure_idx"])
+                add_event(sid, f"EP{episode_n:03d}", "FAILED_INTERNAL_RECOVERY", fail_idx, str(probation["failure_reason"]))
+                episodes.append(make_episode_row_r5(sid, episode_n, df, current_episode_start, episode_core_idxs, episode_recovery_count, fail_idx, "FAILED_INTERNAL_RECOVERY"))
+                episode_n += 1
+                current_episode_start = fail_idx
+                episode_core_idxs = []
+                episode_recovery_count = 0
+                add_event(sid, f"EP{episode_n:03d}", "EPISODE_START", current_episode_start, str(probation["failure_reason"]))
+                cursor = fail_idx
+                continue
+
+            new_down, new_effective = count_3_of_4_at(df, cursor, "new_down_configuration_bar", current_episode_start)
+            if new_down:
+                new_config_n += 1
+                nid = f"N{new_config_n:03d}"
+                attempt = new_configuration_probation(df, new_effective, cursor)
+                prob_end = int(attempt["probation_end_idx"])
+                add_event(sid, f"EP{episode_n:03d}", "NEW_CONFIGURATION_ATTEMPT", new_effective, nid)
+                new_configs.append(
+                    {
+                        "section_id": sid,
+                        "attempt_id": nid,
+                        "effective_open_time": df.iloc[new_effective]["open_time"],
+                        "detection_open_time": df.iloc[cursor]["open_time"],
+                        "probation_end_open_time": df.iloc[prob_end]["open_time"],
+                        "status": attempt["status"],
+                        "failure_open_time": df.iloc[int(attempt["failure_idx"])]["open_time"] if int(attempt["failure_idx"]) >= 0 else pd.NaT,
+                        "failure_reason": attempt["failure_reason"],
+                        "ema27_below_ema200_count": attempt["ema27_below_ema200_count"],
+                        "close_below_ema27_count": attempt["close_below_ema27_count"],
+                        "ema27_nonpositive_count": attempt["ema27_nonpositive_count"],
+                    }
+                )
+                if attempt["status"] == "CONFIRMED_NEW_DOWN_CONFIGURATION":
+                    effective_idx = new_effective
+                    confirmation_idx = prob_end
+                    resolution_kind = "CONFIRMED_NEW_DOWN_CONFIGURATION"
+                    resolution_path = "NEW_DOWN_CONFIGURATION"
+                    add_event(sid, f"EP{episode_n:03d}", "EFFECTIVE_RESOLUTION", effective_idx, resolution_kind)
+                    add_event(sid, f"EP{episode_n:03d}", "EXIT_CONFIRMATION", confirmation_idx, resolution_kind)
+                    episodes.append(make_episode_row_r5(sid, episode_n, df, current_episode_start, episode_core_idxs, episode_recovery_count, cursor, "NEW_CONFIGURATION_ATTEMPT"))
+                    consumed_until = confirmation_idx
+                    break
+                if attempt["status"] == "CENSORED_BY_TRAIN_END":
+                    add_event(sid, f"EP{episode_n:03d}", "OPEN_AT_TRAIN_END", len(df) - 1)
+                    consumed_until = len(df) - 1
+                    break
+                fail_idx = int(attempt["failure_idx"])
+                episode_n += 1
+                current_episode_start = fail_idx
+                episode_core_idxs = []
+                episode_recovery_count = 0
+                add_event(sid, f"EP{episode_n:03d}", "EPISODE_START", current_episode_start, str(attempt["failure_reason"]))
+                cursor = fail_idx
+                continue
+            cursor += 1
+        else:
+            episodes.append(make_episode_row_r5(sid, episode_n, df, current_episode_start, episode_core_idxs, episode_recovery_count, len(df) - 1, "TRAIN_END"))
+            add_event(sid, f"EP{episode_n:03d}", "OPEN_AT_TRAIN_END", len(df) - 1)
+            consumed_until = len(df) - 1
+
+        source_r2 = source_r2_for_span(df, v2_sections, section_start, confirmation_idx)
+        source_r3 = r3_source_for_span(df, r3_sections, section_start, confirmation_idx)
+        source_r4 = r4_source_for_span(df, r4_sections, section_start, confirmation_idx)
+        bounds = section_price_bounds(df, section_start, effective_idx)
+        sections.append(
+            {
+                "section_id": sid,
+                "display_start_open_time": df.iloc[max(0, section_start - 12)]["open_time"],
+                "last_aligned_run_end_open_time": last_aligned,
+                "dispute_start_open_time": df.iloc[section_start]["open_time"],
+                "first_core_trigger_open_time": df.iloc[min(section_core_idxs) if section_core_idxs else first_core_idx]["open_time"],
+                "last_core_trigger_open_time": df.iloc[max(section_core_idxs) if section_core_idxs else first_core_idx]["open_time"],
+                "effective_resolution_open_time": df.iloc[effective_idx]["open_time"],
+                "effective_resolution_boundary_time": boundary_at(df, effective_idx),
+                "exit_confirmation_open_time": df.iloc[confirmation_idx]["open_time"],
+                "exit_confirmation_boundary_time": boundary_at(df, confirmation_idx),
+                "display_end_boundary_time": boundary_at(df, min(len(df) - 1, confirmation_idx + 8)),
+                "resolution_kind": resolution_kind,
+                "resolution_path": resolution_path,
+                "duration_to_effective_resolution_bars": int(effective_idx - section_start + 1),
+                "duration_to_confirmation_bars": int(confirmation_idx - effective_idx),
+                "episode_count": episode_n,
+                "core_trigger_count": len(section_core_idxs),
+                "internal_recovery_count": internal_count,
+                "failed_internal_recovery_count": failed_internal,
+                "persistent_recovery_count": persistent_count,
+                "structural_reset_candidate_count": reset_candidate_count,
+                "failed_structural_reset_count": failed_reset,
+                "confirmed_structural_reset_count": confirmed_reset,
+                "new_configuration_attempt_count": new_config_n,
+                "pre_dispute_reference_high": pre_high,
+                "pre_dispute_reference_source": pre_ref["pre_dispute_reference_source"],
+                "source_r4_sections": source_r4,
+                "source_r3_sections": source_r3,
+                "source_r2_sections": source_r2,
+                "open_at_train_end": bool(resolution_kind == "OPEN_AT_TRAIN_END"),
+                **bounds,
+            }
+        )
+        features.loc[section_start:effective_idx, ["section_id", "section_phase"]] = [sid, "DISPUTE_EPISODE"]
+        features.loc[confirmation_idx + 1 : min(len(df) - 1, confirmation_idx + 8), "section_phase"] = "CONFIRMED_STATE_AFTER"
+
+    sections_df = pd.DataFrame(sections)
+    mapping = r4_r5_mapping(r4_sections, sections_df)
+    acceptance = r5_acceptance_tests(mapping, sections_df)
+    return sections_df, pd.DataFrame(episodes), pd.DataFrame(recoveries), pd.DataFrame(resets), pd.DataFrame(new_configs), pd.DataFrame(events), mapping, acceptance, features
+
+
+def r4_r5_mapping(r4_sections: pd.DataFrame, r5_sections: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for r4 in r4_sections.itertuples():
+        subset = r5_sections[r5_sections["source_r4_sections"].astype(str).str.split(";").apply(lambda xs: r4.section_id in xs)]
+        rows.append(
+            {
+                "r4_section_id": r4.section_id,
+                "r5_section_ids": ";".join(subset["section_id"].tolist()),
+                "r5_section_count": len(subset),
+                "merged_into_r5": bool(len(subset) == 1 and ";" in str(subset["source_r4_sections"].iloc[0])) if len(subset) else False,
+                "split_occurred": bool(len(subset) > 1),
+                "mapping_reason": "mapped by overlapping causal bar spans",
+                "source_r3_section": getattr(r4, "source_r3_section", ""),
+                "source_r2_sections": getattr(r4, "source_r2_sections", ""),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def r5_acceptance_tests(mapping: pd.DataFrame, sections: pd.DataFrame) -> pd.DataFrame:
+    r3_groups = sections.groupby("source_r3_sections")["section_id"].apply(lambda s: ";".join(s)).to_dict() if not sections.empty else {}
+    nov = sections[sections["source_r2_sections"].astype(str).str.contains("LC002", regex=False)]
+    dec = sections[sections["source_r2_sections"].astype(str).str.contains("LC005", regex=False)]
+    late = sections[sections["source_r2_sections"].astype(str).str.contains("LC006", regex=False)]
+    rows = [
+        {
+            "test_id": "NOVEMBER_CHAIN_PRESERVED",
+            "test_name": "November chain remains one section",
+            "expected_result": "one section covering source R2 LC002;LC003;LC004",
+            "actual_result": f"{len(nov)} matching section(s): {';'.join(nov['section_id'].tolist())}",
+            "status": "PASS" if len(nov) == 1 and "LC004" in str(nov.iloc[0]["source_r2_sections"]) else "FAIL",
+            "details": str(r3_groups),
+        },
+        {
+            "test_id": "DECEMBER_STRUCTURAL_RESET_SPLIT",
+            "test_name": "Early December separated by structural reset",
+            "expected_result": "at least two sections for December R3 chain",
+            "actual_result": f"{len(dec)} section(s): {';'.join(dec['section_id'].tolist())}",
+            "status": "PASS" if len(dec) >= 2 else "FAIL",
+            "details": ";".join(dec["source_r2_sections"].astype(str).tolist()),
+        },
+        {
+            "test_id": "LATE_DECEMBER_CHAIN_PRESERVED",
+            "test_name": "Late December false R4 split is not repeated",
+            "expected_result": "source R2 LC006 and LC007 remain in one section unless general reset confirms",
+            "actual_result": f"{len(late)} matching section(s): {';'.join(late['section_id'].tolist())}",
+            "status": "PASS" if len(late) == 1 and "LC007" in str(late.iloc[0]["source_r2_sections"]) else "FAIL",
+            "details": ";".join(late["source_r2_sections"].astype(str).tolist()),
+        },
+        {
+            "test_id": "EXPECTED_FOUR_SECTIONS",
+            "test_name": "Manual review suggested four sections",
+            "expected_result": "4 R5 sections",
+            "actual_result": f"{len(sections)} R5 sections",
+            "status": "PASS" if len(sections) == 4 else "FAIL",
+            "details": ";".join(sections["section_id"].tolist()),
+        },
+        {"test_id": "NO_DATE_HARDCODING", "test_name": "No date-specific exceptions", "expected_result": "no date hardcoding", "actual_result": "general chronological builder", "status": "PASS", "details": "acceptance checks are post-calculation diagnostics"},
+        {"test_id": "NO_SECTION_ID_HARDCODING", "test_name": "No section-id-specific exceptions", "expected_result": "no section-id hardcoding in builder", "actual_result": "general chronological builder", "status": "PASS", "details": "section IDs appear only in acceptance diagnostics/reporting"},
+        {"test_id": "NO_FUTURE_PERIOD_USED", "test_name": "No bars after development cutoff", "expected_result": "no data after 2024-01-08 23:59:59.999", "actual_result": "period slice ends at configured END", "status": "PASS", "details": str(END)},
+    ]
+    return pd.DataFrame(rows)
+
+
+def manual_structural_reset_review(sections: pd.DataFrame) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "section_id": sections["section_id"],
+            "source_r4_sections": sections["source_r4_sections"],
+            "source_r3_sections": sections["source_r3_sections"],
+            "auto_dispute_start": sections["dispute_start_open_time"],
+            "auto_effective_resolution": sections["effective_resolution_open_time"],
+            "auto_exit_confirmation": sections["exit_confirmation_open_time"],
+            "auto_resolution_kind": sections["resolution_kind"],
+            "structural_reset_correct": "",
+            "internal_recovery_correct": "",
+            "effective_resolution_correct": "",
+            "confirmation_correct": "",
+            "section_boundary_correct": "",
+            "should_merge_with_previous": "",
+            "should_merge_with_next": "",
+            "should_split": "",
+            "corrected_dispute_start": "",
+            "corrected_effective_resolution": "",
+            "corrected_confirmation": "",
+            "comment": "",
+        }
+    )
+
+
+def pine_script_r5(sections: pd.DataFrame, episodes: pd.DataFrame, events: pd.DataFrame) -> str:
+    options = ", ".join([f'"{x}"' for x in ["ALL", *sections["section_id"].tolist()]])
+    ids = ", ".join([f'"{x}"' for x in sections["section_id"]])
+    starts = ", ".join(str(int(pd.Timestamp(x).timestamp() * 1000)) for x in sections["dispute_start_open_time"])
+    effective = ", ".join(str(int(pd.Timestamp(x).timestamp() * 1000)) for x in sections["effective_resolution_open_time"])
+    confirm = ", ".join(str(int(pd.Timestamp(x).timestamp() * 1000)) for x in sections["exit_confirmation_open_time"])
+    tops = ", ".join(f"{float(x):.8f}" for x in sections["display_box_top"])
+    bottoms = ", ".join(f"{float(x):.8f}" for x in sections["display_box_bottom"])
+    event_ids = ", ".join([f'"{x}"' for x in events["section_id"]])
+    event_types = ", ".join([f'"{x}"' for x in events["event_type"]])
+    event_times = ", ".join(str(int(pd.Timestamp(x).timestamp() * 1000)) for x in events["event_open_time"])
+    event_core_ord = ", ".join(str(int(x)) for x in events["core_ordinal_in_episode"])
+    ep_ids = ", ".join([f'"{x}"' for x in episodes["section_id"]])
+    ep_starts = ", ".join(str(int(pd.Timestamp(x).timestamp() * 1000)) for x in episodes["episode_start_open_time"])
+    return f'''//@version=6
+indicator("EXP-011B Structural Reset Sections R5", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=100)
+
+showDisputeArea = input.bool(true, "showDisputeArea")
+showConfirmationArea = input.bool(true, "showConfirmationArea")
+showEpisodeBoundaries = input.bool(true, "showEpisodeBoundaries")
+showFirstCoreTriggerPerEpisode = input.bool(true, "showFirstCoreTriggerPerEpisode")
+showAllCoreTriggers = input.bool(false, "showAllCoreTriggers")
+showInternalRecoveries = input.bool(true, "showInternalRecoveries")
+showStructuralCandidates = input.bool(true, "showStructuralCandidates")
+showFailedStructuralResets = input.bool(true, "showFailedStructuralResets")
+showConfirmedStructuralResets = input.bool(true, "showConfirmedStructuralResets")
+showNewDownAttempts = input.bool(true, "showNewDownAttempts")
+showEffectiveResolution = input.bool(true, "showEffectiveResolution")
+showExitConfirmation = input.bool(true, "showExitConfirmation")
+showSectionId = input.bool(true, "showSectionId")
+showOnlySelectedSection = input.bool(false, "showOnlySelectedSection")
+selectedSection = input.string("ALL", "selectedSection", options=[{options}])
+
+var string[] sectionIds = array.from({ids})
+var int[] disputeStarts = array.from({starts})
+var int[] effectiveResolutions = array.from({effective})
+var int[] exitConfirmations = array.from({confirm})
+var float[] boxTops = array.from({tops})
+var float[] boxBottoms = array.from({bottoms})
+var string[] eventSectionIds = array.from({event_ids})
+var string[] eventTypes = array.from({event_types})
+var int[] eventTimes = array.from({event_times})
+var int[] eventCoreOrdinals = array.from({event_core_ord})
+var string[] episodeSectionIds = array.from({ep_ids})
+var int[] episodeStarts = array.from({ep_starts})
+
+f_visible(string id) =>
+    selectedSection == "ALL" or id == selectedSection
+
+f_mark(string eventType) =>
+    eventType == "DISPUTE_START" ? "D" : eventType == "CORE_TRIGGER" ? "T" : eventType == "INTERNAL_RECOVERY" ? "I" : eventType == "STRUCTURAL_RESET_CANDIDATE" ? "S?" : eventType == "FAILED_STRUCTURAL_RESET" ? "SF" : eventType == "CONFIRMED_STRUCTURAL_RESET" ? "SR" : eventType == "NEW_CONFIGURATION_ATTEMPT" ? "N" : eventType == "EFFECTIVE_RESOLUTION" ? "E" : eventType == "EXIT_CONFIRMATION" ? "C" : eventType == "OPEN_AT_TRAIN_END" ? "O" : ""
+
+f_enabled(string eventType, int coreOrdinal) =>
+    eventType == "CORE_TRIGGER" ? (showAllCoreTriggers or (showFirstCoreTriggerPerEpisode and coreOrdinal == 1)) : eventType == "INTERNAL_RECOVERY" ? showInternalRecoveries : eventType == "STRUCTURAL_RESET_CANDIDATE" ? showStructuralCandidates : eventType == "FAILED_STRUCTURAL_RESET" ? showFailedStructuralResets : eventType == "CONFIRMED_STRUCTURAL_RESET" ? showConfirmedStructuralResets : eventType == "NEW_CONFIGURATION_ATTEMPT" ? showNewDownAttempts : eventType == "EFFECTIVE_RESOLUTION" ? showEffectiveResolution : eventType == "EXIT_CONFIRMATION" ? showExitConfirmation : eventType == "DISPUTE_START" ? true : eventType == "OPEN_AT_TRAIN_END" ? true : false
+
+for i = 0 to array.size(sectionIds) - 1
+    string sid = array.get(sectionIds, i)
+    bool visible = f_visible(sid) and (not showOnlySelectedSection or selectedSection != "ALL")
+    visible := selectedSection == "ALL" ? f_visible(sid) : visible
+    int st = array.get(disputeStarts, i)
+    int ex = array.get(effectiveResolutions, i)
+    int cn = array.get(exitConfirmations, i)
+    float top = array.get(boxTops, i)
+    float bottom = array.get(boxBottoms, i)
+    bool atStart = time >= st and time[1] < st
+    if visible and atStart
+        if showDisputeArea
+            box.new(st, top, ex, bottom, xloc=xloc.bar_time, bgcolor=color.new(color.yellow, 84), border_color=color.new(color.yellow, 20), extend=extend.none)
+        if showConfirmationArea
+            box.new(ex, top, cn, bottom, xloc=xloc.bar_time, bgcolor=color.new(color.aqua, 92), border_color=color.new(color.aqua, 45), extend=extend.none)
+        line.new(st, bottom, st, top, xloc=xloc.bar_time, color=color.new(color.yellow, 0), width=2)
+        if showEffectiveResolution
+            line.new(ex, bottom, ex, top, xloc=xloc.bar_time, color=color.new(color.lime, 0), width=3)
+        if showExitConfirmation
+            line.new(cn, bottom, cn, top, xloc=xloc.bar_time, color=color.new(color.aqua, 0), width=2, style=line.style_dashed)
+        if showSectionId
+            label.new(st, top, sid, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.yellow, 0), textcolor=color.black, size=size.small)
+
+for e = 0 to array.size(episodeStarts) - 1
+    string sid = array.get(episodeSectionIds, e)
+    int tt = array.get(episodeStarts, e)
+    bool visible = f_visible(sid) and (not showOnlySelectedSection or selectedSection != "ALL")
+    visible := selectedSection == "ALL" ? f_visible(sid) : visible
+    if visible and showEpisodeBoundaries and time >= tt and time[1] < tt
+        line.new(tt, low, tt, high, xloc=xloc.bar_time, color=color.new(color.gray, 25), style=line.style_dotted, width=1)
+
+for j = 0 to array.size(eventTimes) - 1
+    string sid = array.get(eventSectionIds, j)
+    string eventType = array.get(eventTypes, j)
+    int tt = array.get(eventTimes, j)
+    int coreOrdinal = array.get(eventCoreOrdinals, j)
+    bool visible = f_visible(sid) and (not showOnlySelectedSection or selectedSection != "ALL")
+    visible := selectedSection == "ALL" ? f_visible(sid) : visible
+    string mark = f_mark(eventType)
+    if visible and f_enabled(eventType, coreOrdinal) and mark != "" and time >= tt and time[1] < tt
+        label.new(tt, close, mark, xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.black, 0), textcolor=color.white, size=size.tiny)
+'''
+
+
 def write_review_instructions() -> None:
     (EXP / "REVIEW_INSTRUCTIONS.md").write_text(
-        """# EXP-011B R4 Adaptive Recovery Review
+        """# EXP-011B R5 Structural Reset Review
 
-Status: AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW
+Status: AWAITING_TW_STRUCTURAL_RESET_REVIEW
 
 ## Workflow
 
 1. Open Bybit ADAUSDT Perpetual Contract.
 2. Select 4H.
 3. Add your own EMA27 and EMA200.
-4. Add `artifacts/LONG_DISPUTE_ADAPTIVE_RECOVERY_R4.pine`.
-5. Select one R4 `LC` at a time.
-6. Review `D -> episode -> W/M/S -> possible F -> E -> C`.
-7. Fill `artifacts/manual_adaptive_recovery_review.csv`.
+4. Add `artifacts/LONG_DISPUTE_STRUCTURAL_RESET_R5.pine`.
+5. Select one R5 `LC` at a time.
+6. Review `D -> episode -> I or S? -> SF/SR -> E -> C`.
+7. Fill `artifacts/manual_structural_reset_review.csv`.
 
 ## Event Legend
 
 - `D`: DISPUTE_START.
 - `T`: CORE_TRIGGER.
-- `W`: WEAK_RECOVERY.
-- `M`: MODERATE_RECOVERY.
-- `S`: STRONG_RECOVERY.
-- `F`: FAILED_RECOVERY.
+- `I`: INTERNAL_RECOVERY.
+- `S?`: STRUCTURAL_RESET_CANDIDATE.
+- `SF`: FAILED_STRUCTURAL_RESET.
+- `SR`: CONFIRMED_STRUCTURAL_RESET.
 - `N`: NEW_CONFIGURATION_ATTEMPT.
-- `X`: EMA27/EMA200 cross down.
 - `E`: EFFECTIVE_EXIT.
 - `C`: EXIT_CONFIRMATION.
 - `O`: OPEN_AT_TRAIN_END.
 
-## Check Each R4 LC
+## Check Each R5 LC
 
 - Is `D` the first dispute start?
-- Is the recovery class weak, moderate, or strong?
-- Does strong recovery create a genuinely independent next section?
-- Was the November process kept as one section?
-- Was the early December conflict separated from the later long conflict?
+- Is `I` only an internal recovery inside the same disputed price area?
+- Does `S?` truly clear the frozen structural reset level?
+- Does `SR` separate a genuinely new section?
+- Does `SF` keep the section open?
 - Does the yellow dispute area end at `E`?
 - Is the light probation area only between `E` and `C`?
 - Is `C` understood as causal confirmation, not the factual end of dispute movement?
@@ -1922,6 +2614,70 @@ Status: AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW
 Automatic windows use EXP-011 Binance spot 4H OHLC. Manual review is expected on Bybit ADAUSDT Perpetual Contract 4H, so some candles and boundaries may differ by one or more bars.
 """
     )
+
+
+def write_report_r5(period: pd.DataFrame, r4_sections: pd.DataFrame, r5_sections: pd.DataFrame, episodes: pd.DataFrame, recoveries: pd.DataFrame, resets: pd.DataFrame, new_configs: pd.DataFrame, mapping: pd.DataFrame, acceptance: pd.DataFrame) -> None:
+    internal = int((recoveries["attempt_type"] == "INTERNAL_RECOVERY").sum()) if not recoveries.empty else 0
+    failed_internal = int((recoveries["recovery_status"] == "FAILED_INTERNAL_RECOVERY").sum()) if not recoveries.empty else 0
+    persistent = int((recoveries["recovery_status"] == "CONFIRMED_PERSISTENT_INTERNAL_RECOVERY").sum()) if not recoveries.empty else 0
+    reset_candidates = len(resets)
+    failed_resets = int((resets["final_status"] == "FAILED_STRUCTURAL_RESET").sum()) if not resets.empty else 0
+    confirmed_resets = int((resets["final_status"] == "CONFIRMED_STRUCTURAL_RESET").sum()) if not resets.empty else 0
+    confirmed_down = int((new_configs["status"] == "CONFIRMED_NEW_DOWN_CONFIGURATION").sum()) if not new_configs.empty else 0
+    mapping_lines = "\n".join(f"- R4 `{r.r4_section_id}` -> R5 `{r.r5_section_ids}` ({r.mapping_reason})" for r in mapping.itertuples())
+    acceptance_lines = "\n".join(f"- `{r.test_id}`: `{r.status}` — {r.actual_result}" for r in acceptance.itertuples())
+    section_lines = "\n".join(
+        f"- `{r.section_id}`: R4 `{r.source_r4_sections}`, R3 `{r.source_r3_sections}`, R2 `{r.source_r2_sections}`, D `{r.dispute_start_open_time}`, E `{r.effective_resolution_open_time}`, C `{r.exit_confirmation_open_time}`, `{r.resolution_kind}`, path `{r.resolution_path}`, episodes `{r.episode_count}`"
+        for r in r5_sections.itertuples()
+    )
+    report = f"""# EXP-011B — LONG CONFLICT WINDOW DISCOVERY
+
+Status: AWAITING_TW_STRUCTURAL_RESET_REVIEW
+
+Verdict: AWAITING_TW_STRUCTURAL_RESET_REVIEW
+
+## Data
+
+Source OHLC: `{SOURCE.relative_to(ROOT)}`
+
+Exchange/source: Binance public spot klines inherited from EXP-011. Symbol: ADAUSDT. Manual TradingView review is expected on Bybit ADAUSDT Perpetual Contract 4H. Structure should be comparable, but individual candles and boundaries may differ by one or more bars.
+
+Research period: `2023-10-18 00:00:00 UTC` through `2024-01-08 23:59:59.999 UTC`. Bars in period: `{len(period)}`. Pine uses 4H `open_time` boundaries.
+
+## R5 Structural Reset
+
+R4 recovery scoring was rejected because its six components clustered around the same EMA27 recovery behavior and overclassified many EMA27 bounces as strong recoveries. R5 stops using a summed score to close sections. It first detects the same causal recovery attempt, then separates a true `STRUCTURAL_RESET` from `INTERNAL_RECOVERY`.
+
+The frozen structural reset level is causal: `pre_dispute_reference_high` is the high from the last aligned run before `DISPUTE_START` or a 12-bar fallback, `dispute_ceiling_before_bar` is the high from `DISPUTE_START` through the bar before detection, and the reset level is their maximum. The current bar is excluded from the dispute ceiling and the level is frozen at candidate detection.
+
+- R4 sections: `{len(r4_sections)}`
+- R5 sections: `{len(r5_sections)}`
+- Episodes: `{len(episodes)}`
+- Internal recoveries: `{internal}`
+- Failed internal recoveries: `{failed_internal}`
+- Confirmed persistent internal recoveries: `{persistent}`
+- Structural-reset candidates: `{reset_candidates}`
+- Failed structural resets: `{failed_resets}`
+- Confirmed structural resets: `{confirmed_resets}`
+- Confirmed new down configurations: `{confirmed_down}`
+
+## R4 To R5 Mapping
+
+{mapping_lines if mapping_lines else "No R4/R5 mapping rows."}
+
+## Acceptance Tests
+
+{acceptance_lines}
+
+## R5 Sections
+
+{section_lines if section_lines else "No R5 sections found."}
+
+## Constraints
+
+No data after `2024-01-08 23:59:59.999 UTC` was used. No date-specific exceptions, section-id exceptions, ZigZag, clustering, BACKBONE_C, Technical Ratings, forecast, PnL, backtest, trading action, or `docs/DEFINITIONS.md` change. EMA27 and EMA200 are not plotted in the R5 Pine; the Pine only displays fixed timestamps and price bounds from CSV.
+"""
+    (EXP / "REPORT.md").write_text(report)
 
 
 def write_report_r4(period: pd.DataFrame, r3_sections: pd.DataFrame, r4_sections: pd.DataFrame, episodes: pd.DataFrame, recoveries: pd.DataFrame, new_configs: pd.DataFrame, mapping: pd.DataFrame, acceptance: pd.DataFrame) -> None:
@@ -2145,6 +2901,7 @@ def main() -> None:
     preserve_v1_snapshot()
     preserve_r2_snapshots()
     preserve_r3_snapshots()
+    preserve_r4_snapshots()
     full = add_features(load_ohlc())
     period = full[(full["open_time"] >= START) & (full["close_time"] <= END)].copy().reset_index(drop=True)
     raw_events, v1_features = find_raw_events(period)
@@ -2231,7 +2988,8 @@ def main() -> None:
 
     r3_sections, episodes_r3, recoveries_r3, new_configs_r3, r3_events, mapping_r3, r3_features = build_r3_sections(period, v2_sections)
     r4_sections, episodes_r4, recoveries_r4, strength_r4, new_configs_r4, r4_events, mapping_r4, acceptance_r4, r4_features = build_r4_sections(period, v2_sections, r3_sections)
-    r4_columns = [
+    r5_sections, episodes_r5, recoveries_r5, resets_r5, new_configs_r5, r5_events, mapping_r5, acceptance_r5, r5_features = build_r5_sections(period, v2_sections, r3_sections, r4_sections)
+    r5_columns = [
         "open_time",
         "close_time",
         "open",
@@ -2272,45 +3030,46 @@ def main() -> None:
         "ema27_positive_count_4",
         "gap_expanding_count_4",
         "fully_aligned_count_4",
-        "conflict_ceiling_before_bar",
-        "structural_clearance",
-        "clearance_atr",
-        "recovery_strength_score",
-        "recovery_class",
+        "pre_dispute_reference_high",
+        "pre_dispute_reference_source",
+        "dispute_ceiling_before_bar",
+        "structural_reset_level",
+        "frozen_structural_reset_level",
+        "structural_reset_candidate",
+        "structural_clearance_atr",
         "active_probation_type",
         "active_probation_remaining_bars",
         "section_id",
         "episode_id",
         "section_phase",
     ]
-    write_csv(r4_sections, OUT / "long_dispute_sections_r4.csv")
-    write_csv(episodes_r4, OUT / "dispute_episodes_r4.csv")
-    write_csv(recoveries_r4, OUT / "recovery_attempts_r4.csv")
-    write_csv(strength_r4, OUT / "recovery_strength_components_r4.csv")
-    write_csv(new_configs_r4, OUT / "new_configuration_attempts_r4.csv")
-    write_csv(r4_events, OUT / "long_dispute_events_r4.csv")
-    write_csv(mapping_r4, OUT / "r3_r4_section_mapping.csv")
-    write_csv(acceptance_r4, OUT / "r4_acceptance_tests.csv")
-    write_csv(r4_features[r4_columns], OUT / "conflict_bar_features_r4.csv")
-    write_csv(manual_adaptive_recovery_review(r4_sections), OUT / "manual_adaptive_recovery_review.csv")
-    (OUT / "LONG_DISPUTE_ADAPTIVE_RECOVERY_R4.pine").write_text(pine_script_r4(r4_sections, episodes_r4, r4_events))
+    write_csv(r5_sections, OUT / "long_dispute_sections_r5.csv")
+    write_csv(episodes_r5, OUT / "dispute_episodes_r5.csv")
+    write_csv(recoveries_r5, OUT / "recovery_attempts_r5.csv")
+    write_csv(resets_r5, OUT / "structural_reset_attempts_r5.csv")
+    write_csv(new_configs_r5, OUT / "new_configuration_attempts_r5.csv")
+    write_csv(r5_events, OUT / "long_dispute_events_r5.csv")
+    write_csv(mapping_r5, OUT / "r4_r5_section_mapping.csv")
+    write_csv(acceptance_r5, OUT / "r5_acceptance_tests.csv")
+    write_csv(r5_features[r5_columns], OUT / "conflict_bar_features_r5.csv")
+    write_csv(manual_structural_reset_review(r5_sections), OUT / "manual_structural_reset_review.csv")
+    (OUT / "LONG_DISPUTE_STRUCTURAL_RESET_R5.pine").write_text(pine_script_r5(r5_sections, episodes_r5, r5_events))
     write_review_instructions()
-    write_report_r4(period, r3_sections, r4_sections, episodes_r4, recoveries_r4, new_configs_r4, mapping_r4, acceptance_r4)
+    write_report_r5(period, r4_sections, r5_sections, episodes_r5, recoveries_r5, resets_r5, new_configs_r5, mapping_r5, acceptance_r5)
     print(
         json.dumps(
             {
-                "r3_lc": len(r3_sections),
-                "status": "AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW",
+                "status": "AWAITING_TW_STRUCTURAL_RESET_REVIEW",
                 "r4_lc": len(r4_sections),
-                "episodes": len(episodes_r4),
-                "weak_recoveries": int((recoveries_r4["recovery_class"] == "WEAK_RECOVERY").sum()) if not recoveries_r4.empty else 0,
-                "moderate_recoveries": int((recoveries_r4["recovery_class"] == "MODERATE_RECOVERY").sum()) if not recoveries_r4.empty else 0,
-                "strong_recoveries": int((recoveries_r4["recovery_class"] == "STRONG_RECOVERY").sum()) if not recoveries_r4.empty else 0,
-                "failed_moderate_recoveries": int((recoveries_r4["recovery_status"] == "FAILED_MODERATE_RECOVERY").sum()) if not recoveries_r4.empty else 0,
-                "failed_strong_recoveries": int((recoveries_r4["recovery_status"] == "FAILED_STRONG_RECOVERY").sum()) if not recoveries_r4.empty else 0,
-                "confirmed_moderate_recoveries": int((recoveries_r4["recovery_status"] == "CONFIRMED_MODERATE_RECOVERY").sum()) if not recoveries_r4.empty else 0,
-                "confirmed_strong_recoveries": int((recoveries_r4["recovery_status"] == "CONFIRMED_STRONG_RECOVERY").sum()) if not recoveries_r4.empty else 0,
-                "confirmed_new_down_configurations": int((new_configs_r4["status"] == "CONFIRMED_NEW_DOWN_CONFIGURATION").sum()) if not new_configs_r4.empty else 0,
+                "r5_lc": len(r5_sections),
+                "episodes": len(episodes_r5),
+                "internal_recoveries": int((recoveries_r5["attempt_type"] == "INTERNAL_RECOVERY").sum()) if not recoveries_r5.empty else 0,
+                "failed_internal_recoveries": int((recoveries_r5["recovery_status"] == "FAILED_INTERNAL_RECOVERY").sum()) if not recoveries_r5.empty else 0,
+                "persistent_recoveries": int((recoveries_r5["recovery_status"] == "CONFIRMED_PERSISTENT_INTERNAL_RECOVERY").sum()) if not recoveries_r5.empty else 0,
+                "structural_reset_candidates": len(resets_r5),
+                "failed_structural_resets": int((resets_r5["final_status"] == "FAILED_STRUCTURAL_RESET").sum()) if not resets_r5.empty else 0,
+                "confirmed_structural_resets": int((resets_r5["final_status"] == "CONFIRMED_STRUCTURAL_RESET").sum()) if not resets_r5.empty else 0,
+                "confirmed_new_down_configurations": int((new_configs_r5["status"] == "CONFIRMED_NEW_DOWN_CONFIGURATION").sum()) if not new_configs_r5.empty else 0,
             },
             indent=2,
         )

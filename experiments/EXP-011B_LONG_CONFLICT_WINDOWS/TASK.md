@@ -6,7 +6,7 @@ Automatically discover all potential LONG conflict sections on ADAUSDT 4H for:
 
 `2023-10-18 00:00:00 UTC` through `2024-01-08 23:59:59 UTC`.
 
-Current status: `AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW`.
+Current status: `AWAITING_TW_STRUCTURAL_RESET_REVIEW`.
 
 This phase does not classify continuation/reversal, does not validate BACKBONE_C, does not seek entries/exits, and does not calculate PnL.
 
@@ -97,3 +97,33 @@ R4 preserves R3 snapshots and adds adaptive recovery strength:
 R4 status: `AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW`.
 
 Commit message: `EXP-011B add adaptive recovery strength and split sections`.
+
+## R5 Outputs
+
+R5 preserves R4 snapshots and replaces summed recovery-strength section closing with a causal hierarchy:
+
+- recovery attempt;
+- structural reset candidate above a frozen reset level;
+- 6-bar structural reset confirmation;
+- otherwise 24-bar internal recovery persistence;
+- failed attempts keep the section open.
+
+R5 outputs:
+
+- `long_dispute_sections_r4_snapshot.csv`
+- `dispute_episodes_r4_snapshot.csv`
+- `recovery_attempts_r4_snapshot.csv`
+- `LONG_DISPUTE_ADAPTIVE_RECOVERY_R4_SNAPSHOT.pine`
+- `long_dispute_sections_r5.csv`
+- `dispute_episodes_r5.csv`
+- `recovery_attempts_r5.csv`
+- `structural_reset_attempts_r5.csv`
+- `conflict_bar_features_r5.csv`
+- `r4_r5_section_mapping.csv`
+- `r5_acceptance_tests.csv`
+- `manual_structural_reset_review.csv`
+- `LONG_DISPUTE_STRUCTURAL_RESET_R5.pine`
+
+R5 status: `AWAITING_TW_STRUCTURAL_RESET_REVIEW`.
+
+Commit message: `EXP-011B distinguish structural reset from internal recovery`.

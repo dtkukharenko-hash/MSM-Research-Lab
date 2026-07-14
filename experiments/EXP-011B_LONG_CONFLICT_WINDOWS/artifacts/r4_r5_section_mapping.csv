@@ -1,0 +1,7 @@
+r4_section_id,r5_section_ids,r5_section_count,merged_into_r5,split_occurred,mapping_reason,source_r3_section,source_r2_sections
+LC001,LC001,1,False,False,mapped by overlapping causal bar spans,LC001,LC001
+LC002,LC002,1,True,False,mapped by overlapping causal bar spans,LC002,LC002
+LC003,LC002,1,True,False,mapped by overlapping causal bar spans,LC002,LC003;LC004
+LC004,LC003,1,True,False,mapped by overlapping causal bar spans,LC003,LC005
+LC005,LC003,1,True,False,mapped by overlapping causal bar spans,LC003,LC006
+LC006,LC003,1,True,False,mapped by overlapping causal bar spans,LC003,LC007

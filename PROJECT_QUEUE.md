@@ -26,7 +26,7 @@
 
 ### EXP-011B_LONG_CONFLICT_WINDOWS
 
-Статус: AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW
+Статус: AWAITING_TW_STRUCTURAL_RESET_REVIEW
 
 EXP-011B V1 нашёл строгие `CORE_TRIGGER`; R2 расширил окна; R3 правильно объединил внутренние
 ноябрьские episodes, но слишком агрессивно объединил декабрьские конфликты из-за единого
@@ -39,12 +39,23 @@ EXP-011B V1 нашёл строгие `CORE_TRIGGER`; R2 расширил окн
 12 episodes, 10 strong recoveries, 1 moderate recovery, 5 confirmed strong recoveries и
 1 confirmed new down configuration. Хардкод дат/LC для исправления не применялся.
 
+EXP-011B R5 отклонил summed recovery-strength score как механизм закрытия section и заменил его
+иерархией `STRUCTURAL_RESET` vs `INTERNAL_RECOVERY`. Structural reset требует закрытия выше frozen
+reset level: максимум pre-dispute reference high и dispute ceiling до detection-бара, текущий бар
+в ceiling не входит. Если structural reset не сформирован, восстановление остаётся внутренним и
+проверяется 24-барами persistence. R5 получил 3 sections: ноябрьская цепочка сохранена, ложный
+late-December split сохранён внутри одного section, но early-December split не подтверждён общей
+structural-reset логикой, потому что reset level остаётся выше восстановления. Acceptance:
+`NOVEMBER_CHAIN_PRESERVED = PASS`, `DECEMBER_STRUCTURAL_RESET_SPLIT = FAIL`,
+`LATE_DECEMBER_CHAIN_PRESERVED = PASS`, `EXPECTED_FOUR_SECTIONS = FAIL`.
+
 Следующее действие:
-Проверить R4 adaptive recovery sections в TradingView через
-`experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_DISPUTE_ADAPTIVE_RECOVERY_R4.pine`,
-заполнить `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/manual_adaptive_recovery_review.csv`
-и отдельно решить, нужно ли ужесточать recovery strength / probation rules для сохранения ноябрьской
-цепочки. Technical Ratings TradingView добавлять только после утверждения границ sections.
+Проверить R5 structural reset sections в TradingView через
+`experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_DISPUTE_STRUCTURAL_RESET_R5.pine`,
+заполнить `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/manual_structural_reset_review.csv`
+и отдельно решить, должен ли pre-dispute reference high использовать весь last aligned run или более
+локальную causal reference область для early-December reset. Technical Ratings TradingView добавлять
+только после утверждения границ sections.
 
 ---
 

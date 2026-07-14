@@ -1,38 +1,37 @@
-# EXP-011B R4 Adaptive Recovery Review
+# EXP-011B R5 Structural Reset Review
 
-Status: AWAITING_TW_ADAPTIVE_RECOVERY_REVIEW
+Status: AWAITING_TW_STRUCTURAL_RESET_REVIEW
 
 ## Workflow
 
 1. Open Bybit ADAUSDT Perpetual Contract.
 2. Select 4H.
 3. Add your own EMA27 and EMA200.
-4. Add `artifacts/LONG_DISPUTE_ADAPTIVE_RECOVERY_R4.pine`.
-5. Select one R4 `LC` at a time.
-6. Review `D -> episode -> W/M/S -> possible F -> E -> C`.
-7. Fill `artifacts/manual_adaptive_recovery_review.csv`.
+4. Add `artifacts/LONG_DISPUTE_STRUCTURAL_RESET_R5.pine`.
+5. Select one R5 `LC` at a time.
+6. Review `D -> episode -> I or S? -> SF/SR -> E -> C`.
+7. Fill `artifacts/manual_structural_reset_review.csv`.
 
 ## Event Legend
 
 - `D`: DISPUTE_START.
 - `T`: CORE_TRIGGER.
-- `W`: WEAK_RECOVERY.
-- `M`: MODERATE_RECOVERY.
-- `S`: STRONG_RECOVERY.
-- `F`: FAILED_RECOVERY.
+- `I`: INTERNAL_RECOVERY.
+- `S?`: STRUCTURAL_RESET_CANDIDATE.
+- `SF`: FAILED_STRUCTURAL_RESET.
+- `SR`: CONFIRMED_STRUCTURAL_RESET.
 - `N`: NEW_CONFIGURATION_ATTEMPT.
-- `X`: EMA27/EMA200 cross down.
 - `E`: EFFECTIVE_EXIT.
 - `C`: EXIT_CONFIRMATION.
 - `O`: OPEN_AT_TRAIN_END.
 
-## Check Each R4 LC
+## Check Each R5 LC
 
 - Is `D` the first dispute start?
-- Is the recovery class weak, moderate, or strong?
-- Does strong recovery create a genuinely independent next section?
-- Was the November process kept as one section?
-- Was the early December conflict separated from the later long conflict?
+- Is `I` only an internal recovery inside the same disputed price area?
+- Does `S?` truly clear the frozen structural reset level?
+- Does `SR` separate a genuinely new section?
+- Does `SF` keep the section open?
 - Does the yellow dispute area end at `E`?
 - Is the light probation area only between `E` and `C`?
 - Is `C` understood as causal confirmation, not the factual end of dispute movement?

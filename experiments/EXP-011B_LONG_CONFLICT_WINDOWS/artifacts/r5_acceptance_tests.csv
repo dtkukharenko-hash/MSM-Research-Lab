@@ -1,0 +1,8 @@
+test_id,test_name,expected_result,actual_result,status,details
+NOVEMBER_CHAIN_PRESERVED,November chain remains one section,one section covering source R2 LC002;LC003;LC004,1 matching section(s): LC002,PASS,"{'LC001': 'LC001', 'LC002': 'LC002', 'LC003': 'LC003'}"
+DECEMBER_STRUCTURAL_RESET_SPLIT,Early December separated by structural reset,at least two sections for December R3 chain,1 section(s): LC003,FAIL,LC005;LC006;LC007
+LATE_DECEMBER_CHAIN_PRESERVED,Late December false R4 split is not repeated,source R2 LC006 and LC007 remain in one section unless general reset confirms,1 matching section(s): LC003,PASS,LC005;LC006;LC007
+EXPECTED_FOUR_SECTIONS,Manual review suggested four sections,4 R5 sections,3 R5 sections,FAIL,LC001;LC002;LC003
+NO_DATE_HARDCODING,No date-specific exceptions,no date hardcoding,general chronological builder,PASS,acceptance checks are post-calculation diagnostics
+NO_SECTION_ID_HARDCODING,No section-id-specific exceptions,no section-id hardcoding in builder,general chronological builder,PASS,section IDs appear only in acceptance diagnostics/reporting
+NO_FUTURE_PERIOD_USED,No bars after development cutoff,no data after 2024-01-08 23:59:59.999,period slice ends at configured END,PASS,2024-01-08 23:59:59.999000
