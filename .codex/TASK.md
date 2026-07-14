@@ -1,43 +1,45 @@
 # Current Codex Task
 
-- task_id: `EXP-012-LONG-CONTEXT-DISPUTED-PRICE-ZONES`
+- task_id: `EXP-012-R2-ACCEPTED-BOUNDARY-STATE`
 - status: `READY`
 - published_at: `2026-07-14`
 - target_branch: `main`
-- commit_message: `EXP-012 detect causal disputed price zones`
+- commit_message: `EXP-012 model accepted boundary state causally`
 
 ## Objective
 
-Create a new experiment:
+Revise:
 
 `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES`
 
-The object of study is no longer an EMA conflict window. The new object is a causal horizontal disputed price zone inside a LONG context.
+R1 correctly changed the object from an EMA conflict window to a horizontal disputed price zone, but manual/code review found two major defects:
 
-Working interpretation:
+1. A failed exit attempt can use highs/lows from bars after the causal failure bar when expanding the boundary.
+2. Initial and updated boundaries are based too strongly on single wick extremes. This absorbed the January downside move into Z003 instead of recognizing price acceptance below the disputed range.
 
-aligned long movement
-→ loss of directional agreement
-→ price begins accepting both directions inside a horizontal range
-→ EMA27 may cross through the range repeatedly
-→ temporary recoveries remain inside the same range
-→ the zone ends only after price is accepted outside one of its horizontal boundaries.
+R2 must model three distinct objects:
 
-EMA27 and EMA200 provide context and diagnostics. Price defines the disputed zone boundaries and the accepted exit.
+- `EXCURSION`: price temporarily moves beyond a boundary.
+- `ACCEPTED_EXTENSION`: price forms an accepted shelf outside the old boundary but later returns to the larger disputed zone, so the zone boundary may expand.
+- `ACCEPTED_EXIT`: price establishes a persistent outside state and the zone ends.
 
-Final status: `AWAITING_TW_PRICE_ZONE_REVIEW`.
+EMA27 and EMA200 remain context/diagnostics only. Price acceptance defines boundaries and zone resolution.
+
+Final status:
+
+`AWAITING_TW_ACCEPTED_BOUNDARY_REVIEW`
 
 ## Scope
 
-- Symbol: ADAUSDT.
-- Timeframe: 4H only.
-- LONG-context disputed zones only.
+- ADAUSDT.
+- 4H only.
+- LONG-context disputed price zones only.
 - Development period: `2023-10-18 00:00:00 UTC` through `2024-01-08 23:59:59.999 UTC`.
 - Use the existing EXP-011 Binance spot 4H OHLC file.
-- Do not use data after `2024-01-08`.
-- Manual visual review is on Bybit ADAUSDT Perpetual 4H; report possible candle differences.
-- Do not use Technical Ratings, ZigZag, clustering, BACKBONE_C, PnL, backtesting, Irobot, or trading logic.
-- Do not modify EXP-011B R1–R5 outputs. EXP-012 is a new experiment.
+- Do not use any bar after `2024-01-08`.
+- Manual review remains Bybit ADAUSDT Perpetual 4H; report possible candle/boundary differences.
+- Do not use Technical Ratings, ZigZag, clustering, BACKBONE_C, Irobot, PnL, backtest, forecasts, or trading logic.
+- Preserve all EXP-012 R1 outputs.
 
 ## Required reading
 
@@ -46,462 +48,529 @@ Before implementation read:
 - `PROJECT_INSTRUCTIONS.md`
 - `AGENTS.md`
 - `.codex/TASK.md`
-- EXP-011B R5 report and artifacts
-- EXP-011 source OHLC metadata
+- EXP-012 R1 `REPORT.md`, code, zone CSV, boundary events, exit attempts, and Pine
+- EXP-011B R5 only for historical comparison
 
-Use EXP-011B only as diagnostic history and for mapping. Do not copy its section-closing state machine as the new model.
+## Snapshot R1
 
-## Data source
+Create before R2 generation:
 
-Use:
+- `artifacts/long_context_disputed_zones_r1_snapshot.csv`
+- `artifacts/zone_boundary_events_r1_snapshot.csv`
+- `artifacts/zone_exit_attempts_r1_snapshot.csv`
+- `artifacts/LONG_CONTEXT_DISPUTED_PRICE_ZONES_R1_SNAPSHOT.pine`
 
-`experiments/EXP-011_MULTISCALE_EMA_TREND_BACKBONE/artifacts/ohlc_4h.csv`
+Do not overwrite the snapshots.
 
-Calculate EMA27, EMA200, EMA slopes, and ATR14 from the complete available warm-up history before slicing the development period.
+## Keep unchanged
 
-All event timestamps used by Pine must be 4H bar `open_time`.
+Keep the existing causal calculations for:
 
-## Core conceptual rules
+- EMA27 and EMA200;
+- ATR14;
+- LONG context;
+- aligned run;
+- zone start;
+- core trigger as diagnostic only;
+- open-time timestamps;
+- chronological zone construction.
 
-1. The disputed zone is a price range, not an EMA state.
-2. EMA27 may rise, fall, or be crossed repeatedly while the same price zone remains active.
-3. A move above EMA27 does not end the zone.
-4. EMA27/EMA200 cross does not end the zone.
-5. A new local high inside the active range does not automatically end the zone.
-6. A failed move outside a boundary may expand that boundary and remain part of the same zone.
-7. A zone ends only after accepted price movement outside a frozen boundary.
-8. All detection and boundary updates must be causal.
+Do not reuse R1 boundary expansion or R1 six-bar exit-attempt implementation without the changes below.
 
-## LONG context and zone start
+## R2 principle
 
-Reuse the causal LONG-context and early-dispute logic conceptually from EXP-011B, but implement it locally in EXP-012.
+A horizontal zone boundary represents a price level accepted by repeated candle bodies/closes.
 
-Base LONG context:
+A single wick is an excursion, not an accepted boundary.
 
-- `ema27 > ema200`
-- `ema200_slope_6 > 0`
+A failed break does not automatically expand a boundary.
 
-A zone candidate starts at the first causal loss of agreement after a confirmed aligned run.
+An exit attempt must be evaluated bar by bar. Once it fails or confirms, later bars must not affect its excursion statistics or boundary decision.
 
-Use the existing R2/R5 dispute-start approach:
+## Robust initial boundaries
 
-- identify the last aligned run;
-- detect the first persistent discordance after it;
-- `ZONE_START` must be no later than the first strict core trigger;
-- store `last_aligned_run_start`, `last_aligned_run_end`, `zone_start`, and `first_core_trigger`.
+R1 used absolute highs/lows too directly. R2 must separate:
 
-The strict core trigger remains a diagnostic event only.
+- `wick_extreme`;
+- `accepted_body_boundary`.
 
-## Initial zone construction
+For every candle define:
 
-Build the initial range causally in two stages.
+- `body_high = max(open, close)`
+- `body_low = min(open, close)`
 
-### Upper seed
+### Initial upper boundary
 
-At `ZONE_START`, define:
+Use the same causal source interval as R1 upper seed:
 
-`upper_seed = max(high)` from the last confirmed aligned run through the bar before `ZONE_START`.
+- last confirmed aligned run through the bar before `ZONE_START`;
+- fallback: previous 12 closed bars.
 
-Fallback if no aligned run is available:
+Calculate:
 
-maximum high of the previous 12 closed 4H bars.
+- `upper_wick_reference = max(high)`;
+- `upper_body_candidates = the three highest body_high values in the interval`;
+- `initial_upper_bound = median(upper_body_candidates)`.
 
-Freeze the source and value used.
+If fewer than three bars exist, use the median of available body highs.
 
-### Lower seed
+Store the wick reference, body candidates, and source interval.
 
-From `ZONE_START`, track the running adverse low.
+### Initial lower boundary
 
-Confirm the first lower reaction when all hold:
+Keep the R1 causal lower-reaction detection, but do not use the running minimum low as the final boundary.
 
-- price has moved at least `1.0 ATR14` below `upper_seed`;
-- after the running low, price rebounds at least `0.75 ATR14` from that low;
-- at least 2 of the latest 3 closes are higher than their previous close;
-- at least one of the latest 3 closes is above EMA27 or the close-to-EMA27 distance improved on 2 consecutive bars.
+From `ZONE_START` through `BOUNDS_CONFIRMED` calculate:
 
-At confirmation:
+- `lower_wick_reference = min(low)`;
+- `lower_body_candidates = the three lowest body_low values`;
+- `initial_lower_bound = median(lower_body_candidates)`.
 
-- `lower_seed = running minimum low since ZONE_START`;
-- `initial_upper_bound = upper_seed`;
-- `initial_lower_bound = lower_seed`;
-- `BOUNDS_CONFIRMED` timestamp is the detection bar.
+If fewer than three bars exist, use the median of available body lows.
 
-If no lower reaction is confirmed within 18 bars, use a fallback only when all hold:
+Store:
 
-- zone age at least 8 bars;
-- width from upper seed to running low at least `1.25 ATR14`;
-- price crossed EMA27 at least twice;
-- at least 70% of closes lie between upper seed and running low.
+- wick reference;
+- body candidates;
+- accepted body boundary;
+- confirmation time;
+- fallback status.
 
-Record whether fallback was used.
+The wick reference is diagnostic only and must not define the active boundary by itself.
 
-## Active evolving zone
+## Outside departure candidate
 
-After bounds confirmation, maintain:
+Use the current frozen active boundary and ATR at the current closed bar.
 
-- `active_upper_bound`
-- `active_lower_bound`
-- `boundary_version`
-
-Boundaries do not move continuously with every new extreme.
-
-They change only after a failed accepted-exit attempt.
-
-At every bar save the active frozen bounds before evaluating the current close.
-
-## Outside-close candidate
-
-Use:
+Keep:
 
 `OUTSIDE_CLEARANCE_ATR = 0.15`
 
-An upward exit candidate begins when:
+Up departure starts when:
 
-`close > active_upper_bound + 0.15 * ATR14`
+`close > upper_bound + 0.15 * ATR14`
 
-A downward exit candidate begins when:
+Down departure starts when:
 
-`close < active_lower_bound - 0.15 * ATR14`
+`close < lower_bound - 0.15 * ATR14`
 
 Freeze at candidate start:
 
 - direction;
-- boundary value;
+- active upper/lower boundaries;
+- candidate boundary;
 - ATR14;
-- first outside-close time;
-- excursion high/low.
+- candidate time.
 
-Do not move the candidate boundary during probation.
+Only one active outside-state candidate may exist per zone.
 
-Only one exit candidate may be active at a time.
+## Bar-by-bar outside-state machine
+
+Replace the R1 full-window function with a strictly sequential state machine.
+
+Constants:
+
+- `MIN_DECISION_BARS = 4`
+- `MAX_DECISION_BARS = 12`
+- `DEEP_RECLAIM_ATR = 0.15`
+- `OUTSIDE_MAJORITY = 0.60`
+
+For each newly closed bar after candidate start, update only using bars from candidate through the current bar:
+
+- bars observed;
+- outside-close count;
+- inside-close count;
+- consecutive outside closes;
+- consecutive deep-inside closes;
+- body highs/lows;
+- wick highs/lows;
+- current close position;
+- EMA27 position diagnostics.
+
+Do not inspect later bars.
+
+### Outside/inside definitions
+
+For an UP candidate:
+
+- outside: `close > frozen_upper`;
+- deep inside reclaim: `close < frozen_upper - 0.15 * ATR14`.
+
+For a DOWN candidate:
+
+- outside: `close < frozen_lower`;
+- deep inside reclaim: `close > frozen_lower + 0.15 * ATR14`.
+
+A shallow retest around the boundary is neither a deep reclaim nor immediate failure.
 
 ## Accepted exit
 
-Use:
+Starting from `MIN_DECISION_BARS`, confirm an accepted exit at the first bar where all general conditions hold.
 
-`EXIT_ACCEPTANCE_BARS = 6`
+### UP accepted exit
 
-### Accepted upward exit
-
-Confirm after six closed bars when all hold:
-
-- at least 4 of 6 closes are above the frozen upper boundary;
-- final close is above the frozen upper boundary;
-- no two consecutive closes are back inside the range;
-- at least 4 of 6 closes are above EMA27;
+- observed bars >= 4;
+- outside-close fraction >= 0.60;
+- current close is above the frozen upper boundary;
+- no run of 3 consecutive deep-inside reclaims;
+- at least 60% of observed closes are above EMA27;
 - EMA27 remains above EMA200.
 
-### Accepted downward exit
+### DOWN accepted exit
 
-Confirm after six closed bars when all hold:
-
-- at least 4 of 6 closes are below the frozen lower boundary;
-- final close is below the frozen lower boundary;
-- no two consecutive closes are back inside the range;
-- at least 4 of 6 closes are below EMA27.
+- observed bars >= 4;
+- outside-close fraction >= 0.60;
+- current close is below the frozen lower boundary, or no more than `0.10 ATR14` above it during a shallow retest;
+- no run of 3 consecutive deep-inside reclaims;
+- at least 60% of observed closes are below EMA27.
 
 Do not require EMA200 to slope downward.
 
-On success:
+On confirmation:
 
-- `exit_direction = UP` or `DOWN`;
-- `effective_exit_open_time = first outside close of the successful sequence`;
-- `exit_confirmation_open_time = sixth probation bar`;
-- `resolution_kind = ACCEPTED_UPSIDE_EXIT` or `ACCEPTED_DOWNSIDE_EXIT`;
-- close the zone only at confirmation.
+- `resolution_kind = ACCEPTED_UPSIDE_EXIT_R2` or `ACCEPTED_DOWNSIDE_EXIT_R2`;
+- `effective_exit_open_time = first outside close in the confirmed outside-state sequence`;
+- `exit_confirmation_open_time = current bar`;
+- close the zone causally at confirmation.
 
-## Failed exit and boundary expansion
+The confirmation may occur before 12 bars.
 
-An exit candidate fails when either:
+## Rejected excursion
 
-- two consecutive closes return inside the frozen range before confirmation;
-- the six-bar acceptance criteria fail;
-- an opposite-side candidate appears before confirmation.
+Reject the outside candidate immediately when:
 
-On failed upward exit:
+- 3 consecutive deep-inside reclaim closes occur before accepted exit; or
+- the maximum 12 bars are reached without accepted exit.
 
-- record `FAILED_UPSIDE_EXIT`;
-- update `active_upper_bound` to the maximum high reached during that failed attempt;
-- increment `boundary_version`;
-- keep the same zone open.
+At rejection, stop processing the attempt immediately.
 
-On failed downward exit:
+All attempt statistics must use only:
 
-- record `FAILED_DOWNSIDE_EXIT`;
-- update `active_lower_bound` to the minimum low reached during that failed attempt;
-- increment `boundary_version`;
-- keep the same zone open.
+candidate bar through rejection bar inclusive.
 
-This boundary expansion represents acceptance of the failed excursion as part of the existing disputed zone.
+Never use a later bar's high, low, body, or close.
 
-Do not change the opposite boundary.
+Record:
 
-## Open zone at development end
+- rejection time;
+- rejection reason;
+- observed bars;
+- outside fraction;
+- longest consecutive outside run;
+- longest deep-reclaim run;
+- wick excursion;
+- body excursion;
+- close excursion.
 
-If no accepted exit is confirmed by the last bar of the development period:
+## Accepted extension versus rejected wick
 
-- `resolution_kind = OPEN_AT_TRAIN_END`;
-- do not read later data;
-- use the last development bar as the visible endpoint.
+A rejected outside candidate does not automatically expand the zone.
 
-## Zone diagnostics
+Classify it after causal rejection.
 
-For every zone calculate:
+### Accepted extension
 
-- duration to effective exit;
-- duration to confirmation;
-- initial and final bounds;
-- final width and width in ATR;
-- boundary update count;
-- failed upside exits;
-- failed downside exits;
-- close-inside fraction;
-- EMA27 crossing count;
-- core-trigger count;
-- high and low acceptance-probe counts;
-- maximum distance outside each boundary before failure;
-- exit direction;
-- source EXP-011B R5 section mapping.
+A rejected attempt qualifies as `ACCEPTED_EXTENSION` only when all hold before or on the rejection bar:
 
-Do not interpret these as predictive features yet.
+1. At least 3 closes occurred outside the frozen boundary.
+2. At least 2 outside closes were consecutive.
+3. The median outside close is at least `0.10 ATR14` beyond the frozen boundary, using ATR frozen at candidate start.
+4. The move was later reclaimed enough to reject the exit.
 
-## Required acceptance tests
+For an accepted UP extension:
 
-Acceptance tests are diagnostic only. Never hardcode dates, prices, section IDs, or manual bounds in the algorithm.
+- collect body highs for bars with outside closes;
+- proposed upper boundary = median of the three highest outside body highs, or median of available values if fewer than three;
+- new upper boundary = max(old upper, proposed upper).
 
-1. `EXPECTED_THREE_ZONES`
-   - Current manual review suggests three zones in the development period.
-   - Record PASS/FAIL honestly; do not force the count.
+For an accepted DOWN extension:
 
-2. `FIRST_ZONE_PRESERVED`
-   - The short late-October/early-November zone should remain a compact independent zone.
+- collect body lows for bars with outside closes;
+- proposed lower boundary = median of the three lowest outside body lows, or median of available values if fewer than three;
+- new lower boundary = min(old lower, proposed lower).
+
+Never update a boundary to a wick high/low.
+
+### Rejected excursion only
+
+If accepted-extension criteria are not met:
+
+- classify `REJECTED_WICK_OR_SINGLE_EXCURSION`;
+- do not change the boundary;
+- preserve the zone.
+
+Store wick extreme separately as diagnostic evidence.
+
+## Boundary versioning
+
+For every accepted extension record:
+
+- old boundary;
+- proposed body boundary;
+- new boundary;
+- direction;
+- candidate and rejection times;
+- outside closes used;
+- body values used;
+- wick extreme ignored;
+- boundary version.
+
+The opposite boundary must not change.
+
+## Fixed-bound baseline
+
+Create a deterministic diagnostic baseline using the same:
+
+- zone starts;
+- robust initial body boundaries;
+- outside-state exit logic;
+
+but never expand boundaries after rejected attempts.
+
+Name it:
+
+`FIXED_BODY_BOUNDS_BASELINE`
+
+The primary R2 model is:
+
+`ACCEPTED_EXTENSION_BODY_BOUNDS`
+
+Generate a comparison CSV. Do not select a winner by manual fit; report both honestly.
+
+## Expected manual structure and acceptance tests
+
+Acceptance tests are diagnostics only. Never hardcode dates, prices, zone IDs, or expected outputs inside detection logic.
+
+Required tests:
+
+1. `EXPECTED_THREE_PRIMARY_ZONES`
+   - manual review currently suggests three broad zones.
+
+2. `FIRST_ZONE_COMPACT`
+   - first zone remains independent and compact.
 
 3. `NOVEMBER_SINGLE_ZONE`
-   - The November disputed process corresponding broadly to EXP-011B R5 LC002 should remain one zone despite repeated EMA27 recoveries.
+   - November remains one horizontal disputed zone.
 
 4. `DECEMBER_JANUARY_SINGLE_ZONE`
-   - The process corresponding broadly to EXP-011B R5 LC003 should remain one evolving horizontal zone despite the mid-December rally and new local high, unless the general accepted-exit rule genuinely closes it.
+   - December-January remains one zone until accepted downside movement.
 
-5. `LC003_EARLIER_DOWNSIDE_EXIT_THAN_R5`
-   - The accepted downside exit should occur earlier than the R5 EMA-based effective exit if price is accepted below the horizontal lower boundary.
-   - This comparison is post-run only and must not be used inside the detector.
+5. `DECEMBER_DOWNSIDE_EXIT_ACCEPTED`
+   - primary R2 should test whether the December-January zone obtains an accepted DOWN exit before train end.
+   - record PASS/FAIL honestly.
 
-6. `NO_DATE_HARDCODING`
-7. `NO_PRICE_BOUND_HARDCODING`
-8. `NO_SECTION_ID_HARDCODING`
-9. `NO_FUTURE_PERIOD_USED`
+6. `DOWNSIDE_EXIT_EARLIER_THAN_R1`
+   - compare only after the run.
 
-## Required experiment structure
+7. `NO_POST_FAILURE_DATA_USED`
+   - verify every rejected attempt's recorded extrema and body statistics end at its rejection bar.
+
+8. `NO_WICK_ONLY_BOUNDARY_EXPANSION`
+   - every boundary update must satisfy accepted-extension close/body criteria.
+
+9. `NO_DATE_HARDCODING`
+10. `NO_PRICE_HARDCODING`
+11. `NO_ZONE_ID_HARDCODING`
+12. `NO_FUTURE_PERIOD_USED`
+
+## Required R2 artifacts
 
 Create:
 
-`experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/`
+- `artifacts/long_context_disputed_zones_r2.csv`
+- `artifacts/zone_boundary_events_r2.csv`
+- `artifacts/zone_outside_state_attempts_r2.csv`
+- `artifacts/zone_accepted_extensions_r2.csv`
+- `artifacts/zone_bar_features_r2.csv`
+- `artifacts/fixed_body_bounds_baseline.csv`
+- `artifacts/r1_r2_zone_mapping.csv`
+- `artifacts/r2_model_comparison.csv`
+- `artifacts/r2_acceptance_tests.csv`
+- `artifacts/manual_accepted_boundary_review.csv`
+- `artifacts/LONG_CONTEXT_DISPUTED_PRICE_ZONES_R2.pine`
 
-with:
+Update:
 
-- `TASK.md`
 - `experiment_012.py`
+- local `TASK.md`
 - `REPORT.md`
 - `REVIEW_INSTRUCTIONS.md`
-- `artifacts/long_context_disputed_zones.csv`
-- `artifacts/zone_boundary_events.csv`
-- `artifacts/zone_exit_attempts.csv`
-- `artifacts/zone_bar_features.csv`
-- `artifacts/r5_zone_mapping.csv`
-- `artifacts/acceptance_tests.csv`
-- `artifacts/manual_zone_review.csv`
-- `artifacts/LONG_CONTEXT_DISPUTED_PRICE_ZONES.pine`
+- `PROJECT_QUEUE.md`
 
-## Zone CSV fields
+## Zone CSV minimum fields
 
-At minimum include:
+Include at minimum:
 
-- `zone_id`
-- `display_start_open_time`
-- `last_aligned_run_start_open_time`
-- `last_aligned_run_end_open_time`
-- `zone_start_open_time`
-- `first_core_trigger_open_time`
-- `bounds_confirmation_open_time`
-- `initial_upper_bound`
-- `initial_lower_bound`
-- `final_upper_bound`
-- `final_lower_bound`
-- `effective_exit_open_time`
-- `exit_confirmation_open_time`
-- `exit_direction`
-- `resolution_kind`
-- `duration_to_effective_exit_bars`
-- `duration_to_confirmation_bars`
-- `boundary_update_count`
-- `failed_upside_exit_count`
-- `failed_downside_exit_count`
-- `ema27_cross_count`
-- `close_inside_fraction`
-- `source_r5_sections`
-- `open_at_train_end`
-- Python-computed display price bounds.
+- zone_id;
+- zone_start_open_time;
+- bounds_confirmation_open_time;
+- upper_wick_reference;
+- upper_body_candidates;
+- lower_wick_reference;
+- lower_body_candidates;
+- initial_upper_bound;
+- initial_lower_bound;
+- final_upper_bound;
+- final_lower_bound;
+- effective_exit_open_time;
+- exit_confirmation_open_time;
+- exit_direction;
+- resolution_kind;
+- accepted_extension_count;
+- rejected_excursion_count;
+- wick_only_rejection_count;
+- close_inside_fraction;
+- boundary_version_count;
+- open_at_train_end;
+- R1 mapping;
+- Python-computed display bounds.
 
-## Boundary-events CSV
+## Outside-state attempts CSV
 
-One row per event:
+One row per candidate with:
 
-- `ZONE_START`
-- `BOUNDS_CONFIRMED`
-- `UPPER_BOUND_EXPANDED`
-- `LOWER_BOUND_EXPANDED`
-- `UP_EXIT_CANDIDATE`
-- `DOWN_EXIT_CANDIDATE`
-- `FAILED_UPSIDE_EXIT`
-- `FAILED_DOWNSIDE_EXIT`
-- `EFFECTIVE_EXIT`
-- `EXIT_CONFIRMATION`
-- `TRAIN_END`
-
-Include previous and new bound values and the causal reason.
-
-## Exit-attempts CSV
-
-One row per outside-close attempt with:
-
-- zone and attempt IDs;
+- zone_id;
+- attempt_id;
 - direction;
 - frozen boundary;
+- frozen ATR;
 - candidate time;
-- probation end;
-- bars available;
-- counts outside/inside;
-- final close position;
-- excursion high/low;
-- clearance ATR;
-- status;
-- failure time and reason;
-- effective exit and confirmation times.
+- decision time;
+- decision status;
+- observed bars;
+- outside-close count and fraction;
+- inside-close count;
+- longest outside run;
+- longest deep-reclaim run;
+- current/final close position;
+- wick high/low;
+- body high/low;
+- median outside close;
+- accepted-exit flag;
+- accepted-extension flag;
+- rejection reason;
+- effective exit and confirmation times;
+- last data timestamp used by the attempt.
 
 ## Bar-level CSV
 
-Include OHLC, EMA27, EMA200, ATR14, slopes, active zone ID, active bounds before current bar, boundary version, inside/outside status, distance to each boundary in ATR, EMA27 crossing flag, active exit-candidate state, zone phase, and event IDs.
+Include R1 fields plus:
 
-## Pine visualization
+- body_high;
+- body_low;
+- active model;
+- active candidate state;
+- observed candidate bars;
+- outside fraction so far;
+- consecutive outside count;
+- consecutive deep-reclaim count;
+- accepted-extension decision;
+- active body boundaries before current bar;
+- wick references;
+- boundary version;
+- last attempt data timestamp.
+
+## Pine R2
 
 Create Pine Script v6 indicator:
 
-`EXP-012 Long-Context Disputed Price Zones`
+`EXP-012 Accepted Boundary Price Zones R2`
 
 Rules:
 
 - use `indicator()`, never `strategy()`;
 - do not plot EMA27 or EMA200;
-- use only Python-generated timestamps and bounds;
-- yellow rectangle: `ZONE_START` through `EFFECTIVE_EXIT` using final accepted zone bounds;
-- clearly different cyan/gray rectangle: `EFFECTIVE_EXIT` through `EXIT_CONFIRMATION`;
-- draw final horizontal upper and lower zone boundaries;
-- optionally show initial bounds and each boundary revision;
-- default markers:
-  - `Z` zone start;
-  - `B` bounds confirmed;
-  - `U+` upper expansion;
-  - `L+` lower expansion;
-  - `U?` upward exit candidate;
-  - `D?` downward exit candidate;
-  - `UF`/`DF` failed exit;
-  - `E` effective exit;
-  - `C` confirmation;
-- show only first core trigger per zone by default;
-- all core triggers behind an input defaulting false;
-- section selector `ALL` plus individual zone IDs;
-- use Python-computed box top/bottom, never current TradingView bar high/low.
+- use Python timestamps and Python price bounds;
+- yellow box: active disputed zone through effective exit;
+- light cyan/gray: effective exit through causal confirmation;
+- horizontal final body boundaries clearly visible;
+- optional dotted wick-reference lines, disabled by default;
+- mark accepted boundary extensions separately from wick-only rejected excursions;
+- show outside candidate, accepted exit, rejected excursion, and boundary-update events;
+- selector `ALL` plus individual zones;
+- optional model selector: primary R2 versus fixed-body baseline;
+- do not show every core trigger by default.
 
-## Manual review CSV
+## Manual review
 
-Create empty user fields for:
+The review CSV and instructions must ask:
 
-- zone validity;
-- start correctness;
-- initial upper/lower correctness;
-- boundary expansion correctness;
-- effective exit correctness;
-- confirmation correctness;
-- should merge/split;
-- corrected bounds/times;
-- Binance/Bybit source difference suspected;
-- comments.
+- does the body-based initial range match the visually accepted price area better than wick extremes;
+- did a single wick incorrectly move a boundary;
+- did accepted extensions represent repeated price acceptance;
+- was the January downside move recognized as an accepted outside state;
+- is effective exit separated from causal confirmation;
+- does fixed-bound baseline or accepted-extension primary better preserve the same broad zone without swallowing the exit.
 
-## Review instructions
-
-Explain that the user checks:
-
-- whether the box represents one accepted horizontal price area;
-- whether repeated EMA27 crossings remain inside the same zone;
-- whether a failed breakout correctly expands the boundary;
-- whether the zone ends at the first accepted outside move;
-- whether the cyan probation is visually separate from the yellow disputed zone;
-- whether the December–January zone ends at the accepted break of its lower horizontal boundary rather than at a later EMA confirmation.
+Do not analyze prediction or trading value.
 
 ## Report
 
-Report:
+Explain:
 
-- why EXP-011B EMA/recovery state machines were stopped;
-- the new price-zone object;
-- causal seed construction;
-- boundary-update logic;
-- all zones and final bounds;
-- all exit attempts;
-- R5-to-zone mapping;
-- acceptance results;
-- Binance spot versus Bybit perpetual warning;
-- no predictive or trading claim.
+- the R1 lookahead defect;
+- the exact causal fix;
+- why wick extremes and accepted body boundaries are separated;
+- initial boundary values for every zone;
+- every outside-state candidate and decision;
+- every accepted extension and rejected wick excursion;
+- primary versus fixed-bound baseline comparison;
+- all acceptance results;
+- Binance spot versus Bybit perpetual warning.
 
-Status: `AWAITING_TW_PRICE_ZONE_REVIEW`.
+Status:
 
-## Project queue
+`AWAITING_TW_ACCEPTED_BOUNDARY_REVIEW`
 
-Update `PROJECT_QUEUE.md`:
+Do not claim predictive or trading value.
 
-- EXP-011B is paused after R5 because EMA-centered conflict boundaries were not visually stable.
-- EXP-012 studies causal horizontal disputed price zones in LONG context.
-- Next action is TradingView validation of zone starts, bounds, boundary expansions, effective exits, and confirmations.
-- Technical Ratings remains postponed until the zone boundaries are accepted.
+## Validation
 
-## Safety and validation
+Before commit verify:
 
-- Never modify `docs/DEFINITIONS.md`.
-- Never modify EXP-011 or EXP-011A.
-- Preserve EXP-011B R1–R5 artifacts.
-- Never stage or commit:
-  `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
-- No date-specific, price-specific, or zone-ID-specific exceptions.
-- Verify the current bar is excluded from all pre-bar boundary calculations.
-- Verify candidate boundaries are frozen during probation.
-- Verify boundaries only expand after failed outside attempts.
-- Verify accepted exit uses six closed bars.
-- Verify no data after `2024-01-08` is used.
-- Verify Pine/CSV timestamps and bounds match.
-- Verify Pine contains no EMA plots and no `strategy()`.
-- Run `python3 -m py_compile` and deterministic rerun checks.
+- all R1 snapshots exist;
+- no attempt reads bars after its recorded decision/failure time;
+- failure-bar extrema use only candidate through failure inclusive;
+- no boundary is updated from a wick alone;
+- initial boundaries use body-based robust estimators;
+- accepted extensions use outside closes and body levels;
+- the fixed-bound baseline uses identical starts and exit logic;
+- no data after `2024-01-08` is used;
+- Pine and CSV timestamps match;
+- Pine contains no `strategy(` and no EMA plots;
+- `docs/DEFINITIONS.md`, EXP-011, EXP-011A, and EXP-011B are unchanged;
+- existing unrelated EXP009A Pine is not staged or committed.
+
+Known unrelated local file:
+
+`experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
+
+Preserve it unstaged and uncommitted.
 
 ## Commit and result
 
-Use implementation commit message:
+Implementation commit message:
 
-`EXP-012 detect causal disputed price zones`
+`EXP-012 model accepted boundary state causally`
 
-Follow `AGENTS.md`, including separately writing, committing, and pushing `.codex/RESULT.md`.
+Follow `AGENTS.md`, including separately writing and committing `.codex/RESULT.md`.
 
 The result must report:
 
 - implementation SHA and push status;
-- task status;
-- number of zones;
-- every zone start, bounds-confirmation time, initial/final bounds, effective exit, confirmation, and exit direction;
-- boundary update counts;
-- failed/confirmed exit-attempt counts by direction;
-- every acceptance result;
-- R5 mapping;
-- Pine and manual-review paths;
+- R1 and R2 zone counts;
+- primary and fixed-bound baseline counts;
+- every R2 zone with initial/final body bounds, exit direction, effective exit, confirmation, and resolution kind;
+- outside candidate count;
+- accepted exits by direction;
+- accepted extensions by direction;
+- rejected wick/single excursions;
+- result of every acceptance test;
+- whether December downside exit was accepted;
+- R1/R2 mapping;
+- artifact paths;
 - final git status;
-- confirmation that the unrelated EXP009A Pine remained unstaged.
+- confirmation that EXP009A Pine was not staged.
 
 ## Standard launch command
 
