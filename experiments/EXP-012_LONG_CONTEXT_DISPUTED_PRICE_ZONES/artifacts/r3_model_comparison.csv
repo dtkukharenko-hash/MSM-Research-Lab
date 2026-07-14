@@ -1,0 +1,4 @@
+model,parent_zone_count,confirmed_parent_up_count,confirmed_parent_down_count,open_at_train_end_count
+R3_HIERARCHICAL_PRICE_PLUS_PARENT_EMA,3,0,0,3
+PRICE_ONLY_IMMEDIATE_CLOSE_BASELINE,6,4,2,0
+PRICE_PLUS_INTERNAL_EMA12_BASELINE,6,4,2,0

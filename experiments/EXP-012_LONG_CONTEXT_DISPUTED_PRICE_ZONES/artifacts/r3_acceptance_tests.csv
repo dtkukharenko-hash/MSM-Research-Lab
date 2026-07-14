@@ -1,0 +1,22 @@
+test_id,test_name,expected_result,actual_result,status,details
+EXPECTED_THREE_PARENT_ZONES,manual review suggests three parents,3 parents,3 parents,PASS,P001;P002;P003
+FIRST_PARENT_COMPACT,first compact parent,one LC001 parent,1 matching,PASS,
+NOVEMBER_SINGLE_PARENT,November is one parent,one LC002 parent,1 matching,PASS,
+NOVEMBER_HAS_MULTIPLE_INTERNAL_PHASES,November has multiple internal phases,>=2 phases,6,PASS,
+DECEMBER_JANUARY_SINGLE_PARENT,December-January is one parent,one LC003 parent,1 matching,PASS,
+DECEMBER_HAS_MULTIPLE_INTERNAL_PHASES,December has multiple internal phases,>=2 phases,5,PASS,
+NOVEMBER_PARENT_UP_WITH_FRESH_EMA_UP_AWAY,November parent up with fresh EMA up-away,confirmed up,False,FAIL,
+DECEMBER_PARENT_DOWN_WITH_FRESH_EMA_DOWN_TOWARD,December parent down with fresh EMA down-toward,confirmed down,False,FAIL,
+MID_DECEMBER_UP_REMAINS_INTERNAL,mid-December up remains internal,internal phase,True,PASS,
+MID_DECEMBER_EARLY_DOWN_REMAINS_INTERNAL,mid-December early down remains internal,internal phase,True,PASS,
+FINAL_DOWNSIDE_COMPARISON_FILTERS_DIRECTION,downside comparison filters direction,DOWN only,False,FAIL,
+NO_PARENT_CLOSE_FROM_PRICE_ONLY,no parent close from price only,joint required,True,PASS,
+NO_PARENT_CLOSE_FROM_EMA_ONLY,no parent close from EMA only,price+EMA required,True,PASS,
+NO_STALE_EMA_ASSOCIATION,freshness states recorded,no arbitrary old event,True,PASS,
+NO_DUPLICATE_PARENT_EMA_BEFORE_REARM,duplicate parent EMA suppressed,suppression tracked,True,PASS,suppressed=1
+NO_POST_DECISION_DATA_USED,attempts stop at decision,last timestamp fields present,True,PASS,
+NO_WICK_ONLY_PARENT_BOUNDARY_UPDATE,extensions use body evidence,no wick only,True,PASS,
+NO_DATE_HARDCODING,no date hardcoding,general algorithm,chronological detector,PASS,
+NO_PRICE_HARDCODING,no price hardcoding,body estimators,OHLC-derived bounds,PASS,
+NO_PARENT_OR_PHASE_ID_HARDCODING,no ID hardcoding,chronological IDs,generated IDs,PASS,
+NO_FUTURE_PERIOD_USED,no future period,no data after 2024-01-08,2024-01-08 23:59:59.999000,PASS,

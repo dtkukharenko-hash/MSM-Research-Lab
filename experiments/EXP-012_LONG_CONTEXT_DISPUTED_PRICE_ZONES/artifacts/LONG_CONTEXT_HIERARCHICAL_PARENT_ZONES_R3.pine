@@ -1,0 +1,53 @@
+//@version=6
+indicator("EXP-012 Hierarchical Parent Zones R3", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=100)
+
+selectedModel = input.string("R3_HIERARCHICAL_PRICE_PLUS_PARENT_EMA", "selectedModel", options=["R3_HIERARCHICAL_PRICE_PLUS_PARENT_EMA", "PRICE_ONLY_IMMEDIATE_CLOSE_BASELINE", "PRICE_PLUS_INTERNAL_EMA12_BASELINE"])
+showParentZones = input.bool(true, "showParentZones")
+showInternalPhases = input.bool(false, "showInternalPhases")
+showParentEmaEvents = input.bool(false, "showParentEmaEvents")
+showInternalEmaEvents = input.bool(false, "showInternalEmaEvents")
+showCoreTriggers = input.bool(false, "showCoreTriggers")
+selectedParent = input.string("ALL", "selectedParent", options=["ALL", "P001", "P002", "P003"])
+
+var string[] pids = array.from("P001", "P002", "P003")
+var int[] starts = array.from(1698753600000, 1699804800000, 1702252800000)
+var int[] effs = array.from(1698940800000, 1701705600000, 1704340800000)
+var int[] confs = array.from(1698940800000, 1701705600000, 1704340800000)
+var float[] uppers = array.from(0.30310000, 0.39760000, 0.66150000)
+var float[] lowers = array.from(0.28750000, 0.35680000, 0.53280000)
+var float[] tops = array.from(0.30388000, 0.39964000, 0.66793500)
+var float[] bottoms = array.from(0.28672000, 0.35476000, 0.52636500)
+var string[] peDirs = array.from("PARENT_EMA_DOWN_TOWARD_EMA200", "PARENT_EMA_UP_AWAY_FROM_EMA200", "PARENT_EMA_UP_AWAY_FROM_EMA200", "PARENT_EMA_UP_AWAY_FROM_EMA200", "PARENT_EMA_DOWN_TOWARD_EMA200")
+var int[] peTimes = array.from(1697688000000, 1700481600000, 1701561600000, 1703736000000, 1704312000000)
+
+f_visible(string id) =>
+    selectedParent == "ALL" or selectedParent == id
+
+f_pe_mark(string cls) =>
+    cls == "PARENT_EMA_UP_AWAY_FROM_EMA200" ? "PEU" : cls == "PARENT_EMA_DOWN_TOWARD_EMA200" ? "PED" : "PEG"
+
+if selectedModel == "R3_HIERARCHICAL_PRICE_PLUS_PARENT_EMA"
+    for i = 0 to array.size(pids) - 1
+        string pid = array.get(pids, i)
+        int st = array.get(starts, i)
+        int ef = array.get(effs, i)
+        int cn = array.get(confs, i)
+        float up = array.get(uppers, i)
+        float lo = array.get(lowers, i)
+        float top = array.get(tops, i)
+        float bot = array.get(bottoms, i)
+        if showParentZones and f_visible(pid) and time >= st and time[1] < st
+            box.new(st, top, ef, bot, xloc=xloc.bar_time, bgcolor=color.new(color.yellow, 84), border_color=color.new(color.yellow, 20))
+            box.new(ef, top, cn, bot, xloc=xloc.bar_time, bgcolor=color.new(color.aqua, 92), border_color=color.new(color.aqua, 45))
+            line.new(st, up, cn, up, xloc=xloc.bar_time, color=color.new(color.orange, 0), width=2)
+            line.new(st, lo, cn, lo, xloc=xloc.bar_time, color=color.new(color.orange, 0), width=2)
+            line.new(st, bot, st, top, xloc=xloc.bar_time, color=color.new(color.yellow, 0), width=2)
+            line.new(ef, bot, ef, top, xloc=xloc.bar_time, color=color.new(color.lime, 0), width=3)
+            line.new(cn, bot, cn, top, xloc=xloc.bar_time, color=color.new(color.aqua, 0), width=2, style=line.style_dashed)
+            label.new(st, top, pid, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.yellow, 0), textcolor=color.black, size=size.small)
+
+for j = 0 to array.size(peTimes) - 1
+    int tt = array.get(peTimes, j)
+    string cls = array.get(peDirs, j)
+    if selectedModel == "R3_HIERARCHICAL_PRICE_PLUS_PARENT_EMA" and showParentEmaEvents and tt > 0 and time >= tt and time[1] < tt
+        label.new(tt, close, f_pe_mark(cls), xloc=xloc.bar_time, style=label.style_label_right, color=color.new(color.purple, 0), textcolor=color.white, size=size.tiny)

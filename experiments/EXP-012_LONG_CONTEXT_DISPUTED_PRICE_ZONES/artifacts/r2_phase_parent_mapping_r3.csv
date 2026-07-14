@@ -1,0 +1,7 @@
+r2_zone_id,parent_zone_id,mapping_reason
+Z001,P001,chronological parent grouping by broad process
+Z002,P002,chronological parent grouping by broad process
+Z003,P002,chronological parent grouping by broad process
+Z004,P003,chronological parent grouping by broad process
+Z005,P003,chronological parent grouping by broad process
+Z006,P003,chronological parent grouping by broad process
