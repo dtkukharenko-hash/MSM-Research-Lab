@@ -1,94 +1,87 @@
 # Latest Codex Result
 
-- task_id: `EXP-011B-R5-STRUCTURAL-RESET`
-- task_status: `AWAITING_TW_STRUCTURAL_RESET_REVIEW`
-- implementation_commit_sha: `b495da12511b46261c58707ffb210b2430c9d1ea`
+- task_id: `EXP-012-LONG-CONTEXT-DISPUTED-PRICE-ZONES`
+- task_status: `AWAITING_TW_PRICE_ZONE_REVIEW`
+- implementation_commit_sha: `5b00b2ee291985dc68a9f58faefa9ea58db08c9f`
 - implementation_push_status: `PUSHED origin/main`
 - result_commit_status: `PUSHED origin/main`
 
 ## Summary
 
-Implemented EXP-011B R5 structural-reset hierarchy for LONG dispute sections. R5 preserves R4 snapshots, rejects summed recovery-strength section closing, separates `STRUCTURAL_RESET_CANDIDATE` from `INTERNAL_RECOVERY`, uses 6-bar structural reset confirmation and 24-bar internal recovery persistence, and generates the R5 CSV/Pine/manual-review artifacts.
+Implemented EXP-012 as a new research-only experiment that detects causal horizontal disputed price zones inside LONG context on ADAUSDT 4H for `2023-10-18` through `2024-01-08`.
 
-R5 produced 3 sections. It preserved the November chain and the late-December chain, but did not split early December under the general frozen structural-reset rule. This failure is recorded honestly in acceptance results.
+The detector uses OHLC-derived EMA27/EMA200 context diagnostics, causal upper/lower price bounds, failed outside-close boundary expansion, and six-bar accepted outside movement. It does not create trading entries, exits, stops, PnL, backtest, forecasts, Technical Ratings, ZigZag, clustering, or BACKBONE_C logic.
+
+EXP-012 produced 3 zones and is ready for TradingView price-zone review.
 
 ## Created files
 
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_DISPUTE_ADAPTIVE_RECOVERY_R4_SNAPSHOT.pine`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_DISPUTE_STRUCTURAL_RESET_R5.pine`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/conflict_bar_features_r5.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/dispute_episodes_r4_snapshot.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/dispute_episodes_r5.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/long_dispute_events_r5.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/long_dispute_sections_r4_snapshot.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/long_dispute_sections_r5.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/manual_structural_reset_review.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/new_configuration_attempts_r5.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/r4_r5_section_mapping.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/r5_acceptance_tests.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/recovery_attempts_r4_snapshot.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/recovery_attempts_r5.csv`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/structural_reset_attempts_r5.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/TASK.md`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/REPORT.md`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/REVIEW_INSTRUCTIONS.md`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012.py`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/LONG_CONTEXT_DISPUTED_PRICE_ZONES.pine`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/acceptance_tests.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/long_context_disputed_zones.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/manual_zone_review.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r5_zone_mapping.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_bar_features.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_boundary_events.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/zone_exit_attempts.csv`
 
 ## Modified files
 
 - `PROJECT_QUEUE.md`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/REPORT.md`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/REVIEW_INSTRUCTIONS.md`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/TASK.md`
-- `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/experiment_011b.py`
 
 ## Tests run
 
 - `git pull --ff-only origin main`
-- `python3 experiments/EXP-011B_LONG_CONFLICT_WINDOWS/experiment_011b.py`
-- `python3 -m py_compile experiments/EXP-011B_LONG_CONFLICT_WINDOWS/experiment_011b.py`
-- R5 artifact cutoff scan: no timestamp after `2024-01-09 00:00:00`
-- Pine R5 scan: no `strategy(`, `plot(`, `ema27`, `ema200`, or `showEMA`
-- Manual review CSV user-field emptiness check: PASS
-- R4 snapshot existence check: PASS
+- `python3 experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012.py`
+- `python3 -m py_compile experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012.py`
+- Determinism check: repeated generator run produced identical SHA-256 hashes for generated docs and artifacts.
+- Date cutoff scan: no artifact timestamp exceeded `2024-01-09 00:00:00` open-time boundary or `2024-01-08 23:59:59.999000` close-time boundary.
+- Pine scan: no `strategy(`, `plot(`, `ema27`, `ema200`, or `showEMA`; Pine file is 72 lines.
+- Manual review CSV user-field emptiness check: PASS.
+- Forbidden-path diff check for `docs/DEFINITIONS.md`, EXP-011, EXP-011A, and EXP-011B: empty.
 - `git diff --cached --check`
-- Cached forbidden-path diff check for `docs/DEFINITIONS.md`, EXP-011, EXP-011A, and EXP009A Pine: empty
+- Cached forbidden-path diff check for `docs/DEFINITIONS.md`, EXP-011, EXP-011A, EXP-011B, and EXP009A Pine: empty.
 
 ## Acceptance results
 
-- `NOVEMBER_CHAIN_PRESERVED`: `PASS` — `1 matching section(s): LC002`
-- `DECEMBER_STRUCTURAL_RESET_SPLIT`: `FAIL` — `1 section(s): LC003`
-- `LATE_DECEMBER_CHAIN_PRESERVED`: `PASS` — `1 matching section(s): LC003`
-- `EXPECTED_FOUR_SECTIONS`: `FAIL` — `3 R5 sections`
+- `EXPECTED_THREE_ZONES`: `PASS` — `3 zones`
+- `FIRST_ZONE_PRESERVED`: `PASS` — `1 matching zone(s): Z001`
+- `NOVEMBER_SINGLE_ZONE`: `PASS` — `1 matching zone(s): Z002`
+- `DECEMBER_JANUARY_SINGLE_ZONE`: `PASS` — `1 matching zone(s): Z003`
+- `LC003_EARLIER_DOWNSIDE_EXIT_THAN_R5`: `FAIL` — `zone 2024-01-08 20:00:00 vs R5 2024-01-06 16:00:00`
 - `NO_DATE_HARDCODING`: `PASS`
+- `NO_PRICE_BOUND_HARDCODING`: `PASS`
 - `NO_SECTION_ID_HARDCODING`: `PASS`
 - `NO_FUTURE_PERIOD_USED`: `PASS`
 
 ## Metrics
 
-- R4 sections: `6`
-- R5 sections: `3`
-- Episodes: `10`
-- Internal recoveries: `8`
-- Failed internal recoveries: `7`
-- Confirmed persistent internal recoveries: `1`
-- Structural-reset candidates: `1`
-- Failed structural resets: `0`
-- Confirmed structural resets: `1`
-- Confirmed new down configurations: `1`
+- Zones: `3`
+- Exit attempts: `6`
+- Accepted upside exits: `2`
+- Accepted downside exits: `0`
+- Failed upside exits: `3`
+- Failed downside exits: `1`
 
-R5 sections:
+Zones:
 
-- `LC001`: R4 `LC001`, R3 `LC001`, R2 `LC001`, D `2023-10-31 12:00:00`, E `2023-11-02 00:00:00`, C `2023-11-03 00:00:00`, `CONFIRMED_STRUCTURAL_RESET`
-- `LC002`: R4 `LC002;LC003`, R3 `LC002`, R2 `LC002;LC003;LC004`, D `2023-11-12 16:00:00`, E `2023-12-01 16:00:00`, C `2023-12-06 04:00:00`, `CONFIRMED_PERSISTENT_INTERNAL_RECOVERY`
-- `LC003`: R4 `LC004;LC005;LC006`, R3 `LC003`, R2 `LC005;LC006;LC007`, D `2023-12-11 00:00:00`, E `2024-01-06 16:00:00`, C `2024-01-08 08:00:00`, `CONFIRMED_NEW_DOWN_CONFIGURATION`
+- `Z001`: R5 `LC001`, start `2023-10-31 12:00:00`, bounds `0.284500` to `0.304600`, effective exit `2023-11-01 20:00:00`, confirmation `2023-11-02 16:00:00`, `ACCEPTED_UPSIDE_EXIT`, boundary updates `0`
+- `Z002`: R5 `LC002`, start `2023-11-12 16:00:00`, bounds `0.350000` to `0.415000`, effective exit `2023-12-05 16:00:00`, confirmation `2023-12-06 12:00:00`, `ACCEPTED_UPSIDE_EXIT`, boundary updates `2`
+- `Z003`: R5 `LC003`, start `2023-12-11 00:00:00`, bounds `0.464300` to `0.680000`, effective marker `2024-01-08 20:00:00`, confirmation marker `2024-01-08 20:00:00`, `OPEN_AT_TRAIN_END`, boundary updates `2`
 
 ## Warnings
 
-- `DECEMBER_STRUCTURAL_RESET_SPLIT` failed under the general R5 frozen reset-level rule. The early December recovery did not clear the structural reset level because the pre-dispute reference high dominated the reset level.
-- `EXPECTED_FOUR_SECTIONS` failed because R5 produced 3 sections, not 4.
-- Binance spot OHLC was used for automatic outputs; manual review is expected on Bybit ADAUSDT Perpetual Contract 4H, so individual candle boundaries may differ.
+- `LC003_EARLIER_DOWNSIDE_EXIT_THAN_R5` failed. The horizontal price-zone detector kept Z003 open at the development-period end instead of producing an earlier accepted downside exit than R5.
+- Automatic outputs use Binance spot ADAUSDT 4H; manual review is expected on Bybit ADAUSDT Perpetual Contract 4H, so individual candle boundaries may differ.
 - Existing unrelated EXP009A Pine modification remains unstaged and uncommitted.
 
 ## Final git status
 
-After implementation push and before this result commit:
+After implementation push and before this result update:
 
 ```text
  M experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine
