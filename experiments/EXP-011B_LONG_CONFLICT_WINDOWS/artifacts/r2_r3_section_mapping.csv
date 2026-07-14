@@ -1,0 +1,4 @@
+r3_section_id,source_r2_sections,r3_dispute_start,r3_effective_exit,r3_exit_confirmation,r3_exit_kind,r2_section_count,merged_due_to_failed_recovery,recovery_attempt_count,failed_recovery_count,mapping_comment
+LC001,LC001,2023-10-31 12:00:00,2023-11-01 16:00:00,2023-11-06 00:00:00,CONFIRMED_RECOVERED_LONG,1,False,1,0,single R2 section kept after confirmed exit
+LC002,LC002;LC003;LC004,2023-11-12 16:00:00,2023-12-01 16:00:00,2023-12-06 04:00:00,CONFIRMED_RECOVERED_LONG,3,True,4,3,R2 local recovery failed probation; chained as episodes
+LC003,LC005;LC006;LC007,2023-12-11 00:00:00,2024-01-06 16:00:00,2024-01-08 08:00:00,CONFIRMED_NEW_DOWN_CONFIGURATION,3,True,4,4,R2 local recovery failed probation; chained as episodes

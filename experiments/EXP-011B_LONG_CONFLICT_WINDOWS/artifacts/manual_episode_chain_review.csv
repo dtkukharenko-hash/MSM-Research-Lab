@@ -1,0 +1,4 @@
+section_id,source_r2_sections,auto_dispute_start,auto_effective_exit,auto_exit_confirmation,auto_exit_kind,episode_count,recovery_attempt_count,failed_recovery_count,section_merge_correct,dispute_start_correct,episode_boundaries_correct,failed_recoveries_correct,effective_exit_correct,exit_confirmation_correct,should_merge_with_previous,should_merge_with_next,should_split,corrected_dispute_start,corrected_effective_exit,comment
+LC001,LC001,2023-10-31 12:00:00,2023-11-01 16:00:00,2023-11-06 00:00:00,CONFIRMED_RECOVERED_LONG,1,1,0,,,,,,,,,,,,
+LC002,LC002;LC003;LC004,2023-11-12 16:00:00,2023-12-01 16:00:00,2023-12-06 04:00:00,CONFIRMED_RECOVERED_LONG,4,4,3,,,,,,,,,,,,
+LC003,LC005;LC006;LC007,2023-12-11 00:00:00,2024-01-06 16:00:00,2024-01-08 08:00:00,CONFIRMED_NEW_DOWN_CONFIGURATION,5,4,4,,,,,,,,,,,,

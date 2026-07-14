@@ -1,0 +1,2 @@
+section_id,attempt_id,effective_open_time,detection_open_time,probation_end_open_time,status,failure_open_time,failure_reason,ema27_below_ema200_count,close_below_ema27_count,ema27_nonpositive_count
+LC003,N001,2024-01-06 16:00:00,2024-01-07 00:00:00,2024-01-08 08:00:00,CONFIRMED_NEW_DOWN_CONFIGURATION,,,8,8,8

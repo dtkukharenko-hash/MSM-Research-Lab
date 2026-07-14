@@ -26,20 +26,23 @@
 
 ### EXP-011B_LONG_CONFLICT_WINDOWS
 
-Статус: AWAITING_TW_FULL_SECTION_REVIEW
+Статус: AWAITING_TW_EPISODE_CHAIN_REVIEW
 
-EXP-011B V1 нашёл строгие `CORE_TRIGGER`, но границы участков оказались неполными: левая граница
-начиналась на уже подтверждённом конфликте, а правая могла закончиться на техническом reset или
-EMA27/EMA200 cross. EXP-011B R2 сохранил V1 snapshot и расширил участки до полного спорного процесса:
-`LAST_ALIGNED_RUN` → `DISPUTE_START` → `CORE_TRIGGER` → `RESOLUTION_CANDIDATE` → `DISPUTE_END`.
-Найдено 7 R2 LC-участков: 6 `RECOVERED_LONG`, 1 `NEW_DOWN_CONFIGURATION`, `OPEN_AT_TRAIN_END` = 0.
-CORE_TRIGGER и EMA-cross считаются внутренними событиями, не финальной классификацией.
+EXP-011B V1 нашёл строгие `CORE_TRIGGER`, R2 правильно расширил окна влево и вправо, но ошибочно
+принимал краткие восстановления `3 of 4 recovered_long_bar` за окончательный выход. EXP-011B R3
+вводит `DISPUTE_SECTION`, `DISPUTE_EPISODE`, `RECOVERY_ATTEMPT`, `FAILED_RECOVERY`,
+`EFFECTIVE_EXIT` и `EXIT_CONFIRMATION` с фиксированным `RECOVERY_PROBATION_BARS = 24`.
+R2 сохранён snapshot-файлами. R3 автоматически объединил 7 R2 LC-участков в 3 цепочки episodes:
+`LC002+LC003+LC004` прошли обязательный acceptance test как один section; `LC005+LC006+LC007`
+также объединены общей логикой failed recovery / confirmed new down configuration. Найдено 10
+episodes, 9 recovery attempts, 7 failed recoveries, 2 `CONFIRMED_RECOVERED_LONG`,
+1 `CONFIRMED_NEW_DOWN_CONFIGURATION`, `OPEN_AT_TRAIN_END` = 0.
 
 Следующее действие:
-Проверить полные участки `LC001`–`LC007` вручную в TradingView на Bybit ADAUSDT Perpetual Contract 4H
-через `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_CONFLICT_WINDOWS.pine` и заполнить
-`experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/manual_full_section_review.csv`. Technical Ratings
-TradingView добавлять только после фиксации границ.
+Проверить R3 цепочки `LC001`–`LC003` вручную в TradingView на Bybit ADAUSDT Perpetual Contract 4H
+через `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_DISPUTE_EPISODE_CHAINS_R3.pine`
+и заполнить `experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/manual_episode_chain_review.csv`.
+Technical Ratings TradingView добавлять только после утверждения section и episode boundaries.
 
 ---
 

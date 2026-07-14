@@ -1,28 +1,38 @@
-# EXP-011B R2 Full Section Review
+# EXP-011B R3 Episode Chain Review
 
-Status: AWAITING_TW_FULL_SECTION_REVIEW
+Status: AWAITING_TW_EPISODE_CHAIN_REVIEW
 
 ## Workflow
 
 1. Open Bybit ADAUSDT Perpetual Contract.
 2. Select 4H.
 3. Add your own EMA27 and EMA200.
-4. Add `artifacts/LONG_CONFLICT_WINDOWS.pine`.
-5. Select `LC001`, `LC002`, and so on.
-6. Review the whole process, not only the strict trigger.
-7. Fill `artifacts/manual_full_section_review.csv`.
+4. Add `artifacts/LONG_DISPUTE_EPISODE_CHAINS_R3.pine`.
+5. Select one R3 `LC` at a time.
+6. Review the chain `D -> episode -> R -> possible F -> next episode -> final E -> C`.
+7. Fill `artifacts/manual_episode_chain_review.csv`.
 
-## Check Each LC
+## Event Legend
 
-- Is a stable aligned long visible before `D`?
-- Did loss of alignment start earlier than `D`?
-- Is `D` the first dispute bar?
-- Is `T` inside an already-started process?
-- Does the yellow area avoid ending on a temporary bounce?
-- Is there a clear stable state after `E`?
-- Should the section continue further?
-- Should it merge with a neighboring LC?
-- Are events missing to the left or right?
+- `D`: DISPUTE_START.
+- `T`: CORE_TRIGGER.
+- `R`: RECOVERY_ATTEMPT.
+- `F`: FAILED_RECOVERY.
+- `N`: NEW_CONFIGURATION_ATTEMPT.
+- `X`: EMA27/EMA200 cross down.
+- `E`: EFFECTIVE_EXIT.
+- `C`: EXIT_CONFIRMATION.
+- `O`: OPEN_AT_TRAIN_END.
+
+## Check Each R3 LC
+
+- Are internal episodes merged correctly?
+- Was the section closed on a real exit rather than a local bounce?
+- Are failed recoveries marked at the right return of dispute?
+- Is dispute absent after `E` through `C`?
+- Does the new clear state persist through `C`?
+- Should this section merge with a neighboring LC?
+- Should it split into separate sections?
 
 ## Do Not Analyze Yet
 
