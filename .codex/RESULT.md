@@ -1,37 +1,37 @@
 # Latest Codex Result
 
-- task_id: `EXP-012-R3-HIERARCHICAL-PARENT-ZONES`
-- task_status: `AWAITING_TW_HIERARCHICAL_PARENT_ZONE_REVIEW`
-- implementation_commit_sha: `b06910c81e76c7c4c824caf7ce57c79304be6e99`
+- task_id: `EXP-012-R4-CAUSAL-PARENT-STATE-MACHINE`
+- task_status: `AWAITING_TW_CAUSAL_PARENT_STATE_MACHINE_REVIEW`
+- implementation_commit_sha: `9ee608ab39791d4694e75a6f7a6e9cd5eb018438`
 - implementation_push_status: `PUSHED origin/main`
 - result_commit_status: `PUSHED origin/main`
 
 ## Summary
 
-Implemented EXP-012 R3 as a hierarchical LONG-context model: broad parent disputed zones remain open through local accepted departures until a fresh same-direction parent EMA27 event and a joint 12-bar persistence probation both confirm. R3 preserves R1/R2 outputs, adds an exact R2 snapshot, and writes all R3 outputs separately.
+Implemented EXP-012 R4 as a chronological raw-bar state machine. The primary detector now builds parents from OHLC-derived causal start/boundary logic, tracks active price regimes and active EMA regimes, creates joint candidates from active-regime overlap, continues after failed joints, and maps R1/R2/R3/R5 artifacts only after R4 outputs are frozen.
 
-Primary R3 produced 3 parent zones, 13 internal phases, 1 joint parent-resolution candidate, 0 confirmed parent resolutions, and 1 failed joint candidate. The model comparison baselines each produced 6 parent zones.
+Primary R4 produced 3 parents, 5 active price regimes, 6 primary EMA events, 5 joint candidates, 2 failed joints, and 3 confirmed parent resolutions.
 
 ## Created files
 
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012_r2_snapshot.py`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012_r3.py`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_disputed_zones_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/internal_phases_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_price_departures_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_joint_resolution_candidates_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_boundary_events_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_accepted_extensions_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/internal_ema27_departures_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_ema27_departures_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_ema27_rearm_events_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/price_parent_ema_alignment_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r2_phase_parent_mapping_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r3_model_comparison.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r3_acceptance_tests.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_zone_bar_features_r3.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/manual_hierarchical_parent_review.csv`
-- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/LONG_CONTEXT_HIERARCHICAL_PARENT_ZONES_R3.pine`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012_r4.py`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_disputed_zones_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/internal_phases_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/local_price_candidates_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/active_price_regimes_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/ema_departure_events_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/active_ema_regimes_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/ema_rearm_events_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/joint_parent_candidates_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_boundary_events_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_accepted_extensions_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/state_machine_events_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/parent_zone_bar_features_r4.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r4_historical_mapping.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r4_model_comparison.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/r4_acceptance_tests.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/manual_causal_parent_review.csv`
+- `experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/artifacts/LONG_CONTEXT_CAUSAL_PARENT_STATE_MACHINE_R4.pine`
 
 ## Modified files
 
@@ -43,92 +43,100 @@ Primary R3 produced 3 parent zones, 13 internal phases, 1 joint parent-resolutio
 ## Tests run
 
 - `git pull --ff-only origin main`
-- Read `AGENTS.md`, `PROJECT_INSTRUCTIONS.md`, and `.codex/TASK.md`; `.codex/TASK_ADDENDUM.md` was treated as historical R2 documentation only.
-- `python3 experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012_r3.py`
-- Repeated generator run produced identical SHA-256 hashes for R3 docs and artifacts.
-- `python3 -m py_compile experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012_r3.py experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012_r2_snapshot.py`
-- `cmp -s experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012.py experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012_r2_snapshot.py`
-- R3 CSV timestamp cutoff scan: no timestamp at or after `2024-01-09 00:00:00`.
-- Pine R3 scan: no `strategy(`, `plot(`, `ta.ema`, or `request.security`.
+- Read `AGENTS.md`, `PROJECT_INSTRUCTIONS.md`, and `.codex/TASK.md`; `.codex/TASK_ADDENDUM.md` treated as historical R2 documentation only.
+- `python3 experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012_r4.py`
+- Repeated R4 generator run produced identical SHA-256 hashes for R4 docs and artifacts.
+- `python3 -m py_compile experiments/EXP-012_LONG_CONTEXT_DISPUTED_PRICE_ZONES/experiment_012_r4.py`
+- Detector-only run without post-run mapping: `DETECTOR_ONLY_PARENTS 3`, `DETECTOR_ONLY_JOINTS 5`.
+- R4 CSV timestamp cutoff scan: no timestamp at or after `2024-01-09 00:00:00`.
+- Pine R4 scan: no `strategy(`, `plot(`, `ta.ema`, or `request.security`.
 - Manual review CSV user-field emptiness check: PASS.
 - Forbidden-path diff checks for `docs/DEFINITIONS.md`, EXP-011, EXP-011A, EXP-011B, and EXP009A Pine: empty for staged changes.
+- R1/R2/R3 artifact diff check: no existing non-R4 artifact changed.
 - `git diff --cached --check`
 
 ## Acceptance results
 
-- `EXPECTED_THREE_PARENT_ZONES`: `PASS`
-- `FIRST_PARENT_COMPACT`: `PASS`
-- `NOVEMBER_SINGLE_PARENT`: `PASS`
-- `NOVEMBER_HAS_MULTIPLE_INTERNAL_PHASES`: `PASS`
-- `DECEMBER_JANUARY_SINGLE_PARENT`: `PASS`
-- `DECEMBER_HAS_MULTIPLE_INTERNAL_PHASES`: `PASS`
-- `NOVEMBER_PARENT_UP_WITH_FRESH_EMA_UP_AWAY`: `FAIL`
-- `DECEMBER_PARENT_DOWN_WITH_FRESH_EMA_DOWN_TOWARD`: `FAIL`
-- `MID_DECEMBER_UP_REMAINS_INTERNAL`: `PASS`
-- `MID_DECEMBER_EARLY_DOWN_REMAINS_INTERNAL`: `PASS`
-- `FINAL_DOWNSIDE_COMPARISON_FILTERS_DIRECTION`: `FAIL`
-- `NO_PARENT_CLOSE_FROM_PRICE_ONLY`: `PASS`
-- `NO_PARENT_CLOSE_FROM_EMA_ONLY`: `PASS`
-- `NO_STALE_EMA_ASSOCIATION`: `PASS`
-- `NO_DUPLICATE_PARENT_EMA_BEFORE_REARM`: `PASS`
-- `NO_POST_DECISION_DATA_USED`: `PASS`
-- `NO_WICK_ONLY_PARENT_BOUNDARY_UPDATE`: `PASS`
-- `NO_DATE_HARDCODING`: `PASS`
-- `NO_PRICE_HARDCODING`: `PASS`
-- `NO_PARENT_OR_PHASE_ID_HARDCODING`: `PASS`
-- `NO_FUTURE_PERIOD_USED`: `PASS`
+All 30 R4 acceptance tests passed:
+
+- `DETECTION_USES_RAW_OHLC_NOT_R2_R3_LABELS`
+- `NO_SOURCE_R5_GROUPING_IN_DETECTOR`
+- `EXPECTED_THREE_PRIMARY_PARENTS`
+- `FIRST_PARENT_COMPACT`
+- `NOVEMBER_SINGLE_PARENT`
+- `NOVEMBER_MULTIPLE_INTERNAL_PHASES`
+- `DECEMBER_JANUARY_SINGLE_PARENT`
+- `DECEMBER_MULTIPLE_INTERNAL_PHASES`
+- `MID_DECEMBER_UP_REMAINS_INTERNAL`
+- `MID_DECEMBER_EARLY_DOWN_REMAINS_INTERNAL`
+- `FAILED_JOINT_PARENT_REMAINS_ACTIVE`
+- `FAILED_JOINT_CONTINUES_FROM_NEXT_BAR`
+- `LATER_LOCAL_CANDIDATE_AFTER_FAILED_JOINT`
+- `LATER_JOINT_CANDIDATE_ALLOWED_AFTER_FAILED_JOINT`
+- `PRIMARY_FIRST_PARENT_UP_RESOLUTION`
+- `PRIMARY_NOVEMBER_UP_RESOLUTION`
+- `PRIMARY_DECEMBER_DOWN_RESOLUTION`
+- `DOWNSIDE_COMPARISON_FILTERS_DOWN_DIRECTION`
+- `OPEN_PARENT_COVERS_ACTUAL_TRAIN_END`
+- `ACTIVE_REGIME_OVERLAP_NOT_ARBITRARY_EVENT_AGE`
+- `NO_DUPLICATE_EMA_EVENT_BEFORE_REARM`
+- `NEW_BAND_WINDOW_STRICTLY_AFTER_PREVIOUS_CONFIRMATION`
+- `NO_POST_DECISION_DATA_USED`
+- `NO_WICK_ONLY_PARENT_BOUNDARY_UPDATE`
+- `PRICE_ONLY_BASELINE_EXECUTED_INDEPENDENTLY`
+- `INTERNAL_EMA12_BASELINE_EXECUTED_WITH_EMA_AND_PROBATION`
+- `NO_DATE_HARDCODING`
+- `NO_PRICE_HARDCODING`
+- `NO_PARENT_PHASE_OR_LEGACY_ID_HARDCODING`
+- `NO_FUTURE_PERIOD_USED`
 
 ## Metrics
 
-- Primary parent zones: `3`
-- Price-only immediate-close baseline parent zones: `6`
-- Price plus internal EMA12 baseline parent zones: `6`
-- Internal phases: `13`
-- Local price departures: `13`
-- Joint candidates: `1`; failed `1`; confirmed `0`
-- Parent EMA events: `5`
-- Parent EMA classifications: `PARENT_EMA_UP_AWAY_FROM_EMA200=3`, `PARENT_EMA_DOWN_TOWARD_EMA200=2`
-- Suppressed parent EMA duplicates: `1`
-- EMA rearm counts: `RETURN_REARM=2`, `NEW_BAND_REARM=3`
-- Price/parent EMA association counts: `FRESH_SAME_DIRECTION=4`, `STALE=9`
-- Parent accepted extensions: `UP=3`, `DOWN=1`
-- Acceptance tests: `18 PASS`, `3 FAIL`
-
 Primary parents:
 
-- `P001`: start `2023-10-31 12:00:00`, final body bounds `0.2875`-`0.3031`, internal phases `2`, resolution `OPEN_AT_TRAIN_END`, R2 mapping `Z001`
-- `P002`: start `2023-11-12 16:00:00`, final body bounds `0.3568`-`0.3976`, internal phases `6`, resolution `OPEN_AT_TRAIN_END`, R2 mapping `Z002;Z003`
-- `P003`: start `2023-12-11 00:00:00`, final body bounds `0.5328`-`0.6615`, internal phases `5`, resolution `OPEN_AT_TRAIN_END`, R2 mapping `Z004;Z005;Z006`
+- `P001`: start `2023-10-31 12:00:00`, bounds `0.2875`-`0.3031`, phases `2`, `CONFIRMED_PARENT_UP_RESOLUTION`, confirmation `2023-11-04 16:00:00`
+- `P002`: start `2023-11-12 16:00:00`, bounds `0.3568`-`0.3976`, phases `6`, `CONFIRMED_PARENT_UP_RESOLUTION`, confirmation `2023-12-06 16:00:00`
+- `P003`: start `2023-12-11 00:00:00`, bounds `0.5328`-`0.6675`, phases `2`, `CONFIRMED_PARENT_DOWN_RESOLUTION`, confirmation `2024-01-08 08:00:00`
 
-Internal phase type counts:
+Primary counts:
 
-- `INTERNAL_UP_DEPARTURE=4`
-- `INTERNAL_DOWN_DEPARTURE=1`
-- `INTERNAL_ACCEPTED_UP_EXTENSION=3`
-- `INTERNAL_ACCEPTED_DOWN_EXTENSION=1`
-- `INTERNAL_REJECTED_UP_EXCURSION=2`
-- `INTERNAL_REJECTED_DOWN_EXCURSION=1`
-- `INTERNAL_FAILED_JOINT_DOWN_RESOLUTION=1`
+- parent count: `3`
+- active price regimes: `5`
+- primary EMA events: `6`
+- EMA event classes: `BOOTSTRAP_EMA12 UP away=1`, `BOOTSTRAP_EMA12 DOWN toward=1`, `PARENT_EMA24 UP away=3`, `PARENT_EMA24 DOWN toward=1`
+- EMA rearm: `RETURN_REARM=2`, `NEW_BAND_REARM=1`
+- joint candidates: `5`
+- failed joints: `2`
+- confirmed joints: `3`
+- accepted extensions: `UP=3`, `DOWN=1`
+- acceptance: `30 PASS`, `0 FAIL`
 
-Local price departure counts:
+Joint trace:
 
-- `UP / ACCEPTED_UPSIDE_EXIT_R2=4`
-- `DOWN / ACCEPTED_DOWNSIDE_EXIT_R2=2`
-- `UP / ACCEPTED_EXTENSION=3`
-- `DOWN / ACCEPTED_EXTENSION=1`
-- `UP / REJECTED_WICK_OR_SINGLE_EXCURSION=2`
-- `DOWN / REJECTED_WICK_OR_SINGLE_EXCURSION=1`
+- `JC001` P001 UP confirmed at `2023-11-04 16:00:00`
+- `JC002` P002 UP failed at `2023-11-26 12:00:00`, reason `JOINT_12_BAR_CRITERIA_NOT_MET`
+- `JC003` P002 UP failed at `2023-11-27 00:00:00`, reason `PRICE_DEEP_RECLAIM`
+- `JC004` P002 UP confirmed at `2023-12-06 16:00:00`
+- `JC005` P003 DOWN confirmed at `2024-01-08 08:00:00`
 
-Corrected DOWN-only comparison:
+January continuation trace:
 
-- Implemented explicit DOWN filter for downside comparisons.
-- R3 has no confirmed DOWN parent resolution, so `FINAL_DOWNSIDE_COMPARISON_FILTERS_DIRECTION` is recorded as `FAIL` rather than using an UP or stale event.
+- first failed joint exists before final resolution flow;
+- state-machine event log contains `FAILED_JOINT_CONTINUE_PARENT`;
+- later local candidate after failed joint: yes;
+- later joint candidate after failed joint: yes;
+- final P003 outcome: `CONFIRMED_PARENT_DOWN_RESOLUTION`.
+
+Model comparison:
+
+- `R4_PRICE_PLUS_ACTIVE_PARENT_EMA`: parents `3`, UP `2`, DOWN `1`, open `0`, joints `5`, failed `2`
+- `PRICE_ONLY_IMMEDIATE_CLOSE_BASELINE_R4`: parents `7`, UP `4`, DOWN `3`, open `0`, joints `0`, failed `0`
+- `PRICE_PLUS_ACTIVE_INTERNAL_EMA12_BASELINE_R4`: parents `3`, UP `2`, DOWN `1`, open `0`, joints `5`, failed `2`
 
 ## Warnings
 
-- No parent resolution confirmed under the R3 joint probation rules; all three primary parent zones remain `OPEN_AT_TRAIN_END`.
-- The manual expectations that November resolves upward with fresh parent EMA geometry and December-January resolves downward with fresh parent EMA geometry failed under the implemented causal freshness and probation rules.
-- Binance spot OHLC was used for automatic outputs; manual review is expected on Bybit ADAUSDT Perpetual Contract 4H, so individual candle boundaries may differ.
+- Automatic OHLC outputs use Binance spot; manual review remains Bybit ADAUSDT Perpetual Contract 4H, so candle and boundary differences may exist.
+- Post-run historical mappings are diagnostics only and are not detector inputs.
 - The known unrelated EXP009A Pine modification remains unstaged and uncommitted.
 
 ## Final git status
