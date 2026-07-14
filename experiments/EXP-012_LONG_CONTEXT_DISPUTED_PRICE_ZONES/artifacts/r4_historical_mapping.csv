@@ -1,0 +1,16 @@
+model,parent_id,legacy_source,legacy_id,overlap_reason
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P001,R1,Z001,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P002,R1,Z002,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P003,R1,Z003,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P001,R2,Z001,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P002,R2,Z002,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P002,R2,Z003,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P003,R2,Z004,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P003,R2,Z005,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P003,R2,Z006,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P001,R3,P001,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P002,R3,P002,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P003,R3,P003,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P001,R5,LC001,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P002,R5,LC002,post-run temporal overlap only
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P003,R5,LC003,post-run temporal overlap only

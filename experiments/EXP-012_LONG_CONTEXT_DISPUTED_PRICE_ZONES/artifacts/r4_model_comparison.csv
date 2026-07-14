@@ -1,0 +1,4 @@
+model,parent_count,confirmed_up_count,confirmed_down_count,open_at_train_end_count,joint_candidate_count,failed_joint_count
+R4_PRICE_PLUS_ACTIVE_PARENT_EMA,3,2,1,0,5,2
+PRICE_ONLY_IMMEDIATE_CLOSE_BASELINE_R4,7,4,3,0,0,0
+PRICE_PLUS_ACTIVE_INTERNAL_EMA12_BASELINE_R4,3,2,1,0,5,2

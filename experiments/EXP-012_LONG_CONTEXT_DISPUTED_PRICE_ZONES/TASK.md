@@ -1,5 +1,5 @@
-# EXP-012 R3 - HIERARCHICAL PARENT ZONES
+# EXP-012 R4 - CAUSAL PARENT STATE MACHINE
 
-Status: AWAITING_TW_HIERARCHICAL_PARENT_ZONE_REVIEW
+Status: AWAITING_TW_CAUSAL_PARENT_STATE_MACHINE_REVIEW
 
-Goal: model broad parent disputed price zones with internal phases, fresh parent EMA27 geometry, and joint price/EMA persistence. This is research-only and does not make trading, prediction, PnL, or backtest claims.
+R4 implemented a chronological raw-bar state machine for parent disputed zones, active price regimes, active EMA regimes, joint candidates, failed-joint continuation, baselines, post-run historical mapping, Pine review, and manual review CSV.

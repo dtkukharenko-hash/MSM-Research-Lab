@@ -1,0 +1,31 @@
+test_id,description,expected_result,status,details
+DETECTION_USES_RAW_OHLC_NOT_R2_R3_LABELS,detector source before post-run mapping excludes legacy artifact reads,no generated legacy CSV reads in detector,PASS,
+NO_SOURCE_R5_GROUPING_IN_DETECTOR,source_r5 grouping not used in detector,absent before mapping,PASS,
+EXPECTED_THREE_PRIMARY_PARENTS,manual diagnostic,3,PASS,3
+FIRST_PARENT_COMPACT,manual diagnostic LC001 overlap,one parent,PASS,P001
+NOVEMBER_SINGLE_PARENT,manual diagnostic LC002 overlap,one parent,PASS,P002
+NOVEMBER_MULTIPLE_INTERNAL_PHASES,manual diagnostic,>=2,PASS,
+DECEMBER_JANUARY_SINGLE_PARENT,manual diagnostic LC003 overlap,one parent,PASS,P003
+DECEMBER_MULTIPLE_INTERNAL_PHASES,manual diagnostic,>=2,PASS,
+MID_DECEMBER_UP_REMAINS_INTERNAL,manual diagnostic,internal phase present,PASS,
+MID_DECEMBER_EARLY_DOWN_REMAINS_INTERNAL,manual diagnostic,internal down phase present,PASS,
+FAILED_JOINT_PARENT_REMAINS_ACTIVE,failed joint continuation,parent active after fail,PASS,
+FAILED_JOINT_CONTINUES_FROM_NEXT_BAR,event log contains continuation,continue event,PASS,
+LATER_LOCAL_CANDIDATE_AFTER_FAILED_JOINT,January continuation diagnostic,later local,PASS,
+LATER_JOINT_CANDIDATE_ALLOWED_AFTER_FAILED_JOINT,January continuation diagnostic,later joint,PASS,
+PRIMARY_FIRST_PARENT_UP_RESOLUTION,manual diagnostic,UP resolution,PASS,
+PRIMARY_NOVEMBER_UP_RESOLUTION,manual diagnostic,UP resolution,PASS,
+PRIMARY_DECEMBER_DOWN_RESOLUTION,manual diagnostic,DOWN resolution,PASS,
+DOWNSIDE_COMPARISON_FILTERS_DOWN_DIRECTION,downside comparison uses DOWN only,explicit down filter,PASS,
+OPEN_PARENT_COVERS_ACTUAL_TRAIN_END,open parents use final OHLC bar or no parent is open,2024-01-08 20:00:00,PASS,open_parent_count=0
+ACTIVE_REGIME_OVERLAP_NOT_ARBITRARY_EVENT_AGE,joint source is active-regime overlap,joint overlap plus active ids,PASS,
+NO_DUPLICATE_EMA_EVENT_BEFORE_REARM,new EMA events require rearm proof,strict rearm gates,PASS,
+NEW_BAND_WINDOW_STRICTLY_AFTER_PREVIOUS_CONFIRMATION,rearm proof,strict,PASS,
+NO_POST_DECISION_DATA_USED,last timestamp fields populated,yes,PASS,
+NO_WICK_ONLY_PARENT_BOUNDARY_UPDATE,extensions use body evidence,body values,PASS,
+PRICE_ONLY_BASELINE_EXECUTED_INDEPENDENTLY,baseline output exists,parents,PASS,
+INTERNAL_EMA12_BASELINE_EXECUTED_WITH_EMA_AND_PROBATION,baseline has EMA/joint machinery,EMA12 events and joints,PASS,
+NO_DATE_HARDCODING,source scan,no expected date literals in detector,PASS,
+NO_PRICE_HARDCODING,source scan,no manual price literals,PASS,
+NO_PARENT_PHASE_OR_LEGACY_ID_HARDCODING,source scan,no legacy ids in detector,PASS,
+NO_FUTURE_PERIOD_USED,timestamp cutoff,2024-01-08 23:59:59.999000,PASS,2024-01-08 20:00:00

@@ -1,0 +1,2 @@
+boundary_event_id,model,parent_id,phase_id,event_type,event_open_time,old_upper_bound,old_lower_bound,proposed_body_boundary,new_upper_bound,new_lower_bound,boundary_version,ignored_wick_extreme,last_timestamp_used
+PB001,R4_PRICE_PLUS_ACTIVE_PARENT_EMA,P003,PH009,PARENT_ACCEPTED_UP_EXTENSION,2023-12-16 00:00:00,0.6243,0.5328,0.6675,0.6675,0.5328,2,0.68,2023-12-16 00:00:00

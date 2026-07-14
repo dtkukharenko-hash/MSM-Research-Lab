@@ -1,0 +1,4 @@
+parent_id,parent_start_open_time,parent_resolution_confirmation_open_time,question_parent_is_broad_process,question_internal_phases_reasonable,question_resolution_timing_visible,question_failed_joint_continuation_visible,question_binance_bybit_boundary_difference,review_notes
+P001,2023-10-31 12:00:00,2023-11-04 16:00:00,,,,,,
+P002,2023-11-12 16:00:00,2023-12-06 16:00:00,,,,,,
+P003,2023-12-11 00:00:00,2024-01-08 08:00:00,,,,,,

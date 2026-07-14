@@ -1,0 +1,56 @@
+//@version=6
+indicator("EXP-012 Causal Parent State Machine R4", overlay=true, max_boxes_count=300, max_lines_count=300, max_labels_count=300)
+model = input.string("ALL", "Model", options=["ALL", "R4_PRICE_PLUS_ACTIVE_PARENT_EMA", "PRICE_ONLY_IMMEDIATE_CLOSE_BASELINE_R4", "PRICE_PLUS_ACTIVE_INTERNAL_EMA12_BASELINE_R4"])
+showPhases = input.bool(false, "Internal phases")
+showDiagnostics = input.bool(false, "Diagnostics")
+inRange(s, e) => time >= s and time <= e
+if (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1698753600000, 0.30388000, 1699113600000, 0.28672000, xloc=xloc.bar_time, bgcolor=color.new(color.yellow, 86), border_color=color.new(color.orange, 20))
+    line.new(1698753600000, 0.30310000, 1699113600000, 0.30310000, xloc=xloc.bar_time, color=color.new(color.orange, 0), width=2)
+    line.new(1698753600000, 0.28750000, 1699113600000, 0.28750000, xloc=xloc.bar_time, color=color.new(color.orange, 0), width=2)
+if (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1699804800000, 0.39964000, 1701878400000, 0.35476000, xloc=xloc.bar_time, bgcolor=color.new(color.yellow, 86), border_color=color.new(color.orange, 20))
+    line.new(1699804800000, 0.39760000, 1701878400000, 0.39760000, xloc=xloc.bar_time, color=color.new(color.orange, 0), width=2)
+    line.new(1699804800000, 0.35680000, 1701878400000, 0.35680000, xloc=xloc.bar_time, color=color.new(color.orange, 0), width=2)
+if (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1702252800000, 0.67423500, 1704700800000, 0.52606500, xloc=xloc.bar_time, bgcolor=color.new(color.yellow, 86), border_color=color.new(color.orange, 20))
+    line.new(1702252800000, 0.66750000, 1704700800000, 0.66750000, xloc=xloc.bar_time, color=color.new(color.orange, 0), width=2)
+    line.new(1702252800000, 0.53280000, 1704700800000, 0.53280000, xloc=xloc.bar_time, color=color.new(color.orange, 0), width=2)
+if showPhases and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1698811200000, high, 1698883200000, low, xloc=xloc.bar_time, bgcolor=color.new(color.gray, 92), border_color=color.new(color.gray, 70))
+if showPhases and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1698897600000, high, 1698940800000, low, xloc=xloc.bar_time, bgcolor=color.new(color.gray, 92), border_color=color.new(color.gray, 70))
+if showPhases and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1699977600000, high, 1700049600000, low, xloc=xloc.bar_time, bgcolor=color.new(color.gray, 92), border_color=color.new(color.gray, 70))
+if showPhases and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1700107200000, high, 1700164800000, low, xloc=xloc.bar_time, bgcolor=color.new(color.gray, 92), border_color=color.new(color.gray, 70))
+if showPhases and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1700467200000, high, 1700524800000, low, xloc=xloc.bar_time, bgcolor=color.new(color.gray, 92), border_color=color.new(color.gray, 70))
+if showPhases and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1700784000000, high, 1700827200000, low, xloc=xloc.bar_time, bgcolor=color.new(color.gray, 92), border_color=color.new(color.gray, 70))
+if showPhases and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1701547200000, high, 1701619200000, low, xloc=xloc.bar_time, bgcolor=color.new(color.gray, 92), border_color=color.new(color.gray, 70))
+if showPhases and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1701648000000, high, 1701705600000, low, xloc=xloc.bar_time, bgcolor=color.new(color.gray, 92), border_color=color.new(color.gray, 70))
+if showPhases and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1702483200000, high, 1702526400000, low, xloc=xloc.bar_time, bgcolor=color.new(color.gray, 92), border_color=color.new(color.gray, 70))
+if showPhases and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and barstate.islast
+    box.new(1704470400000, high, 1704528000000, low, xloc=xloc.bar_time, bgcolor=color.new(color.gray, 92), border_color=color.new(color.gray, 70))
+if showDiagnostics and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and time == 1698955200000
+    label.new(time, high, "JC001 CONFIRMED", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.lime, 0), textcolor=color.white)
+if showDiagnostics and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and time == 1700841600000
+    label.new(time, high, "JC002 FAILED", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.red, 0), textcolor=color.white)
+if showDiagnostics and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and time == 1701014400000
+    label.new(time, high, "JC003 FAILED", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.red, 0), textcolor=color.white)
+if showDiagnostics and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and time == 1701720000000
+    label.new(time, high, "JC004 CONFIRMED", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.lime, 0), textcolor=color.white)
+if showDiagnostics and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and time == 1704542400000
+    label.new(time, high, "JC005 CONFIRMED", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.lime, 0), textcolor=color.white)
+if showDiagnostics and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and time == 1698883200000
+    label.new(time, close, "EXT", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.blue, 0), textcolor=color.white)
+if showDiagnostics and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and time == 1701043200000
+    label.new(time, close, "EXT", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.blue, 0), textcolor=color.white)
+if showDiagnostics and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and time == 1701619200000
+    label.new(time, close, "EXT", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.blue, 0), textcolor=color.white)
+if showDiagnostics and (model == "ALL" or model == "R4_PRICE_PLUS_ACTIVE_PARENT_EMA") and time == 1702684800000
+    label.new(time, close, "EXT", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.blue, 0), textcolor=color.white)
