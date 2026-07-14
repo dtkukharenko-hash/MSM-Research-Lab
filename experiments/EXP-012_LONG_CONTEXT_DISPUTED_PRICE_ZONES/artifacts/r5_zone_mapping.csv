@@ -1,0 +1,4 @@
+r5_section_id,zone_id,zone_start_open_time,zone_effective_exit_open_time,zone_resolution_kind,mapping_reason
+LC001,Z001,2023-10-31 12:00:00,2023-11-01 20:00:00,ACCEPTED_UPSIDE_EXIT,overlap by causal bar span
+LC002,Z002,2023-11-12 16:00:00,2023-12-05 16:00:00,ACCEPTED_UPSIDE_EXIT,overlap by causal bar span
+LC003,Z003,2023-12-11 00:00:00,2024-01-08 20:00:00,OPEN_AT_TRAIN_END,overlap by causal bar span

@@ -1,0 +1,10 @@
+test_id,test_name,expected_result,actual_result,status,details
+EXPECTED_THREE_ZONES,Manual review suggests three zones,3 zones,3 zones,PASS,Z001;Z002;Z003
+FIRST_ZONE_PRESERVED,Late Oct/early Nov compact zone remains independent,one zone mapped to R5 LC001,1 matching zone(s): Z001,PASS,ACCEPTED_UPSIDE_EXIT
+NOVEMBER_SINGLE_ZONE,November process remains one zone despite EMA27 recoveries,one zone mapped to R5 LC002,1 matching zone(s): Z002,PASS,ACCEPTED_UPSIDE_EXIT
+DECEMBER_JANUARY_SINGLE_ZONE,December-January process remains one evolving horizontal zone unless accepted exit confirms,one zone mapped to R5 LC003,1 matching zone(s): Z003,PASS,OPEN_AT_TRAIN_END
+LC003_EARLIER_DOWNSIDE_EXIT_THAN_R5,Horizontal downside accepted exit precedes R5 EMA-based effective exit,zone LC003 mapped exit earlier than R5 LC003,zone 2024-01-08 20:00:00 vs R5 2024-01-06 16:00:00,FAIL,post-run diagnostic only
+NO_DATE_HARDCODING,No date hardcoding,general algorithm,general chronological builder,PASS,acceptance checks only after run
+NO_PRICE_BOUND_HARDCODING,No price-bound hardcoding,bounds from OHLC only,causal seeds and failed-exit expansions,PASS,no manual prices used
+NO_SECTION_ID_HARDCODING,No section-id hardcoding in detector,general algorithm,section IDs used only in diagnostics,PASS,post-run mapping checks
+NO_FUTURE_PERIOD_USED,No future period used,no data after 2024-01-08,period slice ends at configured END,PASS,2024-01-08 23:59:59.999000
