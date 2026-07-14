@@ -1,0 +1,45 @@
+//@version=6
+indicator("EXP-011B Long Conflict Windows", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=100)
+
+showWindowArea = input.bool(true, "showWindowArea")
+showWindowStart = input.bool(true, "showWindowStart")
+showWindowEnd = input.bool(true, "showWindowEnd")
+showSectionId = input.bool(true, "showSectionId")
+showRawTriggers = input.bool(true, "showRawTriggers")
+showOnlySelectedSection = input.bool(false, "showOnlySelectedSection")
+selectedSection = input.string("ALL", "selectedSection", options=["ALL", "LC001", "LC002", "LC003", "LC004", "LC005", "LC006"])
+
+var string[] sectionIds = array.from("LC001", "LC002", "LC003", "LC004", "LC005", "LC006")
+var int[] sectionStarts = array.from(1698782399999, 1699876799999, 1700582399999, 1701028799999, 1702324799999, 1702684799999)
+var int[] sectionEnds = array.from(1698897599999, 1700438399999, 1700812799999, 1701518399999, 1702396799999, 1704571199999)
+var string[] triggerSectionIds = array.from("LC001", "LC002", "LC002", "LC003", "LC004", "LC005", "LC006", "LC006", "LC006", "LC006")
+var int[] triggerTimes = array.from(1698782399999, 1699876799999, 1700179199999, 1700582399999, 1701028799999, 1702324799999, 1702684799999, 1703318399999, 1703807999999, 1704239999999)
+
+f_visible(string id) =>
+    selectedSection == "ALL" or id == selectedSection
+
+for i = 0 to array.size(sectionIds) - 1
+    string sid = array.get(sectionIds, i)
+    int st = array.get(sectionStarts, i)
+    int en = array.get(sectionEnds, i)
+    bool visible = f_visible(sid) and (not showOnlySelectedSection or selectedSection != "ALL")
+    visible := selectedSection == "ALL" ? f_visible(sid) : visible
+    bool atStart = time >= st and time[1] < st
+    bool atEnd = time >= en and time[1] < en
+    if visible and showWindowArea and atStart
+        box.new(st, high, en, low, xloc=xloc.bar_time, bgcolor=color.new(color.yellow, 88), border_color=color.new(color.yellow, 25), extend=extend.none)
+    if visible and showWindowStart and atStart
+        line.new(st, low, st, high, xloc=xloc.bar_time, extend=extend.both, color=color.new(color.green, 0), style=line.style_solid, width=1)
+        if showSectionId
+            label.new(st, high, sid, xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.green, 0), textcolor=color.white, size=size.small)
+    if visible and showWindowEnd and atEnd
+        line.new(en, low, en, high, xloc=xloc.bar_time, extend=extend.both, color=color.new(color.red, 0), style=line.style_solid, width=1)
+
+for j = 0 to array.size(triggerTimes) - 1
+    string sid = array.get(triggerSectionIds, j)
+    int tt = array.get(triggerTimes, j)
+    bool visible = f_visible(sid) and (not showOnlySelectedSection or selectedSection != "ALL")
+    visible := selectedSection == "ALL" ? f_visible(sid) : visible
+    bool atTrigger = time >= tt and time[1] < tt
+    if visible and showRawTriggers and atTrigger
+        label.new(tt, low, "raw", xloc=xloc.bar_time, style=label.style_label_up, color=color.new(color.gray, 0), textcolor=color.white, size=size.tiny)

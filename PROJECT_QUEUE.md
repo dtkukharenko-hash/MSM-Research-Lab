@@ -16,17 +16,28 @@
 
 ### EXP-011B_BLIND_BACKBONE_VALIDATION
 
-Статус: AWAITING_HUMAN_LABELS
+Статус: SUPERSEDED_BY_EXP-011B_LONG_CONFLICT_WINDOWS
 
-EXP-011B подготовлен для слепой человеческой визуальной проверки замороженного `BACKBONE_C` из EXP-011A.
-Phase 1 создал blind-набор без раскрытия ответов: 28 окон, seed `11011`, отдельный `blind_key.csv`,
-пустой `human_labels.csv`, Pine-навигацию и PDF с blind-id/UTC-интервалами. `BACKBONE_C` не менялся:
-формулы, пороги, persistence и hysteresis остаются как в EXP-011A. Исследование относительных движений
-между масштабами отложено до завершения human review и Phase 2 scoring.
+Предыдущая blind-проверка `BACKBONE_C` подготовлена, но больше не является текущей задачей EXP-011B.
+Новая рабочая задача EXP-011B — выделение LONG-конфликтных участков на ADAUSDT 4H за период
+2023-10-18 → 2024-01-08. Blind validation не продолжать в этом слоте без отдельного решения.
+
+---
+
+### EXP-011B_LONG_CONFLICT_WINDOWS
+
+Статус: AWAITING_TW_BOUNDARY_REVIEW
+
+EXP-011B автоматически выделил LONG-конфликтные участки на 4H по ADAUSDT за 2023-10-18 → 2024-01-08
+по сохранённым EXP-011 Binance spot OHLC. Найдено 124 `CORE_CONFLICT_TRIGGER`, 10 raw-конфликтов и
+6 объединённых LC-участков. SHORT не анализировался, период после 2024-01-08 не использовался,
+`BACKBONE_C`, ZigZag, clustering, high/low условия, PnL/backtest и торговые метки не применялись.
 
 Следующее действие:
-Заполнить `experiments/EXP-011B_BLIND_BACKBONE_VALIDATION/artifacts/human_labels.csv` по инструкции
-`experiments/EXP-011B_BLIND_BACKBONE_VALIDATION/REVIEW_INSTRUCTIONS.md`, не открывая `blind_key.csv`.
+Проверить границы `LC001`–`LC006` вручную в TradingView на Bybit ADAUSDT Perpetual Contract 4H через
+`experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/LONG_CONFLICT_WINDOWS.pine` и заполнить
+`experiments/EXP-011B_LONG_CONFLICT_WINDOWS/artifacts/manual_boundary_review.csv`. Только после ручной
+проверки границ переходить к window-by-window structural analysis.
 
 ---
 
