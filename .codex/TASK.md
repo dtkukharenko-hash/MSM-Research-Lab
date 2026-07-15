@@ -1,8 +1,10 @@
 # Current Codex Task
 
 - task_id: `AUTOMATION-002-R3-CORRECTOR-EVIDENCE-AND-INFRA-GUARD`
-- status: `READY`
+- status: `COMPLETED`
 - published_at: `2026-07-15`
+- completed_at: `2026-07-15`
+- completion_commit: `2447eff3781842a5762c41ffab3b55cccec2e309`
 - target_branch: `main`
 - commit_message: `AUTOMATION-002-R3 fix corrector evidence and infrastructure guard`
 - infrastructure_maintenance: `true`
