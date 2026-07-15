@@ -36,16 +36,24 @@ trap cleanup EXIT
 
 echo "[2/10] Repository preflight"
 cd "$REPO"
+[[ $(sudo -u "$RUN_USER" git branch --show-current) == main ]] || fail "repository must be on main"
 status=$(sudo -u "$RUN_USER" git status --porcelain=v1 --untracked-files=all)
 while IFS= read -r line; do
   [[ -z $line ]] && continue
-  [[ ${line:0:2} == ' M' && ${line:3} == "$PINE" ]] || fail "unexpected dirty path before pull: $line"
+  [[ ${line:0:2} == ' M' && ${line:3} == "$PINE" ]] || fail "unexpected dirty path before sync: $line"
 done <<< "$status"
 pine_before=$(sha256sum "$PINE" | awk '{print $1}')
 sudo -u "$RUN_USER" git diff --cached --quiet -- "$PINE" || fail "protected Pine is staged"
 
-echo "[3/10] Pull latest main"
-sudo -u "$RUN_USER" git pull --ff-only origin main
+echo "[3/10] Fetch and fast-forward main"
+sudo -u "$RUN_USER" git fetch --prune origin main
+local_sha=$(sudo -u "$RUN_USER" git rev-parse HEAD)
+remote_sha=$(sudo -u "$RUN_USER" git rev-parse origin/main)
+if [[ $local_sha != "$remote_sha" ]]; then
+  sudo -u "$RUN_USER" git merge-base --is-ancestor "$local_sha" "$remote_sha" || fail "local main diverged from origin/main"
+  sudo -u "$RUN_USER" git merge --ff-only origin/main
+fi
+[[ $(sudo -u "$RUN_USER" git rev-parse HEAD) == $(sudo -u "$RUN_USER" git rev-parse origin/main) ]] || fail "main is not synchronized with origin/main"
 [[ $(field status) == READY ]] || fail "TASK is not READY"
 [[ $(field infrastructure_maintenance) == true ]] || fail "TASK is not infrastructure_maintenance=true"
 task_id=$(field task_id); [[ -n $task_id ]] || fail "missing task_id"
@@ -119,6 +127,7 @@ if '- completion_commit:' not in s:
     s=s.replace('- target_branch:', f'- completion_commit: `{sha}`\n- target_branch:',1)
 open(p,'w',encoding='utf-8').write(s)
 PY
+chown "$RUN_USER:$RUN_USER" "$TASK"
 sudo -u "$RUN_USER" git add -- "$TASK"
 sudo -u "$RUN_USER" git commit -m "$task_id complete"
 closure_sha=$(sudo -u "$RUN_USER" git rev-parse HEAD)
