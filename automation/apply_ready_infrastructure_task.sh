@@ -63,10 +63,12 @@ fi
 [[ $(field status) == READY ]] || fail "TASK is not READY"
 [[ $(field infrastructure_maintenance) == true ]] || fail "TASK is not infrastructure_maintenance=true"
 task_id=$(field task_id); [[ -n $task_id ]] || fail "missing task_id"
-commit_message=$(field commit_message); [[ -n $commit_message ]] || fail "missing commit_message"
+commit_message=$(field commit_message || true)
+[[ -n $commit_message ]] || commit_message="$task_id implementation"
 start_sha=$(sudo -u "$RUN_USER" git rev-parse HEAD)
 
 echo "Active task: $task_id"
+echo "Commit message: $commit_message"
 
 echo "[4/10] Execute Codex"
 sudo -u "$RUN_USER" "$CODEX" exec \
