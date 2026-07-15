@@ -1,0 +1,15 @@
+{
+  "runner_state": "IDLE",
+  "task_id": "",
+  "task_hash": "",
+  "started_at": "",
+  "finished_at": "",
+  "starting_commit": "",
+  "last_commit": "",
+  "audit_status": "",
+  "exit_code": 0,
+  "failure_reason": "",
+  "runner_pid": 0,
+  "retry_requested": false,
+  "note": "Template only; installed runner state is /home/nnv/.local/state/msm-runner/state.json."
+}

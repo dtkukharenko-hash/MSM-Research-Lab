@@ -1,0 +1,20 @@
+[Unit]
+Description=MSM Codex task runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=nnv
+Group=nnv
+WorkingDirectory=/home/nnv/MSM-Research-Lab
+Environment=PATH=/home/nnv/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/home/nnv
+Environment=GIT_TERMINAL_PROMPT=0
+ExecStart=/home/nnv/MSM-Research-Lab/automation/msm_runner.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=/home/nnv/MSM-Research-Lab /home/nnv/.local/state/msm-runner /home/nnv/.codex
+UMask=0077

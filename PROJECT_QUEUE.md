@@ -14,6 +14,18 @@
 
 ## ACTIVE
 
+### AUTOMATION-001-R1-RUNNER-SANDBOX-CORRECTION
+
+Статус: IMPLEMENTED_AWAITING_MANUAL_COMMIT
+
+Инфраструктурная коррекция runner подготовлена для ручной проверки: Codex внутри sandbox больше не
+выполняет Git-операции; shell runner вне sandbox выполняет `pull`, audit-gated explicit staging,
+двухшаговые commit/push. Read-only audit проверяет uncommitted worktree по task ID/hash, starting commit
+и deterministic diff hash. Для будущих задач автоматический commit блокируется без
+`.codex/ALLOWLIST.txt`. systemd units не устанавливались в bootstrap-вызове.
+
+---
+
 ### EXP-011B_BLIND_BACKBONE_VALIDATION
 
 Статус: SUPERSEDED_BY_EXP-011B_LONG_CONFLICT_WINDOWS
