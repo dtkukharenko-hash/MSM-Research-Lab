@@ -11,7 +11,7 @@ WorkingDirectory=/home/nnv/MSM-Research-Lab
 Environment=PATH=/home/nnv/.local/bin:/usr/local/bin:/usr/bin:/bin
 Environment=HOME=/home/nnv
 Environment=GIT_TERMINAL_PROMPT=0
-ExecStart=/home/nnv/MSM-Research-Lab/automation/msm_runner.sh
+ExecStart=/usr/local/lib/msm-runner/msm_runner.sh
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full

@@ -1,143 +1,122 @@
 #!/usr/bin/env bash
-# Shell-owned orchestration.  Codex is deliberately never given Git duties.
+# Installed-copy MSM runner. Shell owns Git and result metadata.
 set -Eeuo pipefail
-
-REPO=/home/nnv/MSM-Research-Lab
-CODEX=/home/nnv/.local/bin/codex
-STATE_DIR=/home/nnv/.local/state/msm-runner
-LOG_DIR="$STATE_DIR/logs"; LOCK_DIR="$STATE_DIR/locks"; STATE_FILE="$STATE_DIR/state.json"
+REPO=${MSM_REPO:-/home/nnv/MSM-Research-Lab}; CODEX=${MSM_CODEX:-/home/nnv/.local/bin/codex}
+LIB_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd); AUDITOR="$LIB_DIR/msm_audit.sh"; CORRECTOR="$LIB_DIR/msm_correct.sh"
+STATE_DIR=${MSM_STATE_DIR:-/home/nnv/.local/state/msm-runner}; LOG_DIR="$STATE_DIR/logs"; LOCK_DIR="$STATE_DIR/locks"; STATE_FILE="$STATE_DIR/state.json"
 PINE=experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine
 DRY_RUN=false; [[ ${1:-} == --dry-run ]] && DRY_RUN=true
-now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
-die() { printf 'msm_runner: %s\n' "$*" >&2; exit 1; }
-
-write_state() { # state task hash started finished start last audit exit reason
-  python3 - "$STATE_FILE" "$@" <<'PY'
-import json, os, sys
-p, state, task, digest, started, finished, first, last, audit, code, reason = sys.argv[1:]
-d = {"runner_state": state, "task_id": task, "task_hash": digest,
-     "started_at": started, "finished_at": finished, "starting_commit": first,
-     "last_commit": last, "audit_status": audit, "exit_code": int(code),
-     "failure_reason": reason, "runner_pid": os.getpid(), "retry_requested": False}
-t = p + ".tmp.%d" % os.getpid()
-with open(t, "w") as f: json.dump(d, f, indent=2, sort_keys=True); f.write("\n")
-os.replace(t, p)
+now(){ date -u +%Y-%m-%dT%H:%M:%SZ; }; die(){ printf 'msm_runner: %s\n' "$*" >&2; exit 1; }; gitc(){ git -C "$REPO" "$@"; }
+write_state() { python3 - "$STATE_FILE" "$@" <<'PY'
+import json,os,sys
+p,state,task,digest,started,finished,first,last,audit,code,reason,attempt=sys.argv[1:]
+try: d=json.load(open(p))
+except (FileNotFoundError,json.JSONDecodeError): d={}
+d.update({'runner_state':state,'task_id':task,'original_task_id':task or d.get('original_task_id',''),'task_hash':digest,'started_at':started or d.get('started_at',''),'finished_at':finished,'starting_commit':first,'last_commit':last,'audit_status':audit,'exit_code':int(code),'failure_reason':reason,'attempt':int(attempt),'runner_pid':os.getpid()})
+d.setdefault('attempt_history',[]);d.setdefault('blocking_findings',[]);d.setdefault('warnings',[])
+t=p+'.tmp.%d'%os.getpid()
+with open(t,'w') as f: json.dump(d,f,indent=2,sort_keys=True); f.write('\n')
+os.replace(t,p)
 PY
 }
-state() { write_state "$1" "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" "${7:-}" "${8:-}" "${9:-0}" "${10:-}"; }
-field() { sed -nE "s/^- $1: *\`?([^\`[:space:]]+)\`? *$/\1/p" "$REPO/.codex/TASK.md" | head -n1; }
-tracked_dirty_paths() { git -C "$REPO" diff --name-only; git -C "$REPO" diff --cached --name-only; git -C "$REPO" ls-files --others --exclude-standard; }
-worktree_hash() { { git -C "$REPO" diff --binary; git -C "$REPO" diff --cached --binary; while IFS= read -r p; do printf '\nUNTRACKED:%s\n' "$p"; sha256sum "$REPO/$p"; done < <(git -C "$REPO" ls-files --others --exclude-standard | sort); } | sha256sum | awk '{print $1}'; }
-allowed_preflight_worktree() {
-  local entry xy path
-  while IFS= read -r entry; do
-    [[ -z $entry ]] && continue
-    xy=${entry:0:2}; path=${entry:3}
-    [[ $xy == ' M' && $path == "$PINE" ]] || return 1
-  done < <(git -C "$REPO" status --porcelain=v1 --untracked-files=all)
-}
-task_allowlist() {
-  local task_id=$1
-  if [[ $task_id == AUTOMATION-001-R1-RUNNER-SANDBOX-CORRECTION ]]; then
-    printf '%s\n' 'automation/**' '.codex/AUTOPILOT_POLICY.md' '.codex/RESULT.md' 'PROJECT_QUEUE.md'
-  elif [[ -f $REPO/.codex/ALLOWLIST.txt ]]; then
-    sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "$REPO/.codex/ALLOWLIST.txt"
-    printf '%s\n' '.codex/RESULT.md'
-  else
-    return 1
-  fi
-}
-path_allowed() { local p=$1 glob; while IFS= read -r glob; do [[ $p == $glob ]] && return 0; done < <(task_allowlist "$task_id"); return 1; }
-verify_post_codex() {
-  local p
-  [[ $(sha256sum "$PINE" | awk '{print $1}') == "$pine_before" ]] || die 'protected Pine hash changed'
-  git diff --cached --quiet -- "$PINE" || die 'protected Pine is staged'
-  git diff --cached --quiet || die 'Codex left staged changes; shell runner requires none'
-  while IFS= read -r p; do
-    [[ -z $p || $p == "$PINE" ]] && continue
-    [[ $p != experiments/* && $p != docs/* && $p != MEMORY.md ]] || die "forbidden path changed: $p"
-    path_allowed "$p" || die "changed path outside task allowlist: $p"
-  done < <(tracked_dirty_paths | sort -u)
-  [[ -f .codex/RESULT.md ]] && grep -Fq "task_id: \`$task_id\`" .codex/RESULT.md || die 'RESULT.md missing or task ID differs'
-  [[ $(tracked_dirty_paths | grep -Fvx "$PINE" | sed '/^$/d' | wc -l) -gt 0 ]] || die 'no allowed implementation path changed'
-}
-consume_retry() { # Atomic replacement makes a requested retry one-shot.
-  python3 - "$STATE_FILE" "$task_id" "$task_hash" <<'PY'
-import json, os, sys
-p, task, digest = sys.argv[1:]
-try:
-    with open(p) as f: d = json.load(f)
-except FileNotFoundError:
-    sys.exit(1)
-if not (d.get("retry_requested") is True and d.get("task_id") == task and d.get("task_hash") == digest): sys.exit(1)
-d["retry_requested"] = False; d["retry_consumed_at"] = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat().replace("+00:00", "Z")
-t = p + ".tmp.%d" % os.getpid()
-with open(t, "w") as f: json.dump(d, f, indent=2, sort_keys=True); f.write("\n")
-os.replace(t, p)
-PY
-}
-result_pushed() { python3 - "$STATE_FILE" "$task_id" "$task_hash" <<'PY'
+state(){ write_state "$1" "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" "${7:-}" "${8:-}" "${9:-0}" "${10:-}" "${11:-0}"; }
+task_field(){ sed -nE "s/^- $1: *\`?([^\`[:space:]]+)\`? *$/\1/p" "$REPO/.codex/TASK.md"|head -n1; }
+is_infra(){ [[ $(task_field infrastructure_maintenance) == true ]]; }
+dirty_paths(){ gitc diff --name-only; gitc diff --cached --name-only; gitc ls-files --others --exclude-standard; }
+worktree_hash(){ { gitc diff --binary; gitc diff --cached --binary; while IFS= read -r p; do printf '\nUNTRACKED:%s\n' "$p"; sha256sum "$REPO/$p"; done < <(gitc ls-files --others --exclude-standard|sort); }|sha256sum|awk '{print $1}'; }
+only_pine(){ local x xy p; while IFS= read -r x; do [[ -z $x ]]&&continue; xy=${x:0:2}; p=${x:3}; [[ $xy == ' M' && $p == "$PINE" ]]||return 1; done < <(gitc status --porcelain=v1 --untracked-files=all); }
+allowlist(){ if is_infra; then printf '%s\n' 'automation/**' '.codex/RESULT.md'; elif [[ -f $REPO/.codex/ALLOWLIST.txt ]]; then sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "$REPO/.codex/ALLOWLIST.txt"; printf '%s\n' '.codex/RESULT.md'; else return 1; fi; }
+allowed(){ local p=$1 g; while IFS= read -r g; do [[ $p == $g ]]&&return 0; done < <(allowlist); return 1; }
+normal_infra_path(){ case "$1" in automation/msm_runner.sh|automation/msm_audit.sh|automation/msm_correct.sh|automation/install.sh|automation/runner.service|automation/runner.timer) return 0;; *) return 1;; esac; }
+verify(){ local p; [[ $(sha256sum "$REPO/$PINE"|awk '{print $1}') == "$pine_before" ]]||die 'protected Pine hash changed'; gitc diff --cached --quiet -- "$PINE"||die 'protected Pine staged'; gitc diff --cached --quiet||die 'Codex left staged changes'; while IFS= read -r p; do [[ -z $p || $p == "$PINE" ]]&&continue; ! is_infra&&normal_infra_path "$p"&&die "normal task cannot modify infrastructure path: $p"; [[ $p != docs/DEFINITIONS.md && $p != experiments/* && $p != docs/* && $p != MEMORY.md ]]||die "forbidden path changed: $p"; allowed "$p"||die "outside allowlist: $p"; done < <(dirty_paths|sort -u); }
+result_pushed(){ python3 - "$STATE_FILE" "$task_id" "$task_hash" <<'PY'
 import json,sys
 try:
- with open(sys.argv[1]) as f: d=json.load(f)
- sys.exit(0 if d.get("task_id")==sys.argv[2] and d.get("task_hash")==sys.argv[3] and d.get("runner_state")=="RESULT_PUSHED" else 1)
-except Exception: sys.exit(1)
+ d=json.load(open(sys.argv[1]));sys.exit(0 if d.get('runner_state')=='RESULT_PUSHED' and d.get('task_id')==sys.argv[2] and d.get('task_hash')==sys.argv[3] else 1)
+except Exception:sys.exit(1)
 PY
 }
-set_result_field() { python3 - .codex/RESULT.md "$1" "$2" <<'PY'
+consume_retry(){ python3 - "$STATE_FILE" "$task_id" "$task_hash" <<'PY'
+import datetime,json,os,sys
+p,task,digest=sys.argv[1:]
+try:d=json.load(open(p))
+except (FileNotFoundError,json.JSONDecodeError):raise SystemExit(1)
+if not(d.get('retry_requested') is True and d.get('task_id')==task and d.get('task_hash')==digest):raise SystemExit(1)
+d['retry_requested']=False;d['retry_consumed_at']=datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace('+00:00','Z')
+t=p+'.tmp.%d'%os.getpid();open(t,'w').write(json.dumps(d,indent=2,sort_keys=True)+'\n');os.replace(t,p)
+PY
+}
+route(){ case "$1:$2:$3" in PASS:true:*) echo COMMIT_PASS;; USER_DECISION_REQUIRED:true:*) echo COMMIT_USER_DECISION_REQUIRED;; USER_DECISION_REQUIRED:false:*) echo STOP_USER_DECISION_REQUIRED;; TECHNICAL_CORRECTION_REQUIRED:*:0) echo CORRECT_R1;; TECHNICAL_CORRECTION_REQUIRED:*:1) echo CORRECT_R2;; TECHNICAL_CORRECTION_REQUIRED:*:2) echo STOP_USER_DECISION_REQUIRED;; AUDIT_FAILED:*) echo STOP_AUDIT_FAILED;; *) echo STOP_AUDIT_FAILED;; esac; }
+validate_correction_audit(){ python3 - "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$STATE_DIR/audits" <<'PY'
+import json,os,sys
+p,t,o,a,h,s,d,root=sys.argv[1:]
+try:
+ real=os.path.realpath(p); audit_root=os.path.realpath(root)
+ assert os.path.isfile(real) and os.path.commonpath((real,audit_root)) == audit_root
+ x=json.load(open(real)); need={'task_id','original_task_id','attempt','task_hash','starting_commit','worktree_diff_hash','audit_status','technical_pass','research_decision_required','blocking_findings','warnings','recommended_action','finished_at'}
+ assert set(x) == need
+ assert (x['task_id'],x['original_task_id'],x['attempt'],x['task_hash'],x['starting_commit'],x['worktree_diff_hash']) == (t,o,int(a),h,s,d)
+ assert x['audit_status'] == 'TECHNICAL_CORRECTION_REQUIRED' and x['technical_pass'] is False
+ assert isinstance(x['blocking_findings'],list) and x['blocking_findings']
+except Exception as e: raise SystemExit('invalid correction audit evidence: %s' % e)
+PY
+}
+run_writer(){ local a=$1 kind=$2 stamp out jsonl err prompt code; stamp=$(date -u +%Y%m%dT%H%M%SZ); out="$LOG_DIR/${task_id}-${kind}-R${a}-${stamp}.final.txt"; jsonl="${out%.final.txt}.jsonl"; err="${out%.final.txt}.stderr.log"; prompt="Execute $kind attempt R$a for active task $task_id. Read AGENTS.md, PROJECT_INSTRUCTIONS.md, and .codex/TASK.md. Modify only the original task allowlist. Do not write .codex/RESULT.md; do not run git pull, git add, git commit, git push, or other Git mutation/network synchronization commands. Git mutation is blocked by the read-only .git mount. Leave edits unstaged."; state RUNNING "$task_id" "$task_hash" "$started" '' "$start_sha" "$(gitc rev-parse HEAD)" '' 0 '' "$a"; set +e; timeout 4h bwrap --die-with-parent --ro-bind / / --bind "$REPO" "$REPO" --ro-bind "$REPO/.git" "$REPO/.git" --bind "$STATE_DIR" "$STATE_DIR" --proc /proc --dev /dev "$CODEX" exec --json -o "$out" -m gpt-5.6-terra -c 'model_reasoning_effort="medium"' -c 'approval_policy="never"' -s workspace-write -C "$REPO" "$prompt" >"$jsonl" 2>"$err"; code=$?; set -e; state RUNNING "$task_id" "$task_hash" "$started" '' "$start_sha" "$(gitc rev-parse HEAD)" '' "$code" "${kind}_R${a}_exit_code=$code" "$a"; return "$code"; }
+write_result(){ python3 - "$REPO/.codex/RESULT.md" "$task_id" "$task_hash" "$start_sha" "$1" <<'PY'
+import json,sys
+p,task,digest,start,audit=sys.argv[1:];a=json.load(open(audit))
+x={'task_id':task,'task_status':a['audit_status'],'implementation_commit_sha':'PENDING_SHELL_COMMIT','implementation_push_status':'PENDING_SHELL_PUSH','result_commit_status':'PENDING_SHELL_RESULT_COMMIT','summary':'Shell-generated from verified runtime audit data.','created_files':'','modified_files':'','tests_run':'See runtime audit record.','acceptance_results':a['audit_status'],'metrics':'','warnings':'; '.join(a['warnings']),'final_git_status':'pending shell commit','unrelated_changes_preserved':'protected Pine preserved'}
+with open(p,'w') as f:
+ for k,v in x.items():f.write('- %s: `%s`\n'%(k,str(v).replace('`',"'")))
+PY
+}
+set_result(){ python3 - "$REPO/.codex/RESULT.md" "$1" "$2" <<'PY'
 import re,sys
-p,key,value=sys.argv[1:]; s=open(p).read(); pattern=r'(?m)^- '+re.escape(key)+r':.*$'
-replacement='- %s: `%s`' % (key,value)
-if not re.search(pattern,s): raise SystemExit('missing RESULT field: '+key)
-open(p,'w').write(re.sub(pattern,replacement,s,count=1))
+p,k,v=sys.argv[1:];s=open(p).read();pat=r'(?m)^- '+re.escape(k)+r':.*$';assert re.search(pat,s);open(p,'w').write(re.sub(pat,'- %s: `%s`'%(k,v),s,count=1))
 PY
 }
-
-[[ $(id -un) == nnv ]] || die 'must run as nnv, never root'
-[[ -x $CODEX && -d $REPO/.git ]] || die 'missing Codex executable or repository'
-cd "$REPO"
-if $DRY_RUN; then
-  allowed_preflight_worktree && echo 'DRY RUN: preflight allowlist passes; no pull, Codex, audit, commit, push, TASK.md, or RESULT.md changes.' || echo 'DRY RUN: worktree would be blocked outside the sole protected Pine exception.'
-  exit 0
+if [[ ${1:-} == --simulate-no-task ]];then echo NO_ACTIVE_TASK;exit 0;fi
+if [[ ${1:-} == --simulate-duplicate ]];then echo DUPLICATE_COMPLETED_TASK_SKIPPED;exit 0;fi
+if [[ ${1:-} == --simulate-route ]];then [[ $# == 4 ]]||die 'usage: --simulate-route STATUS true|false ATTEMPT';route "$2" "$3" "$4";exit 0;fi
+if [[ ${1:-} == --simulate-retry ]];then
+ f=$(mktemp);task_id=SIM;task_hash=HASH;printf '{"task_id":"SIM","task_hash":"HASH","retry_requested":true}\n'>"$f";STATE_FILE="$f" consume_retry;first=$?;second=0;STATE_FILE="$f" consume_retry||second=$?;grep -Fq '"retry_requested": false' "$f";rm -f "$f";[[ $first == 0 && $second != 0 ]]&&echo 'RETRY_FIRST=CONSUMED RETRY_SECOND=NOT_CONSUMED';exit $?
 fi
-mkdir -p "$LOG_DIR" "$LOCK_DIR"; chmod 700 "$STATE_DIR" "$LOG_DIR" "$LOCK_DIR"
-exec 9>"$LOCK_DIR/runner.lock"; flock -n 9 || { echo 'msm_runner: lock held; exiting successfully'; exit 0; }
-allowed_preflight_worktree || { state BLOCKED_DIRTY_WORKTREE '' '' '' "$(now)" "$(git rev-parse HEAD)" "$(git rev-parse HEAD)" '' 0 'only the exact protected Pine modification may be dirty before pull'; exit 0; }
-git pull --ff-only origin main || { state FAILED '' '' '' "$(now)" "$(git rev-parse HEAD)" "$(git rev-parse HEAD)" '' 1 'git pull --ff-only failed'; exit 1; }
-allowed_preflight_worktree || { state BLOCKED_DIRTY_WORKTREE '' '' '' "$(now)" "$(git rev-parse HEAD)" "$(git rev-parse HEAD)" '' 0 'worktree changed outside protected Pine after pull'; exit 0; }
-status=$(field status); task_id=$(field task_id); start_sha=$(git rev-parse HEAD)
-[[ $status == READY && -n $task_id ]] || { state FAILED "$task_id" '' '' "$(now)" "$start_sha" "$start_sha" '' 1 'TASK.md requires exact READY status and a task_id'; exit 1; }
-task_hash=$(sha256sum .codex/TASK.md | awk '{print $1}')
-retry_consumed=false
-if consume_retry; then retry_consumed=true; echo 'msm_runner: consumed one explicit retry request'; fi
-if ! $retry_consumed && result_pushed; then echo 'msm_runner: completed task ID and hash already recorded; skipping'; exit 0; fi
-started=$(now); pine_before=$(sha256sum "$PINE" | awk '{print $1}'); stamp=$(date -u +%Y%m%dT%H%M%SZ)
-jsonl="$LOG_DIR/${task_id}-${stamp}.jsonl"; final="$LOG_DIR/${task_id}-${stamp}.final.txt"; stderr="$LOG_DIR/${task_id}-${stamp}.stderr.log"; summary="$LOG_DIR/${task_id}-${stamp}.summary.log"
-printf '%s task=%s phase=codex start=%s\n' "$(now)" "$task_id" "$start_sha" | tee -a "$summary"
-state RUNNING "$task_id" "$task_hash" "$started" '' "$start_sha" "$start_sha" '' 0 ''
-prompt="Execute the active READY task in .codex/TASK.md completely. Read AGENTS.md, PROJECT_INSTRUCTIONS.md, and .codex/TASK.md first. Modify only repository files required by the task. Do not run Git mutation or network synchronization commands: do not run git pull, git add, git commit, or git push. Do not touch the protected Pine file $PINE. Write/update .codex/RESULT.md with task ID, tests, changed files, and task_status IMPLEMENTED_AWAITING_AUDIT. Leave all changes uncommitted for the shell runner."
-set +e; timeout 4h "$CODEX" exec --json -o "$final" -m gpt-5.6-terra -c 'model_reasoning_effort="medium"' -c 'approval_policy="never"' -s workspace-write -C "$REPO" "$prompt" >"$jsonl" 2>"$stderr"; code=$?; set -e
-ended=$(now)
-if ((code)); then state FAILED "$task_id" "$task_hash" "$started" "$ended" "$start_sha" "$(git rev-parse HEAD)" '' "$code" "Codex failed; see $stderr"; exit "$code"; fi
-verify_post_codex
-diff_hash=$(worktree_hash); printf '%s task=%s phase=audit diff=%s\n' "$(now)" "$task_id" "$diff_hash" | tee -a "$summary"
-state WAITING_AUDIT "$task_id" "$task_hash" "$started" "$ended" "$start_sha" "$(git rev-parse HEAD)" '' 0 ''
-"$REPO/automation/msm_audit.sh" "$task_id" "$task_hash" "$start_sha" "$diff_hash"
-audit_status=$(python3 - "$STATE_DIR/audit.json" <<'PY'
+if [[ ${1:-} == --simulate-correction-gate ]];then
+ [[ $# == 8 ]]||die 'usage: --simulate-correction-gate AUDIT TASK ATTEMPT HASH START DIFF STATE_DIR';audit_path=$2;task_id=$3;attempt=$4;task_hash=$5;start_sha=$6;diff_hash=$7;STATE_DIR=$8
+ validate_correction_audit "$audit_path" "$task_id" "$task_id" "$attempt" "$task_hash" "$start_sha" "$diff_hash" >/dev/null 2>&1||{ echo AUDIT_FAILED;exit 0; }
+ echo "$(route TECHNICAL_CORRECTION_REQUIRED false "$attempt")";exit 0
+fi
+[[ $(id -un) == nnv && -x $CODEX && -d $REPO/.git ]]||die 'must run as nnv with Codex and repository'
+cd "$REPO"
+if $DRY_RUN;then only_pine&&echo 'DRY RUN: preflight passes; no pull, task parse, Codex, audit, result, commit, or push.'||echo 'DRY RUN: preflight would block worktree.';exit 0;fi
+mkdir -p "$LOG_DIR" "$LOCK_DIR";chmod 700 "$STATE_DIR" "$LOG_DIR" "$LOCK_DIR";exec 9>"$LOCK_DIR/runner.lock";flock -n 9||{ echo 'msm_runner: lock held; exiting successfully';exit 0; }
+# No task status, ID, hash, allowlist, or infrastructure decision is read before pull.
+only_pine||{ state BLOCKED_DIRTY_WORKTREE '' '' '' "$(now)" "$(gitc rev-parse HEAD)" "$(gitc rev-parse HEAD)" '' 0 'only protected Pine may be dirty' 0;exit 0; }
+gitc pull --ff-only origin main||{ state FAILED '' '' '' "$(now)" "$(gitc rev-parse HEAD)" "$(gitc rev-parse HEAD)" '' 1 'git pull --ff-only failed' 0;exit 1; }
+only_pine||{ state BLOCKED_DIRTY_WORKTREE '' '' "$(now)" "$(now)" "$(gitc rev-parse HEAD)" "$(gitc rev-parse HEAD)" '' 0 'pull left disallowed dirt' 0;exit 0; }
+status=$(task_field status);task_id=$(task_field task_id);task_hash=$(sha256sum .codex/TASK.md|awk '{print $1}');start_sha=$(gitc rev-parse HEAD);started=$(now)
+[[ $status == READY ]]||{ state NO_ACTIVE_TASK "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$start_sha" '' 0 'TASK.md absent or not READY' 0;echo NO_ACTIVE_TASK;exit 0; }
+[[ -n $task_id ]]||{ state FAILED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$start_sha" '' 1 'READY task missing task_id' 0;exit 1; }
+if is_infra;then state MANUAL_BOOTSTRAP_REQUIRED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$start_sha" '' 0 'latest pulled infrastructure task requires manual bootstrap' 0;echo MANUAL_BOOTSTRAP_REQUIRED;exit 0;fi
+allowlist >/dev/null||{ state FAILED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$start_sha" '' 1 'normal task has no allowlist' 0;exit 1; }
+retry_consumed=false;consume_retry&&retry_consumed=true||true
+! $retry_consumed&&result_pushed&&{ echo 'msm_runner: duplicate task ID and hash already pushed; skipping';exit 0; }
+pine_before=$(sha256sum "$REPO/$PINE"|awk '{print $1}');state RUNNING "$task_id" "$task_hash" "$started" '' "$start_sha" "$start_sha" '' 0 '' 0
+run_writer 0 implementation||{ code=$?;state FAILED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$(gitc rev-parse HEAD)" '' "$code" 'implementation R0 failed' 0;exit "$code";};verify
+for attempt in 0 1 2;do
+ diff_hash=$(worktree_hash);audit_path="$STATE_DIR/audits/${task_id}-${diff_hash}-R${attempt}.json";mkdir -p "$STATE_DIR/audits";MSM_AUDIT_FILE="$audit_path" "$AUDITOR" "$task_id" "$task_id" "$attempt" "$task_hash" "$start_sha" "$diff_hash"
+ read -r audit technical decision < <(python3 - "$audit_path" <<'PY'
 import json,sys
-d=json.load(open(sys.argv[1])); print(d['audit_status']); print(str(d['technical_pass']).lower())
+d=json.load(open(sys.argv[1]));print(d['audit_status'],str(d['technical_pass']).lower(),str(d['research_decision_required']).lower())
 PY
 )
-audit_kind=$(sed -n '1p' <<<"$audit_status"); technical=$(sed -n '2p' <<<"$audit_status")
-if [[ $audit_kind != PASS && ! ($audit_kind == USER_DECISION_REQUIRED && $technical == true) ]]; then
-  printf '%s task=%s phase=stop audit=%s technical=%s\n' "$(now)" "$task_id" "$audit_kind" "$technical" | tee -a "$summary"; exit 0
-fi
-verify_post_codex; set_result_field implementation_commit_sha PENDING_SHELL_COMMIT; set_result_field implementation_push_status PENDING_SHELL_PUSH; set_result_field result_commit_status PENDING_SHELL_RESULT_COMMIT
-mapfile -t paths < <(tracked_dirty_paths | sort -u | while IFS= read -r p; do [[ -n $p && $p != "$PINE" ]] && printf '%s\n' "$p"; done)
-(( ${#paths[@]} > 0 )) || die 'no paths to stage after audit'
-git add -- "${paths[@]}"; git diff --cached --quiet -- "$PINE" && ! git diff --cached --name-only | grep -Eq '^(experiments/|docs/|MEMORY\.md$)' || die 'staged protected or forbidden path'
-git commit -m "$(field commit_message)"; implementation_sha=$(git rev-parse HEAD); git push origin main
-set_result_field implementation_commit_sha "$implementation_sha"; set_result_field implementation_push_status 'PUSHED origin/main'; set_result_field result_commit_status PENDING_SHELL_RESULT_COMMIT
-git add -- .codex/RESULT.md; git commit -m "codex: record result $task_id"; result_sha=$(git rev-parse HEAD); git push origin main
-state RESULT_PUSHED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$result_sha" "$audit_kind" 0 ''
-printf '%s task=%s phase=complete implementation=%s result=%s\n' "$(now)" "$task_id" "$implementation_sha" "$result_sha" | tee -a "$summary"
+ python3 - "$STATE_FILE" "$attempt" "$diff_hash" "$audit_path" "$audit" <<'PY'
+import json,os,sys
+p,a,h,j,s=sys.argv[1:];d=json.load(open(p));d.setdefault('attempt_history',[]).append({'attempt':'R'+a,'worktree_diff_hash':h,'audit_json_path':j,'audit_status':s});d['blocking_findings']=json.load(open(j))['blocking_findings'];d['warnings']=json.load(open(j))['warnings'];t=p+'.tmp.%d'%os.getpid();open(t,'w').write(json.dumps(d,indent=2,sort_keys=True)+'\n');os.replace(t,p)
+PY
+ next=$(route "$audit" "$technical" "$attempt")
+ case $next in COMMIT_PASS|COMMIT_USER_DECISION_REQUIRED) final_status=${next#COMMIT_};break;; STOP_AUDIT_FAILED) state AUDIT_FAILED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$(gitc rev-parse HEAD)" "$audit" 1 'audit failed' "$attempt";exit 1;; STOP_USER_DECISION_REQUIRED) state USER_DECISION_REQUIRED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$(gitc rev-parse HEAD)" "$audit" 0 'user decision required; no correction' "$attempt";exit 0;; CORRECT_R1|CORRECT_R2) next=${next#CORRECT_R};"$CORRECTOR" "$task_id" "$task_hash" "$start_sha" "$next"||die "correction R$next failed";verify;; esac
+ case $next in COMMIT_PASS|COMMIT_USER_DECISION_REQUIRED) final_status=${next#COMMIT_};break;; STOP_AUDIT_FAILED) state AUDIT_FAILED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$(gitc rev-parse HEAD)" "$audit" 1 'audit failed' "$attempt";exit 1;; STOP_USER_DECISION_REQUIRED) state USER_DECISION_REQUIRED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$(gitc rev-parse HEAD)" "$audit" 0 'user decision required; no correction' "$attempt";exit 0;; CORRECT_R1|CORRECT_R2) next=${next#CORRECT_R};validate_correction_audit "$audit_path" "$task_id" "$task_id" "$attempt" "$task_hash" "$start_sha" "$diff_hash"||{ state AUDIT_FAILED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$(gitc rev-parse HEAD)" AUDIT_FAILED 1 'audit evidence validation failed' "$attempt";exit 1; };"$CORRECTOR" "$task_id" "$task_hash" "$start_sha" "$next" "$diff_hash" "$audit_path"||die "correction R$next failed";verify;; esac
+done
+write_result "$audit_path";set_result task_status "$final_status";set_result acceptance_results "$final_status";verify;mapfile -t paths < <(dirty_paths|sort -u|while IFS= read -r p;do [[ -n $p && $p != "$PINE" ]]&&printf '%s\n' "$p";done);((${#paths[@]}))||die 'no files to stage';gitc add -- "${paths[@]}";gitc diff --cached --quiet -- "$PINE"||die 'protected Pine staged'
+gitc commit -m "$(task_field commit_message)";implementation_sha=$(gitc rev-parse HEAD);gitc push origin main;set_result implementation_commit_sha "$implementation_sha";set_result implementation_push_status 'PUSHED origin/main';set_result result_commit_status PENDING_SHELL_RESULT_COMMIT;gitc add -- .codex/RESULT.md;gitc commit -m "codex: record result $task_id";result_sha=$(gitc rev-parse HEAD);gitc push origin main;state RESULT_PUSHED "$task_id" "$task_hash" "$started" "$(now)" "$start_sha" "$result_sha" "$final_status" 0 '' "$attempt"
