@@ -2,10 +2,10 @@
 Description=Run MSM Codex task runner every five minutes
 
 [Timer]
-OnBootSec=2min
-OnUnitActiveSec=5min
-Persistent=true
+OnActiveSec=30s
+OnUnitInactiveSec=5min
 RandomizedDelaySec=20s
+AccuracySec=10s
 Unit=msm-codex-runner.service
 
 [Install]
