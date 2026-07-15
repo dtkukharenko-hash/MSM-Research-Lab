@@ -37,6 +37,12 @@ trap cleanup EXIT
 echo "[2/10] Repository preflight"
 cd "$REPO"
 [[ $(sudo -u "$RUN_USER" git branch --show-current) == main ]] || fail "repository must be on main"
+# A previous bootstrap revision could leave a plain untracked file named FETCH_HEAD
+# in the worktree root. Remove only that exact untracked regular file; never touch
+# .git/FETCH_HEAD or any tracked file.
+if [[ -f "$REPO/FETCH_HEAD" ]] && ! sudo -u "$RUN_USER" git ls-files --error-unmatch -- FETCH_HEAD >/dev/null 2>&1; then
+  rm -f -- "$REPO/FETCH_HEAD"
+fi
 status=$(sudo -u "$RUN_USER" git status --porcelain=v1 --untracked-files=all)
 while IFS= read -r line; do
   [[ -z $line ]] && continue
