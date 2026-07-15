@@ -1,8 +1,10 @@
 # Current Codex Task
 
 - task_id: `AUTOMATION-003-ENABLE-ALLOWLISTED-RESEARCH-TASKS`
-- status: `READY`
+- status: `COMPLETED`
+- completed_at: `2026-07-15`
 - published_at: `2026-07-15`
+- completion_commit: `ce1bc0a8a82a9edb4fb65951b1389f7744dda310`
 - target_branch: `main`
 - commit_message: `AUTOMATION-003 enable allowlisted research tasks`
 - infrastructure_maintenance: `true`
