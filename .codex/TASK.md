@@ -1,15 +1,17 @@
 # Current Codex Task
 
-- task_id: `AUTOMATION-002-R1-FAST-LOCAL-AUDIT-CORRECTION-FIX`
+- task_id: `AUTOMATION-002-R2-ISOLATION-STATE-AND-RETRY-FIX`
 - status: `READY`
 - published_at: `2026-07-15`
 - target_branch: `main`
-- commit_message: `AUTOMATION-002-R1 fix fast local audit and bounded correction loop`
+- commit_message: `AUTOMATION-002-R2 fix isolation state and retry semantics`
 - infrastructure_maintenance: `true`
 
 ## Objective
 
-Replace the rejected local draft from `AUTOMATION-002` with a safe, faster Ubuntu runner. This is a one-time manual bootstrap. Do not execute it through systemd.
+Patch the existing uncommitted AUTOMATION-002-R1 implementation in place. Do not redesign the runner again. Fix only the concrete defects listed below, preserve working parts, validate honestly, and leave all changes uncommitted for manual review.
+
+This is a manual bootstrap task. Never execute it through systemd.
 
 ## Mandatory protections
 
@@ -17,154 +19,167 @@ Never modify, stage, or commit:
 
 - `docs/DEFINITIONS.md`
 - `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
-- research files outside a future task's explicit allowlist
-- secrets, credentials, SSH/Codex auth material, or files outside the repository
+- any research file
+- secrets, credentials, SSH/Codex auth files, or files outside the repository
 
-The existing Pine modification must remain byte-identical, unstaged, and uncommitted. Do not run `git pull`, `git add`, `git commit`, `git push`, `sudo`, `systemctl`, or installation commands.
+The existing Pine modification must remain byte-identical, unstaged, and uncommitted.
 
-## Rejected-draft defects that must be fixed
+Do not run `git pull`, `git add`, `git commit`, `git push`, `sudo`, `systemctl`, or installation commands.
 
-1. Codex in `workspace-write` cannot write `.codex/` in this environment. Do not require implementation or correction Codex to create or update `.codex/RESULT.md`.
-2. The shell runner must perform `git pull --ff-only origin main` before reading `status`, `task_id`, task hash, allowlist, or deciding whether the task is infrastructure maintenance.
-3. Do not run two correction agents for one retry. For each failed audit, invoke exactly one correction Codex process, then validate and audit its resulting worktree directly. Required sequence: implementation R0 -> audit R0 -> correction R1 -> audit R1 -> correction R2 -> audit R2 -> stop/commit.
-4. The normal implementation loop must not invoke a second implementation process after `msm_correct.sh` already edited the worktree.
-5. The shell-owned result record must not depend on Codex writing `.codex/`. Store runtime result/audit records under `/home/nnv/.local/state/msm-runner/`. After technical PASS, the shell may write/update `.codex/RESULT.md` itself before staging, using verified runtime data. Codex must never write this file.
-6. Preserve the existing two-commit workflow: implementation commit, then result-metadata commit with the actual implementation SHA and push status.
-7. Validate the actual installed-copy design: service executes `/usr/local/lib/msm-runner/msm_runner.sh`; helper scripts are installed beside it; repository source may be edited without changing the running process.
-8. Normal research tasks must never modify runner infrastructure. Infrastructure tasks must return `MANUAL_BOOTSTRAP_REQUIRED` only after the latest task has been pulled and parsed.
-9. Keep the one-minute timer already committed.
-10. Do not claim validation passed when a command failed. Record exact limitations.
+Do not write `.codex/RESULT.md` in this manual Codex session. Write the bootstrap report to `automation/AUTOMATION-002-R2-RESULT.md`.
 
-## Required architecture
+## Defects to fix
 
-### Shell runner
+### 1. Real Bubblewrap isolation for implementation and correction
 
-The installed shell runner owns:
+The current `run_writer()` invokes Codex directly while claiming `.git` is read-only. Replace this with actual Bubblewrap isolation.
 
-- non-blocking lock;
-- preflight allowing only the exact protected Pine modification;
-- Git pull before task parsing;
-- task ID/hash and duplicate detection;
-- allowlist parsing and protected-path enforcement;
-- deterministic worktree diff hash;
-- attempt state/history;
-- invoking implementation, audit, and correction processes;
-- shell-generated result metadata;
-- explicit-path staging, commits, and pushes.
+Implementation R0 and corrections R1/R2 must run with:
 
-Never use `git add .` or `git add -A`.
-
-### Implementation Codex
-
-Run once for R0 with:
-
-- `workspace-write`;
+- repository worktree writable;
+- repository `.git` explicitly read-only;
+- runtime state/log directory writable;
+- Codex `workspace-write`;
 - approval `never`;
-- `.git` read-only through Bubblewrap;
-- exact task allowlist;
-- no requirement to write `.codex/RESULT.md`.
+- no Git mutation/network synchronization commands in the prompt.
 
-Capture JSONL, stderr, and final response only under runtime state/log paths.
+Use a working Bubblewrap command equivalent to the already verified environment. Do not merely document isolation; enforce it in the command line.
 
-### Audit Codex
+`msm_correct.sh` must use the same enforced `.git` read-only boundary and invoke exactly one Codex correction process per retry.
 
-Run independently after R0/R1/R2:
+### 2. Read-only audit filesystem
 
-- read-only repository;
-- no trust in implementation narrative;
-- inspect task, actual diff/status, tests, artifacts, and project constraints;
-- write strict JSON only to runtime state.
+Audit Codex must not rely only on `-s read-only`. Enforce a read-only repository through Bubblewrap, while allowing only runtime log/audit output outside the repository.
 
-Required fields:
+The auditor must not modify repository files or `.git`.
 
-- `task_id`
-- `original_task_id`
-- `attempt`
-- `task_hash`
-- `starting_commit`
-- `worktree_diff_hash`
-- `audit_status`
-- `technical_pass`
-- `research_decision_required`
-- `blocking_findings`
-- `warnings`
-- `recommended_action`
-- `finished_at`
+### 3. Restore one-shot retry semantics
 
-Allowed statuses: `PASS`, `USER_DECISION_REQUIRED`, `TECHNICAL_CORRECTION_REQUIRED`, `AUDIT_FAILED`.
+The current draft removed the externally requested one-shot retry behavior.
 
-### Correction routing
+Restore:
 
-- R0 technical failure -> invoke one correction process R1 -> validate -> audit R1.
-- R1 technical failure -> invoke one correction process R2 -> validate -> audit R2.
-- R2 technical failure -> `USER_DECISION_REQUIRED`.
-- Visual review, holdout, definition, hypothesis, acceptance-criteria, interpretation, or research judgment -> stop immediately with `USER_DECISION_REQUIRED` and no correction.
-- `AUDIT_FAILED` means stop without commit.
-- Do not broaden the original allowlist.
+- `retry_requested=true` is accepted only when task ID and task hash match;
+- it is atomically reset/consumed before rerun;
+- it cannot remain permanently true;
+- duplicate completed task ID+hash is skipped when no matching retry is requested.
 
-### Result and commit flow
+Add a simulation or isolated state test proving consumption happens once.
 
-Codex cannot write `.codex/`, so the shell creates a deterministic `.codex/RESULT.md` from verified runtime state only after an allowed audit outcome.
+### 4. Correct outcome routing and final state
 
-Commit only for:
+Do not write final state `PASS` unconditionally.
 
-- `PASS` with `technical_pass=true`; or
-- `USER_DECISION_REQUIRED` with `technical_pass=true` when implementation is technically valid and later user judgment remains.
+Required routing:
 
-Two commits are required:
+- `PASS` + `technical_pass=true` -> commit allowed, final audit status `PASS`;
+- `USER_DECISION_REQUIRED` + `technical_pass=true` -> commit allowed, but final state/audit must remain `USER_DECISION_REQUIRED`, not `PASS`;
+- `USER_DECISION_REQUIRED` + `technical_pass=false` -> stop without commit;
+- `TECHNICAL_CORRECTION_REQUIRED` at R0 -> exactly one R1 correction;
+- `TECHNICAL_CORRECTION_REQUIRED` at R1 -> exactly one R2 correction;
+- technical failure at R2 -> stop `USER_DECISION_REQUIRED` without commit;
+- `AUDIT_FAILED` -> stop without commit.
 
-1. implementation files plus shell-generated RESULT with `implementation_commit_sha: PENDING_SHELL_COMMIT`;
-2. RESULT metadata containing the actual first commit SHA and push status.
+Persist the actual final attempt number. Do not hardcode attempt `2` in successful state.
 
-The protected Pine must never be staged.
+### 5. Preserve complete runtime history
 
-## Files
+Runtime state must retain at minimum:
 
-Inspect and revise as needed:
+- original task ID/hash;
+- current attempt;
+- attempt history for R0/R1/R2;
+- implementation/correction start and end times;
+- implementation/correction exit codes;
+- each worktree diff hash;
+- each audit JSON path/status;
+- blocking findings and warnings;
+- final stop reason;
+- starting, implementation, and result commit SHAs when created.
+
+Do not replace the entire state with a minimal object on each transition if that destroys history.
+
+### 6. No-task behavior
+
+After pull and task parsing:
+
+- absent/non-READY task must exit successfully as `NO_ACTIVE_TASK`, not set runner failure;
+- malformed READY task with missing task ID may fail explicitly;
+- infrastructure task must return `MANUAL_BOOTSTRAP_REQUIRED` only after pull and parsing.
+
+### 7. Self-protection for normal tasks
+
+For normal tasks, reject any changed infrastructure path even if a broad allowlist pattern accidentally matches it:
 
 - `automation/msm_runner.sh`
 - `automation/msm_audit.sh`
 - `automation/msm_correct.sh`
 - `automation/install.sh`
-- `automation/README.md`
 - `automation/runner.service`
 - `automation/runner.timer`
-- `automation/state.json`
-- `automation/state.example.json`
 
-Do not attempt to update `.codex/RESULT.md` during this manual Codex run. Put the manual bootstrap report in `automation/AUTOMATION-002-R1-RESULT.md` instead.
+Infrastructure maintenance remains manual-only.
+
+### 8. Accurate shell-generated result metadata
+
+The shell-generated `.codex/RESULT.md` must record the real audit outcome and real attempt number. For technically valid `USER_DECISION_REQUIRED`, preserve that status.
+
+Use the two-commit workflow:
+
+1. implementation files plus RESULT with `PENDING_SHELL_COMMIT`;
+2. RESULT metadata with actual implementation SHA and push status.
+
+Do not stage the protected Pine.
+
+### 9. Executable modes and installed-copy design
+
+Ensure repository executable modes are correct for all shell scripts, or document that `install.sh` sets modes while validation invokes them through `bash`.
+
+Service must execute the installed copy under `/usr/local/lib/msm-runner/`, not mutable repository source. Helpers must be installed beside it.
+
+Preserve the committed one-minute timer.
 
 ## Validation
 
-Run and report exact outcomes:
+Run and report exact outcomes. A failed command must be reported as failed.
 
-- `bash -n automation/*.sh` individually;
+Required:
+
+- `bash -n` for each `automation/*.sh`;
 - `bash automation/install.sh --dry-run`;
-- runner `--dry-run`;
-- duplicate skip simulation;
-- infrastructure task simulation proving `MANUAL_BOOTSTRAP_REQUIRED` after pull/task parse logic;
-- R0 technical failure routes to exactly one R1 correction;
-- R1 technical failure routes to exactly one R2 correction;
-- R2 technical failure stops with `USER_DECISION_REQUIRED`;
-- research-decision case performs zero corrections;
-- scans proving no Codex process writes `.codex/` or mutates Git;
-- scans proving no `git add .`/`git add -A`;
-- scans proving protected Pine and `docs/DEFINITIONS.md` exclusions;
+- runner dry-run;
+- no-active-task simulation;
+- duplicate completed task skip simulation;
+- matching one-shot retry consumption twice, proving first consumes and second does not;
+- infrastructure task simulation -> `MANUAL_BOOTSTRAP_REQUIRED`;
+- R0 technical failure -> exactly one R1 correction route;
+- R1 technical failure -> exactly one R2 correction route;
+- R2 technical failure -> `USER_DECISION_REQUIRED`;
+- research-decision case -> zero corrections;
+- technically valid `USER_DECISION_REQUIRED` remains that status while commit gate is allowed;
+- scans showing actual Bubblewrap `.git` read-only enforcement for implementation and correction;
+- scans showing audit repository read-only enforcement;
+- scans showing no `git add .` or `git add -A`;
+- scans showing normal tasks cannot modify runner infrastructure;
+- protected Pine hash before/after;
 - `git diff --check`;
-- confirmation that only the pre-existing Pine is modified among research files.
+- only protected Pine modified among research files.
 
-Tests must not commit, push, install, start services, or alter the protected Pine.
+Tests must not commit, push, install, enable services, or modify protected files.
 
-## Manual result
+## Manual bootstrap report
 
-Write `automation/AUTOMATION-002-R1-RESULT.md` containing:
+Write `automation/AUTOMATION-002-R2-RESULT.md` with:
 
-- task ID and status `IMPLEMENTED_AWAITING_MANUAL_COMMIT`;
-- files changed;
-- architecture summary;
-- exact validation commands/outcomes;
-- proof that each retry invokes exactly one correction agent;
+- task ID;
+- status `IMPLEMENTED_AWAITING_MANUAL_COMMIT` only when every mandatory validation passes;
+- exact changed files;
+- exact validation commands and outputs;
+- isolation command excerpts;
+- retry/state-routing simulation results;
 - known limitations;
-- exact manual review, commit, installation, and timer-enable commands.
+- manual commit/install/enable commands.
+
+When any mandatory validation fails, use status `TECHNICAL_CORRECTION_REQUIRED` and list the failures.
 
 Leave all intended changes uncommitted.
