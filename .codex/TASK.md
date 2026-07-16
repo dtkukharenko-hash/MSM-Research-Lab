@@ -144,7 +144,7 @@ A valid common invariant must:
 4. not depend on a future pivot;
 5. remain present when key thresholds are varied by approximately `±20%`;
 6. be stronger in the three cases than in matched controls on at least one predeclared composite or component measure;
-7. identify additional plausible cases in the same date window, with false or ambiguous detections documented.
+7. identify additional plausible cases in the same date window, with false or uncertain detections documented.
 
 If discriminative contrast is weak, do not invent predictive strength. The positive result may be a confirmed descriptive transition with only partial separation from controls.
 
@@ -164,7 +164,7 @@ Because there are only three marked cases, do not claim large-sample certainty. 
 
 ## Iteration and stopping rule
 
-Do not stop at the first negative or ambiguous candidate.
+Do not stop at the first negative or equivocal candidate.
 
 Proceed through:
 
@@ -213,7 +213,7 @@ The report must contain:
 9. matched-control contrast;
 10. parameter-neighbour stability;
 11. additional detections;
-12. counterexamples and ambiguous cases;
+12. counterexamples and uncertain cases;
 13. one final formal state rule;
 14. limitations;
 15. verdict: `CONFIRMED_COMMON_INVARIANT` or `PARTIAL_COMMON_INVARIANT`.
