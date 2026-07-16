@@ -1,75 +1,135 @@
 # Current Codex Task
 
-- task_id: `AUTOMATION-004-R1-INSTALLER-OWNERSHIP-AND-MODE-GUARD`
-- status: `COMPLETED`
-- completed_at: `2026-07-16`
+- task_id: `AUTOMATION-005-FEEDER-V1`
+- status: `READY`
 - published_at: `2026-07-16`
-- completion_commit: `0fac5485ab50bfd1a6fb7b9211a47759875ffff0`
 - target_branch: `main`
-- commit_message: `AUTOMATION-004-R1 fix installer ownership and mode guard`
+- commit_message: `AUTOMATION-005 feeder v1`
 - infrastructure_maintenance: `true`
-- original_task_id: `AUTOMATION-004-LOCAL-ORCHESTRATOR-V1`
-- correction_attempt: `1`
 
 ## Objective
 
-Correct the purely technical installer defects found in the completed AUTOMATION-004 implementation without changing orchestrator definitions, state-machine semantics, research logic, hypotheses, holdout usage, visual judgments, or project research decisions.
+Add a deterministic feeder and enqueue CLI connecting GitHub `.codex/TASK.md` to the installed local orchestrator queue. The feeder must never make research judgments and must fail closed.
 
-The installed service runs as user `nnv`, but the current installer creates the 0700 runtime state tree without setting owner/group. When the installer is run through sudo, those directories become root-owned and the `nnv` service cannot access them. The argument parser also accepts unsupported mode combinations even though the original task requires exactly two supported invocation modes.
+## Architecture
 
-## Required correction
+```text
+GitHub .codex/TASK.md + .codex/ALLOWLIST.txt
+  -> msm_task_feeder.py
+  -> atomic envelope in /home/nnv/.local/state/msm-orchestrator/queue
+  -> existing msm-orchestrator.service
+```
 
-1. In `automation/install_orchestrator.sh`, create and repair the complete runtime state tree with owner `nnv`, group `nnv`, and directory mode `0700`, including pre-existing directories from a prior failed/root-owned installation.
-2. Keep runtime state files owned by `nnv` where the installer creates or repairs any files; do not delete existing queue, running, completed, blocked, failed, or log contents.
-3. Accept exactly these two invocation forms and reject all others with nonzero exit status:
-   - `--install --test-mode`
-   - `--activate-production`
-4. Preserve idempotency: repeated execution must retain correct ownership/modes and must not damage runtime state.
-5. Add an isolated installer fixture that uses temporary install/state roots and verifies:
-   - both valid invocation forms;
-   - rejection of unsupported combinations;
-   - all required runtime directories are owned by the selected run user/group and mode `0700`;
-   - a second run remains successful and preserves a sentinel state file.
-6. Record exact commands and outcomes in `automation/AUTOMATION-004-R1-RESULT.md`.
+Keep the orchestrator state machine authoritative. The feeder only validates and enqueues.
 
-## Allowed changes
+## Required files
 
-Only:
+Create:
+
+- `automation/msm_task_feeder.py`
+- `automation/enqueue_task.py`
+- `automation/install_feeder.sh`
+- `automation/verify_feeder.sh`
+- `automation/msm-task-feeder.service`
+- `automation/AUTOMATION-005-RESULT.md`
+
+Modify only when required for immutable-copy installation compatibility:
 
 - `automation/install_orchestrator.sh`
-- `automation/AUTOMATION-004-R1-RESULT.md`
+- `automation/msm-orchestrator.service`
 
-No other file may be created, modified, staged, committed, renamed, deleted, or chmodded.
+Do not modify orchestrator transitions or worker role semantics.
+
+## Feeder contract
+
+1. Read only repository-local `.codex/TASK.md` and `.codex/ALLOWLIST.txt`.
+2. Accept only `status: READY`.
+3. Reject infrastructure tasks and tasks with `infrastructure_maintenance: true` from automatic production ingestion.
+4. Reject or place into `blocked/` without invoking Codex when task text or metadata requires any of:
+   - definition change;
+   - hypothesis change;
+   - holdout access or extension;
+   - TradingView or visual review;
+   - ambiguous research judgment;
+   - user decision.
+5. Validate task ID format, branch `main`, nonempty allowlist, repository-relative normalized paths, no duplicates, no directory traversal, and no protected paths.
+6. Always forbid:
+   - `docs/DEFINITIONS.md`;
+   - `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`;
+   - `.git` internals;
+   - secrets and installed system paths.
+7. Compute task SHA-256 from exact task bytes.
+8. Create the queue envelope atomically with schema fields expected by `msm_orchestrator.py`.
+9. Preserve idempotency across restarts: same task ID/hash is a no-op wherever it already exists in queue/running/completed/blocked/failed; same ID with a different hash becomes blocked and never runs.
+10. Feeder must not run git mutation commands, commit, push, stage, reset, clean, checkout, or merge.
+11. Production feeder may perform read-only detection against the already synchronized local repository. It must not fetch while a task is running. Git synchronization remains owned by the orchestrator preflight.
+12. Poll interval: 10 seconds. One feeder instance only, protected by a lock.
+13. `enqueue_task.py` must support an explicit manual dry-run and explicit enqueue mode using the same validation code.
+14. All writes under the runtime state tree must be atomic, mode 0600 for files, 0700 for directories, owner/group `nnv`.
+15. Never overwrite queue or state files silently.
+
+## Service and installation
+
+- Install immutable copies under `/usr/local/lib/msm-orchestrator/`.
+- Install `msm-task-feeder.service` under `/etc/systemd/system/`.
+- Run as user/group `nnv`.
+- Set `PYTHONDONTWRITEBYTECODE=1`.
+- Use restart-on-failure with bounded delay.
+- Do not enable the service inside `install_feeder.sh --install --test-mode`.
+- Support exactly:
+  - `--install --test-mode`
+  - `--activate-production`
+- Repeated installation must be safe and preserve all runtime queues/logs.
+
+## Validation fixtures
+
+`verify_feeder.sh` must test in isolated temporary roots:
+
+1. valid READY task creates exactly one valid envelope;
+2. repeated identical task is a no-op;
+3. same ID with changed hash blocks;
+4. COMPLETED/non-READY task is ignored;
+5. infrastructure task is rejected;
+6. empty, absolute, traversing, duplicate and protected allowlist entries fail;
+7. visual/TradingView, definition, hypothesis, holdout, ambiguous and user-decision tasks block before any worker call;
+8. malformed Markdown metadata fails closed;
+9. concurrent feeder processes create at most one envelope;
+10. restart preserves dedupe state;
+11. kill switch prevents ingestion;
+12. no `.pyc` or `__pycache__` is created in the repository;
+13. protected Pine remains byte-identical and unstaged;
+14. feeder executes no git mutation command;
+15. production service and orchestrator service can run together while old timer remains disabled.
+
+## Real smoke-test preparation
+
+Do not automatically run a research task during installation. Provide a documented command in `AUTOMATION-005-RESULT.md` for a later harmless real Codex smoke task. Installation verification itself must use deterministic fixtures without model calls.
 
 ## Hard protections
 
-Never modify, stage, commit, delete, rename, chmod, rewrite, or include in the allowlist:
+Never modify, stage, commit, delete, rename, chmod, rewrite, or include in any allowlist:
 
 - `docs/DEFINITIONS.md`
 - `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
 - `.codex/RESULT.md`
 - `.git` internals
-- any research document or artifact
-- any orchestrator state-machine, worker, verifier, service-unit, or bootstrap file other than the installer explicitly allowed above
+- research documents or artifacts
 
 The protected Pine may already be modified locally. It must remain byte-identical, unstaged, and uncommitted.
 
-## Research constraints
+## Allowed changes
 
-This is a technical infrastructure correction only. Do not change definitions, hypotheses, acceptance criteria, holdout boundaries, visual-review fields, detector logic, or any research interpretation. If any such change appears necessary, stop and report `BLOCKED_USER_DECISION` rather than implementing it.
+Only:
 
-## Validation
-
-Run and record at minimum:
-
-- `bash -n automation/install_orchestrator.sh`
-- isolated temporary-root fixture covering both valid modes and invalid combinations
-- ownership and `0700` checks for every runtime directory
-- idempotent second-run check preserving a sentinel file
-- `git diff --check`
-- confirmation that only the two allowed files changed
-- confirmation that `docs/DEFINITIONS.md` and the protected Pine are unchanged and unstaged
+- `automation/msm_task_feeder.py`
+- `automation/enqueue_task.py`
+- `automation/install_feeder.sh`
+- `automation/verify_feeder.sh`
+- `automation/msm-task-feeder.service`
+- `automation/AUTOMATION-005-RESULT.md`
+- `automation/install_orchestrator.sh` only if immutable-copy integration requires it
+- `automation/msm-orchestrator.service` only if service integration requires it
 
 ## Result contract
 
-Write `automation/AUTOMATION-004-R1-RESULT.md` only after all validations pass. Set its status to `IMPLEMENTED_AWAITING_MANUAL_COMMIT` and leave changes unstaged and uncommitted for deterministic infrastructure bootstrap handling.
+Write `automation/AUTOMATION-005-RESULT.md` only after all validations pass. Set status `IMPLEMENTED_AWAITING_MANUAL_COMMIT`, include exact test commands/results, installed paths, service names, rollback instructions, queue schema, manual enqueue usage, and the harmless real smoke-test command. Leave changes unstaged and uncommitted for deterministic bootstrap handling.
