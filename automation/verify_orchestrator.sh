@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 REPO=${MSM_REPO:-/home/nnv/MSM-Research-Lab}; PY="$REPO/automation/msm_orchestrator.py"; PINE="$REPO/experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine"
-usage(){ echo 'usage: --offline | --mock-cycle --wait SECONDS | --service --test-mode|--production --wait SECONDS | --health' >&2; exit 2; }
+usage(){ echo 'usage: --offline | --worker-fixture | --mock-cycle --wait SECONDS | --service --test-mode|--production --wait SECONDS | --health' >&2; exit 2; }
 offline(){ python3 -B - "$PY" <<'PY'
 import pathlib,sys
 p=pathlib.Path(sys.argv[1]); compile(p.read_text(encoding='utf-8'),str(p),'exec')
@@ -11,6 +11,37 @@ fixture(){ local d=$1; mkdir -p "$d/repo"; printf 'task\n' >"$d/repo/task.md"; p
 import hashlib,json,sys,pathlib
 d=pathlib.Path(sys.argv[1]); h=hashlib.sha256((d/'repo/task.md').read_bytes()).hexdigest(); e={'schema_version':'1','task_id':'mock','task_hash':h,'status':'READY','task_path':'task.md','allowlist_path':'allow.txt','created_at':'2026-01-01T00:00:00Z','attempt':0,'max_corrections':2}; (d/'state/queue').mkdir(parents=True); (d/'state/queue/mock.json').write_text(json.dumps(e))
 PY
+}
+worker_fixture(){ local d output runtime
+  command -v bwrap >/dev/null || { echo 'bwrap is required for worker fixture' >&2; return 1; }
+  d=$(mktemp -d); trap 'rm -rf "$d"' RETURN
+  mkdir -p "$d/repo/.git" "$d/bin"
+  printf 'task\n' >"$d/repo/task.md"; printf 'allowed\n' >"$d/repo/allow.txt"
+  cat >"$d/bin/codex" <<'SH'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+out=
+while (($#)); do
+  case $1 in -o) out=$2; shift 2;; *) shift;; esac
+done
+[[ -n $out ]]
+for path in "$HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$TMPDIR"; do
+  touch "$path/runtime-write-check"
+done
+[[ ! -w "$MSM_REPO/.git" ]]
+! touch "$MSM_REPO/.git/worker-fixture-must-not-exist"
+printf '%s\n' '{"role":"planner","verdict":"PASS","findings":[],"summary":"runtime initialized"}' >"$out"
+SH
+  chmod 700 "$d/bin/codex"
+  output="$d/result.json"
+  MSM_REPO="$d/repo" MSM_CODEX="$d/bin/codex" MSM_STATE_DIR="$d/state" \
+    bash "$REPO/automation/msm_worker.sh" --role planner --task "$d/repo/task.md" --allowlist "$d/repo/allow.txt" --output "$output"
+  [[ -s $output ]] || { echo 'worker fixture did not preserve output path' >&2; return 1; }
+  [[ ! -e "$d/repo/.git/worker-fixture-must-not-exist" ]] || { echo '.git became writable inside worker sandbox' >&2; return 1; }
+  runtime=$(find "$d/state/runtime" -type f -name runtime-write-check | wc -l)
+  [[ $runtime == 6 ]] || { echo "worker fixture expected six writable runtime paths, got $runtime" >&2; return 1; }
+  ! rg -q 'failed to initialize in-process app-server client: Read-only file system' "$output" "${output%.json}.jsonl"
+  echo WORKER_RUNTIME_FIXTURE_OK
 }
 mock(){ local d; d=$(mktemp -d); trap 'rm -rf "$d"' RETURN
   python3 -B - "$PY" "$d" <<'PY'
@@ -40,4 +71,4 @@ assert hashlib.sha256(pine.read_bytes()).hexdigest()==before
 print('all deterministic scenarios passed')
 PY
   echo MOCK_CYCLE_OK; }
-case ${1:-} in --offline) offline;; --mock-cycle) [[ ${2:-} == --wait && ${3:-} =~ ^[0-9]+$ ]] || usage; offline; mock;; --service) [[ ${2:-} =~ ^(--test-mode|--production)$ && ${3:-} == --wait && ${4:-} =~ ^[0-9]+$ ]] || usage; offline; echo SERVICE_STATIC_OK;; --health) offline; echo HEALTH_OK;; *) usage;; esac
+case ${1:-} in --offline) offline;; --worker-fixture) worker_fixture;; --mock-cycle) [[ ${2:-} == --wait && ${3:-} =~ ^[0-9]+$ ]] || usage; offline; mock;; --service) [[ ${2:-} =~ ^(--test-mode|--production)$ && ${3:-} == --wait && ${4:-} =~ ^[0-9]+$ ]] || usage; offline; echo SERVICE_STATIC_OK;; --health) offline; echo HEALTH_OK;; *) usage;; esac
