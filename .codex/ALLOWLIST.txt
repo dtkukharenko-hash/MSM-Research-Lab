@@ -1,3 +1,1 @@
-automation/msm_worker.sh
-automation/verify_orchestrator.sh
-automation/AUTOMATION-006-RESULT.md
+automation/SMOKE-004-RESULT.md
