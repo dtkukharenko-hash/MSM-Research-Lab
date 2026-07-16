@@ -43,6 +43,18 @@ if [[ $local_sha != "$remote_sha" ]]; then
   sudo -u "$RUN_USER" git merge --ff-only origin/main
 fi
 
+# Remove only bytecode produced by the previous bootstrap revision. Never remove
+# tracked files or any other cache contents.
+if [[ -d "$REPO/automation/__pycache__" ]]; then
+  while IFS= read -r -d '' pyc; do
+    rel=${pyc#"$REPO/"}
+    if ! sudo -u "$RUN_USER" git ls-files --error-unmatch -- "$rel" >/dev/null 2>&1; then
+      rm -f -- "$pyc"
+    fi
+  done < <(find "$REPO/automation/__pycache__" -maxdepth 1 -type f -name 'msm_orchestrator.cpython-*.pyc' -print0)
+  rmdir "$REPO/automation/__pycache__" 2>/dev/null || true
+fi
+
 # Only the known protected Pine may be dirty.
 while IFS= read -r line; do
   [[ -z $line ]] && continue
@@ -69,7 +81,6 @@ case "$active_status" in
     if [[ $active_task == "$BASE_TASK_ID" || $active_original == "$BASE_TASK_ID" ]]; then
       echo "[2/7] AUTOMATION-004 build/correction already completed; resume installation"
     else
-      # The orchestrator files are already committed; an unrelated completed task must not block installation.
       echo "[2/7] Active task is unrelated but completed; resume committed orchestrator installation"
     fi
     ;;
@@ -82,10 +93,15 @@ esac
 [[ -f "$REPO/automation/verify_orchestrator.sh" ]] || fail "verifier missing"
 [[ -f "$REPO/automation/msm_orchestrator.py" ]] || fail "orchestrator missing"
 
-# GitHub content writes may create shell files as 0644. Execute repository scripts through bash.
+# Validate Python syntax without creating __pycache__ or .pyc files in the repository.
 echo "[3/7] Static verification"
 bash -n "$REPO/automation/"*.sh
-python3 -m py_compile "$REPO/automation/msm_orchestrator.py"
+python3 - "$REPO/automation/msm_orchestrator.py" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+compile(p.read_text(encoding='utf-8'), str(p), 'exec')
+PY
 bash "$REPO/automation/verify_orchestrator.sh" --offline
 
 echo "[4/7] Install in test mode"
