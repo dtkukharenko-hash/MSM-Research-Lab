@@ -1,0 +1,23 @@
+[Unit]
+Description=MSM task feeder
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nnv
+Group=nnv
+WorkingDirectory=/home/nnv/MSM-Research-Lab
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -B /usr/local/lib/msm-orchestrator/msm_task_feeder.py --poll 10
+Restart=on-failure
+RestartSec=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/home/nnv/.local/state/msm-orchestrator
+
+[Install]
+WantedBy=multi-user.target
