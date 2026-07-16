@@ -1,4 +1,9 @@
-automation/msm_orchestrator.py
-automation/msm_worker.sh
-automation/verify_orchestrator.sh
-automation/AUTOMATION-008-RESULT.md
+experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/REPORT.md
+experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/cases.csv
+experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/case_features.csv
+experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/matched_controls.csv
+experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/candidate_models.csv
+experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/detections.csv
+experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/parameter_stability.csv
+experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/experiment_013.py
+experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/artifacts/EXP013_THREE_CASE_REVIEW.pine
