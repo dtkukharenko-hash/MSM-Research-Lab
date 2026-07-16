@@ -1,0 +1,21 @@
+[Unit]
+Description=MSM local task orchestrator
+After=network-online.target
+
+[Service]
+Type=simple
+User=nnv
+Group=nnv
+WorkingDirectory=/home/nnv/MSM-Research-Lab
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /usr/local/lib/msm-orchestrator/msm_orchestrator.py
+Restart=on-failure
+RestartSec=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/home/nnv/MSM-Research-Lab /home/nnv/.local/state/msm-orchestrator
+
+[Install]
+WantedBy=multi-user.target
