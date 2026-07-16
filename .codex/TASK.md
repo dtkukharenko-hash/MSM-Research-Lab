@@ -1,46 +1,46 @@
 # Current Codex Task
 
-- task_id: `EXP-013-R1-TECHNICAL-METRIC-AND-STABILITY-REPAIR`
+- task_id: `EXP-013-R2-EXECUTABLE-METRIC-AND-STABILITY-REPAIR`
 - status: `READY`
-- published_at: `2026-07-16`
+- published_at: `2026-07-17`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
 - original_task_id: `EXP-013-THREE-CASE-COMMON-INVARIANT`
-- correction_attempt: `1`
-- commit_message: `EXP-013 R1 technical metric and stability repair`
+- correction_attempt: `2`
+- supersedes_task_id: `EXP-013-R1-TECHNICAL-METRIC-AND-STABILITY-REPAIR`
+- commit_message: `EXP-013 R2 executable metric and stability repair`
 
 ## Objective
 
-Correct purely technical defects in the already completed EXP-013 implementation and regenerate its nine allowlisted outputs. This is a maintenance repair of calculations and reproducibility only, not a revision of the EXP-013 research question, model family, selected invariant, or verdict. Preserve the original research question, date window, reconstructed case intervals, evidence sources, candidate mechanisms M1-M7, validation policy, and prohibition on chart-based or subjective research judgment.
+Complete the still-unimplemented purely technical repairs from EXP-013 R1. The prior R1 result changed some generated text/CSV values but left the executable generator with the original hardcoded and incorrectly scoped calculations. Repair the generator first, regenerate all outputs from it, and prove that no required result is manually prefilled.
 
-Allowed work is limited to metric calculation repair, parameter-stability repair, CSV/REPORT reproducibility, and the concrete auditor findings listed below.
+This is the second and final automatic correction attempt for original task `EXP-013-THREE-CASE-COMMON-INVARIANT`. Do not alter the research question, definitions, three reconstructed case intervals, evidence confidence, hypotheses M1-M7, date window, instrument, holdout policy, selected model family, or any visual/research judgment.
 
-Do not introduce new definitions, new research premises, case windows, instruments, data after `2024-01-03 23:59:59 UTC`, chart-based judgments, or manual-review requirements. Do not reconsider the selected invariant and do not add a new research premise. No manual approval is required; lack of manual approval must not block execution.
+## Confirmed remaining technical defects
 
-## Defects to correct
-
-1. `matched_controls.csv` is not actually duration-matched: the implementation truncates every control to at most 18 bars while claiming duration matching. Select deterministic non-target controls with the same duration as their matched case, or report a transparent nearest feasible duration and its mismatch. Do not claim a match that was not computed.
-2. `parent_age_bars` currently stores an absolute array index, and `child_parent_duration_ratio` divides by that index. Compute both from elapsed bars within the relevant reconstructed parent and child intervals.
-3. Counter features currently reuse parent-direction progress over the whole counter-to-resolution window. Compute counter displacement, progress, boundary updates, update sizes, update intervals, last counter extreme, and failed extension in the actual counter direction and over the documented counter phase, using only closed past bars.
-4. `parent_boundary_preserved` is hardcoded to `1`. Derive it from the stated parent invalidation boundary and closed bars through resolution.
-5. `candidate_models.csv` hardcodes `cases_present=3`, generic effect labels, and ablation outcomes. Recompute presence and summaries from generated case/control features. Do not force a model to pass.
-6. `parameter_stability.csv` hardcodes all three cases present and two additional detections. Re-run the actual detector at factors `0.8`, `1.0`, and `1.2`, recording observed target-case presence and observed additional detections.
-7. `cases.csv` hardcodes the full sequence including `FailedCounterExtension` for every case although generated features show it absent in some cases. Make each ordered sequence agree with its computed causal states. The selected minimal invariant must be the actual common intersection, not a prefilled string.
-8. The Pine artifact must implement the same direction-aware minimal rule as Python. It must support both UP and DOWN parents, mark each full editable case interval distinctly, use closed-bar logic, and remain visual-only. Do not alter the protected EXP009A Pine.
-9. Ensure `REPORT.md`, terminal summary, CSV files, and Pine describe the same computed result without contradictory counts or claims.
+1. `metrics()` still receives only one interval and computes parent and counter quantities from the same whole counter-to-resolution window. Refactor it to receive the documented parent, counter, balance, and resolution boundaries and calculate each feature only on its correct causal phase and direction.
+2. `parent_boundary_preserved` is still literal `1`. Derive it from the fixed parent invalidation boundary and all closed bars through the documented resolution.
+3. `parent_age_bars` still stores the absolute source-array index `a`, and `child_parent_duration_ratio` divides by that index. Compute elapsed bar counts within the reconstructed parent and child intervals.
+4. `cases.csv` ordered sequences are still prefilled identically with `FailedCounterExtension` for all three cases. Construct each sequence from computed state flags, preserving chronological order.
+5. M4 `cases_present` is still forced to `3`, and model selection/ablation strings are preassigned. Compute presence and summaries from generated features. Keep the existing candidate family and selection policy; do not force a pass.
+6. `parameter_stability.csv` is still entirely hardcoded (`target_cases_present=3`, `additional_detections=2`, `stable=YES`). Execute the same detector independently at factors 0.8, 1.0, and 1.2 and record observed target presence and observed additional detections.
+7. Controls must include an explicit duration mismatch column and must be chosen deterministically without overlap with any target case. Exact duration is preferred; otherwise record the nearest feasible mismatch transparently.
+8. The final invariant string, case/control contrast, detection counts, report statements, and Pine rule must all be generated from the same executable result and agree numerically.
+9. Pine must implement the same direction-aware rule for both UP and DOWN parents, use closed bars only, mark each full editable case interval distinctly, and remain visual-only.
 
 ## Fixed research constraints
 
 - Instrument: ADAUSDT.
 - Analysis window: `2023-10-19 00:00:00 UTC` through `2024-01-03 23:59:59 UTC`, inclusive.
-- Primary scale: `4H`; child scale remains the documented available fallback used by the existing implementation.
-- Use only closed bars; no future pivots, lookahead, repainting, future returns, or future-derived labels.
-- Keep the three existing reconstructed case intervals and evidence confidence unchanged unless a timestamp is proven to be a simple serialization error. Any repair requiring chart interpretation, replacement of reconstructed cases, or subjective research judgment is outside this technical repair scope and must not be made automatically.
-- No predictive or profitability claims.
+- Primary scale: `4H`; child scale remains the existing documented `1H` fallback.
+- Keep the three current reconstructed case intervals and evidence confidence unchanged.
+- Use only closed past bars; no future pivots, lookahead, repainting, future returns, or future-derived labels.
+- No predictive, trading, profitability, entry, exit, long, short, PnL, or risk claims.
+- Stop without changing outputs if any repair requires chart interpretation, a new holdout, revised definitions, revised hypotheses, replacement case windows, or subjective research judgment.
 
 ## Required outputs
 
-Modify only the existing nine allowlisted paths:
+Modify only these existing nine paths:
 
 - `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/REPORT.md`
 - `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/cases.csv`
@@ -64,30 +64,27 @@ Never modify, stage, delete, rename, chmod, or rewrite:
 - `.codex/TASK.md`;
 - `.codex/ALLOWLIST.txt`;
 - `.git` internals;
-- any existing file outside the nine allowlisted EXP-013 paths.
+- any file outside the nine allowlisted EXP-013 paths.
 
 The protected EXP009A Pine may already be dirty before task start. Preserve it byte-identically and leave it unstaged and uncommitted.
 
-## Validation
+## Required validation
 
 Before PASS:
 
-1. Run `experiment_013.py` successfully twice and verify deterministic hashes for all generated outputs.
-2. Verify all seven CSV files parse and contain expected columns.
-3. Assert controls do not overlap target cases and report actual duration mismatch for every control.
-4. Assert all counter features use the counter phase and counter direction.
-5. Assert parent ages and duration ratios are elapsed-duration quantities, not absolute source indices.
-6. Assert model presence, ablation summaries, stability counts, and detection counts are computed rather than constants.
-7. Assert every `cases.csv` ordered sequence agrees with computed state flags.
-8. Assert the final invariant is present in all three cases and its reported case/control contrast is numerically reproducible.
-9. Assert Pine contains no strategy/order commands or future pivots, handles both directions, and marks all three editable intervals.
-10. Run `git diff --check` and verify only the nine allowlisted paths differ from baseline.
-11. Verify the protected EXP009A Pine hash is unchanged from task start and no files are staged.
-
-## Stop conditions
-
-Do not change research outputs if correction would require chart interpretation, a new validation split, revised definitions, a revised research premise, replacement of the reconstructed cases, or any subjective research judgment. Absence of manual approval is not a stop condition for this technical repair.
+1. Run `experiment_013.py` twice from a clean output baseline and verify identical SHA-256 hashes for all eight generated report/data/Pine outputs.
+2. Verify all seven CSV files parse and contain their documented columns.
+3. Add executable assertions proving phase boundaries and directions used by every counter feature.
+4. Add executable assertions proving elapsed parent/child durations are not absolute source indices.
+5. Add executable assertions proving `parent_boundary_preserved`, model presence, sequence membership, stability counts, and additional detections are derived values rather than constants.
+6. Verify every control is non-overlapping and report `duration_mismatch_bars` explicitly.
+7. Verify every ordered sequence agrees exactly with computed flags for that case.
+8. Verify the reported minimal invariant equals the computed intersection of required states across all three cases and its case/control contrast is reproducible from CSV values.
+9. Verify each stability row comes from an actual detector invocation at its stated factor.
+10. Verify Pine has no `strategy`, order, future-pivot, lookahead, or repainting commands; supports both parent directions; and shades/marks all three full editable intervals.
+11. Run `python3 -m py_compile`, `git diff --check`, and a baseline-relative allowlist check.
+12. Verify the protected EXP009A Pine hash is unchanged from task start and no files are staged.
 
 ## Result contract
 
-Planner, implementer, auditor, and corrector use the required JSON role contract. The implementer leaves the nine allowed outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message, and pushes to `main`.
+Planner, implementer, auditor, and corrector use the required JSON role contract. The implementer leaves only the nine allowed outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message, and pushes to `main`.
