@@ -1,68 +1,70 @@
 # Current Codex Task
 
-- task_id: `AUTOMATION-005-R1-RESTORE-ALLOWLISTED-RESEARCH-PATHS`
-- status: `COMPLETED`
-- completed_at: `2026-07-16`
+- task_id: `SMOKE-001-ORCHESTRATOR-REAL-CYCLE`
+- status: `READY`
 - published_at: `2026-07-16`
-- original_task_id: `AUTOMATION-005-FEEDER-V1`
-- correction_attempt: `1`
-- completion_commit: `3c8b673be39cffcaf64aa14a4b2de9065bc0cac1`
 - target_branch: `main`
-- commit_message: `AUTOMATION-005-R1 restore allowlisted research paths`
-- infrastructure_maintenance: `true`
+- infrastructure_maintenance: `false`
+- commit_message: `SMOKE-001 real orchestrator cycle`
 
 ## Objective
 
-Correct one purely technical policy defect in feeder V1: `automation/msm_task_feeder.py::is_protected()` currently rejects every path containing an `artifacts` component and rejects experiment `.md`, `.txt`, `.csv`, `.pine`, and `.json` files. This prevents ordinary explicitly allowlisted research tasks from reaching the orchestrator, contradicting the feeder contract and the already-established allowlist-based research workflow.
+Prove that the production feeder and local orchestrator can complete one real end-to-end Codex cycle without manual enqueue, without infrastructure changes, and without touching research definitions or protected artifacts.
 
-Restore exact-path allowlisting for ordinary research files while retaining all required hard protections and fail-closed validation. Do not change research definitions, hypotheses, holdout policy, visual judgments, research decisions, orchestrator transitions, or worker-role semantics.
+## Required implementation
 
-## Required correction
+Create exactly one file:
 
-1. Remove only the unintended blanket restrictions that reject:
-   - every path containing an `artifacts` directory;
-   - every experiment `.md`, `.txt`, `.csv`, `.pine`, or `.json` path.
-2. Continue to reject, at minimum:
-   - `docs/DEFINITIONS.md`;
-   - `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`;
-   - `.codex/RESULT.md`;
-   - `.git` and `.git/*`;
-   - absolute paths, traversal, non-normalized paths, duplicates, secrets, credentials, private keys, `.env` files, and installed system paths.
-3. Preserve the requirement that every writable path must appear explicitly and exactly in `.codex/ALLOWLIST.txt`.
-4. Preserve all task-text gates for definition changes, hypothesis changes, holdout access or extension, TradingView or visual review, ambiguous research judgment, and user decisions.
-5. Do not broaden infrastructure-task ingestion; `infrastructure_maintenance: true` must remain blocked from automatic production ingestion.
+- `automation/SMOKE-001-RESULT.md`
 
-## Validation requirements
+Its complete content must be:
 
-Extend deterministic isolated fixtures to prove all of the following:
+```markdown
+# SMOKE-001 Result
 
-1. An ordinary allowlisted research source path under `experiments/` is accepted.
-2. An ordinary allowlisted research report/artifact path such as an experiment-local `.md` or `.csv` is accepted when explicitly listed and when the task text contains no research-decision gate.
-3. `docs/DEFINITIONS.md` is rejected.
-4. The protected EXP009A Pine is rejected exactly and remains byte-identical and unstaged.
-5. `.codex/RESULT.md`, `.git/*`, absolute, traversing, duplicate, malformed, secret-like, and installed-system paths remain rejected.
-6. Existing feeder fixtures still pass, including deduplication, changed-hash blocking, concurrent enqueue, restart preservation, kill switch, no Git mutation, and no Python cache artifacts.
-7. No research file is modified by the validation itself.
+- status: `PASS`
+- task_id: `SMOKE-001-ORCHESTRATOR-REAL-CYCLE`
+- execution: `production feeder -> planner -> implementer -> auditor -> commit -> push`
 
-## Hard protections
+The local MSM orchestrator completed the real technical smoke cycle.
+```
 
-Never modify, stage, commit, delete, rename, chmod, rewrite, or include in any allowlist:
-
-- `docs/DEFINITIONS.md`
-- `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
-- `.codex/RESULT.md`
-- `.git` internals
-
-Do not access a new holdout. Do not perform visual review. Do not change definitions, hypotheses, acceptance criteria, or research conclusions.
+Do not create or modify any other file.
 
 ## Allowed changes
 
 Only:
 
-- `automation/msm_task_feeder.py`
-- `automation/verify_feeder.sh`
-- `automation/AUTOMATION-005-R1-RESULT.md`
+- `automation/SMOKE-001-RESULT.md`
+
+The exact same path is the sole entry in `.codex/ALLOWLIST.txt`.
+
+## Validation
+
+Before returning PASS, verify:
+
+- the file exists and matches the required content exactly;
+- `git diff --check` passes;
+- the protected Pine remains byte-identical, unstaged, and uncommitted;
+- `docs/DEFINITIONS.md` remains unchanged;
+- no other tracked or untracked path was created or modified by this task;
+- no files are staged.
+
+## Hard protections
+
+Never modify, stage, commit, delete, rename, chmod, rewrite, or include in the allowlist:
+
+- `docs/DEFINITIONS.md`
+- `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
+- `.codex/RESULT.md`
+- `.git` internals
+- any research document or artifact
+- any orchestrator, feeder, runner, service, installer, verifier, or bootstrap file
+
+## Research constraints
+
+This is a technical smoke test only. Do not access holdout data, perform visual review, change a definition or hypothesis, or make a research decision.
 
 ## Result contract
 
-Write `automation/AUTOMATION-005-R1-RESULT.md` only after every validation passes. Set status `IMPLEMENTED_AWAITING_MANUAL_COMMIT`. Record the exact defect corrected, exact changed files, exact commands and outputs, proof that explicitly allowlisted ordinary research paths are accepted, proof that all hard protections remain rejected, and proof that the protected Pine is byte-identical and unstaged. Leave implementation changes unstaged and uncommitted for the deterministic infrastructure bootstrap.
+Planner, implementer, and auditor must use the required JSON role contract. The implementer creates only the allowed result file and leaves it unstaged. The auditor returns PASS only after every validation succeeds. The orchestrator must perform the final allowlist check, commit once, and push to `main`.
