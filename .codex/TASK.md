@@ -249,7 +249,13 @@ The report must contain:
 - display `ParentIntact`, `CounterMotion`, `BalanceOrConflict`, `ProgressDecay`, `FailedExtension`, and `Resolution`;
 - mark the three recovered cases distinctly;
 - expose the three case intervals as editable time inputs;
-- allow manual comparison with TradingView without changing the protected EXP-009A Pine.
+- remain an automatically generated artifact for optional later chart inspection without changing the protected EXP-009A Pine.
+
+## Automatic completion rule
+
+This experiment completes automatically from `experiment_013.py`, the generated CSV files, `REPORT.md`, and static checks of `EXP013_THREE_CASE_REVIEW.pine`.
+
+Manual chart approval or external chart confirmation is not required. Lack of manual chart confirmation must not produce `USER_DECISION_REQUIRED`.
 
 ## Hard protections
 
