@@ -12,6 +12,7 @@ STATES = {"READY", "PLANNING", "IMPLEMENTING", "AUDITING", "CORRECTING_R1", "COR
 VERDICTS = {"PASS", "TECHNICAL_CORRECTION_REQUIRED", "USER_DECISION_REQUIRED", "FAILED"}
 ROLES = {"PLANNING": "planner", "IMPLEMENTING": "implementer", "AUDITING": "auditor", "CORRECTING_R1": "corrector", "CORRECTING_R2": "corrector"}
 REQUIRED = {"schema_version": str, "task_id": str, "task_hash": str, "status": str, "task_path": str, "allowlist_path": str, "created_at": str, "attempt": int, "max_corrections": int}
+PINE = "experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine"
 
 def now(): return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 def atomic(path: Path, value):
@@ -37,6 +38,9 @@ def validate(e, repo: Path):
         p = (repo / e[key]).resolve()
         if not p.is_file() or repo.resolve() not in p.parents: raise ValueError("invalid referenced " + key)
     if e["task_hash"] != digest((repo / e["task_path"]).resolve()): raise ValueError("task hash mismatch")
+    if "baseline" in e:
+        b=e["baseline"]
+        if not isinstance(b,dict) or not isinstance(b.get("protected_pine_sha256"),str) or not isinstance(b.get("preexisting_paths"),dict): raise ValueError("invalid baseline")
 def result_schema(role, x):
     if not isinstance(x, dict) or set(x) != {"role", "verdict", "findings", "summary"}: raise ValueError("malformed role JSON")
     if x["role"] != role or x["verdict"] not in VERDICTS or not isinstance(x["findings"], list) or not all(isinstance(v, str) for v in x["findings"]) or not isinstance(x["summary"], str): raise ValueError("invalid role result")
@@ -44,43 +48,91 @@ def next_state(e, verdict):
     s=e["status"]
     if verdict == "USER_DECISION_REQUIRED": return "BLOCKED_USER_DECISION"
     if verdict == "FAILED": return "FAILED_TECHNICAL"
-    if s == "PLANNING": return "IMPLEMENTING" if verdict == "PASS" else "BLOCKED_USER_DECISION"
-    if s == "IMPLEMENTING": return "AUDITING" if verdict == "PASS" else "BLOCKED_USER_DECISION"
-    if s in {"CORRECTING_R1", "CORRECTING_R2"}: return "AUDITING" if verdict == "PASS" else "BLOCKED_USER_DECISION"
+    if verdict == "TECHNICAL_CORRECTION_REQUIRED":
+        return "CORRECTING_R1" if e["attempt"] == 0 else "CORRECTING_R2" if e["attempt"] == 1 else "FAILED_TECHNICAL"
+    if s == "PLANNING": return "IMPLEMENTING"
+    if s == "IMPLEMENTING": return "AUDITING"
+    if s in {"CORRECTING_R1", "CORRECTING_R2"}: return "AUDITING"
     if s == "AUDITING":
-        if verdict == "PASS": return "COMPLETED"
-        return "CORRECTING_R1" if e["attempt"] == 0 else "CORRECTING_R2" if e["attempt"] == 1 else "BLOCKED_USER_DECISION"
+        return "COMPLETED"
     raise ValueError("invalid transition from " + s)
 def protected_ok(repo: Path):
-    pine=repo / "experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine"
+    pine=repo / PINE
     return digest(pine), subprocess.run(["git","-C",str(repo),"diff","--cached","--quiet","--",str(pine)], check=False).returncode == 0
 def git_run(repo, *args):
     return subprocess.run(["git","-C",str(repo),*args], text=True, capture_output=True, check=True)
+
+def status_entries(repo: Path):
+    """Return porcelain-v1 worktree entries without losing whitespace in paths."""
+    raw=subprocess.run(["git","-C",str(repo),"status","--porcelain=v1","-z","--untracked-files=all"],capture_output=True,check=True).stdout
+    records=raw.split(b"\0"); entries={}; i=0
+    while i < len(records)-1:
+        row=records[i]; i += 1
+        if len(row) < 4: raise RuntimeError("malformed Git status entry")
+        code=row[:2].decode("ascii"); path=row[3:].decode("utf-8","surrogateescape")
+        if "R" in code or "C" in code:
+            raise RuntimeError("rename or copy status is not permitted")
+        if not path or Path(path).is_absolute() or "\0" in path: raise RuntimeError("unsafe Git status path")
+        entries[path]=code
+    return entries
+
+def path_signature(repo: Path, rel: str, code: str):
+    path=(repo/rel).resolve()
+    if repo.resolve() not in path.parents or not path.is_file(): raise RuntimeError("pre-existing path is missing or not a regular file: "+rel)
+    return {"status":code,"sha256":digest(path),"mode":path.stat().st_mode & 0o777}
+
+def capture_baseline(repo: Path):
+    entries=status_entries(repo)
+    if any(code != "??" and code[0] != " " for code in entries.values()): raise RuntimeError("pre-existing staged changes are not permitted")
+    baseline={path:path_signature(repo,path,code) for path,code in entries.items()}
+    pine=repo/PINE
+    if not pine.is_file(): raise RuntimeError("protected Pine is missing")
+    pine_hash, pine_unstaged=protected_ok(repo)
+    if not pine_unstaged: raise RuntimeError("protected Pine is staged")
+    return {"protected_pine_sha256":pine_hash,"preexisting_paths":baseline}
+
+def verify_baseline(repo: Path, e: dict):
+    b=e.get("baseline")
+    if not b: raise RuntimeError("missing captured worktree baseline")
+    current=status_entries(repo)
+    if any(code != "??" and code[0] != " " for code in current.values()): raise RuntimeError("staged changes detected after task start")
+    pine_hash, pine_unstaged=protected_ok(repo)
+    if pine_hash != b["protected_pine_sha256"] or not pine_unstaged:
+        raise RuntimeError("protected Pine integrity failure")
+    for path, expected in b["preexisting_paths"].items():
+        if current.get(path) != expected["status"] or path_signature(repo,path,current[path]) != expected:
+            raise RuntimeError("pre-existing path changed after task start: "+path)
+
+def task_delta_paths(repo: Path, e: dict):
+    verify_baseline(repo,e)
+    return set(status_entries(repo)) - set(e["baseline"]["preexisting_paths"])
+
+def allowed_paths(repo: Path, e: dict):
+    return {x.strip() for x in (repo/e["allowlist_path"]).read_text().splitlines() if x.strip() and not x.startswith("#")}
+
+def validate_task_delta(repo: Path, e: dict):
+    changed=task_delta_paths(repo,e)
+    if not changed <= allowed_paths(repo,e): raise RuntimeError("changed path outside allowlist")
+    return changed
+
 def git_preflight(repo, e):
     """The sole Git synchronization owner; callers cannot bypass this gate."""
     if git_run(repo,"branch","--show-current").stdout.strip() != "main": raise RuntimeError("branch is not main")
-    pine_hash, pine_unstaged = protected_ok(repo)
-    if not pine_unstaged: raise RuntimeError("protected Pine is staged")
-    dirty=git_run(repo,"status","--porcelain=v1","--untracked-files=all").stdout.splitlines()
-    pine="experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine"
-    if any(line[3:] != pine or line[:2] != " M" for line in dirty): raise RuntimeError("unexpected pre-existing worktree changes")
+    e["baseline"]=capture_baseline(repo)
     git_run(repo,"fetch","origin","main"); git_run(repo,"merge","--ff-only","origin/main")
-    if protected_ok(repo)[0] != pine_hash or not protected_ok(repo)[1]: raise RuntimeError("protected Pine changed during sync")
-    e["protected_pine_sha256"] = pine_hash
+    verify_baseline(repo,e)
 def commit_once(repo, e):
     """Stage explicit allowlisted paths only after the final deterministic checks."""
-    pine="experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine"
-    if protected_ok(repo)[0] != e.get("protected_pine_sha256") or not protected_ok(repo)[1]: raise RuntimeError("protected Pine integrity failure")
-    allowed={x.strip() for x in (repo/e["allowlist_path"]).read_text().splitlines() if x.strip() and not x.startswith("#")}
-    changed=set(git_run(repo,"diff","--name-only").stdout.splitlines()) | set(git_run(repo,"ls-files","--others","--exclude-standard").stdout.splitlines())
-    changed.discard(pine)
-    if not changed or not changed <= allowed: raise RuntimeError("changed path outside allowlist")
-    git_run(repo,"diff","--check")
+    changed=validate_task_delta(repo,e)
+    if not changed: raise RuntimeError("no task-created changes to commit")
+    git_run(repo,"diff","--check","--",*sorted(changed))
     if not subprocess.run(["git","-C",str(repo),"diff","--cached","--quiet"],check=False).returncode: raise RuntimeError("model left staged changes")
     git_run(repo,"add","--",*sorted(changed)); git_run(repo,"commit","-m",e["task_id"]); git_run(repo,"push","origin","main")
 def worker(repo, root, e, role, mock=None):
     out=root/"logs"/(e["task_id"]+"-"+role+".result.json")
     cmd=["bash", str(Path(__file__).with_name("msm_worker.sh")), "--role", role, "--task", str(repo/e["task_path"]), "--allowlist", str(repo/e["allowlist_path"]), "--output", str(out)]
+    if "baseline" in e:
+        baseline=root/"logs"/(e["task_id"]+".baseline.json"); atomic(baseline,e["baseline"]); cmd += ["--baseline-json",str(baseline)]
     if mock is not None: cmd += ["--mock-response", json.dumps(mock)]
     started=now(); cp=subprocess.run(cmd, cwd=repo, capture_output=True, text=True, timeout=3900)
     log(root,e,role,attempt=e["attempt"],started_at=started,finished_at=now(),exit_code=cp.returncode,output_path=str(out),stderr=cp.stderr[-500:])
@@ -96,7 +148,10 @@ def process(repo: Path, root: Path, e: dict, mock=None):
     if e["status"] in {"COMPLETED","BLOCKED_USER_DECISION","FAILED_TECHNICAL"}: return e
     role=ROLES.get(e["status"])
     if not role: return fail(e,"unknown state")
-    try: result=worker(repo,root,e,role,mock)
+    try:
+        if mock is None: validate_task_delta(repo,e)
+        result=worker(repo,root,e,role,mock)
+        if mock is None: validate_task_delta(repo,e)
     except Exception as ex: return fail(e,str(ex))
     # Research stop gates always dominate a role verdict.
     gates=("definition change","hypothesis change","holdout","tradingview","ambiguous","conflict")

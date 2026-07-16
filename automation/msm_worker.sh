@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Narrow worker boundary: the model emits a schema-checked decision, never a transition.
 set -Eeuo pipefail
-ROLE= TASK= ALLOWLIST= OUTPUT= MOCK=
-while (($#)); do case $1 in --role) ROLE=$2;shift 2;;--task)TASK=$2;shift 2;;--allowlist)ALLOWLIST=$2;shift 2;;--output)OUTPUT=$2;shift 2;;--mock-response)MOCK=$2;shift 2;;*) echo "usage error" >&2;exit 2;;esac;done
-[[ $ROLE =~ ^(planner|implementer|auditor|corrector)$ && -f $TASK && -f $ALLOWLIST && -n $OUTPUT ]] || exit 2
+ROLE= TASK= ALLOWLIST= OUTPUT= BASELINE= MOCK=
+while (($#)); do case $1 in --role) ROLE=$2;shift 2;;--task)TASK=$2;shift 2;;--allowlist)ALLOWLIST=$2;shift 2;;--output)OUTPUT=$2;shift 2;;--baseline-json)BASELINE=$2;shift 2;;--mock-response)MOCK=$2;shift 2;;*) echo "usage error" >&2;exit 2;;esac;done
+[[ $ROLE =~ ^(planner|implementer|auditor|corrector)$ && -f $TASK && -f $ALLOWLIST && -n $OUTPUT && ( -z $BASELINE || -f $BASELINE ) ]] || exit 2
 mkdir -p "$(dirname "$OUTPUT")"; umask 077
 if [[ -n $MOCK ]]; then printf '%s\n' "$MOCK" >"$OUTPUT"; exit 0; fi
 CODEX=${MSM_CODEX:-/home/nnv/.local/bin/codex}; REPO=${MSM_REPO:-/home/nnv/MSM-Research-Lab}; TIMEOUT=${MSM_ROLE_TIMEOUT:-3600}; JSONL="${OUTPUT%.json}.jsonl"
@@ -26,7 +26,9 @@ if [[ -f $SOURCE_CODEX_HOME/config.toml && -r $SOURCE_CODEX_HOME/config.toml ]];
   chmod 600 "$RUNTIME_CODEX_HOME/config.toml"
 fi
 rm -f "$RUNTIME_OUTPUT"
-prompt="You are the MSM $ROLE role. Read only task package $TASK and allowlist $ALLOWLIST. Return ONLY JSON: {\"role\":\"$ROLE\",\"verdict\":\"PASS|TECHNICAL_CORRECTION_REQUIRED|USER_DECISION_REQUIRED|FAILED\",\"findings\":[strings],\"summary\":string}. You do not control state transitions. Do not run git mutation/synchronization commands. Implementer/corrector may modify only allowlisted files and leave changes unstaged."
+baseline_context='No captured baseline was supplied.'
+if [[ -n $BASELINE ]]; then baseline_context=$(<"$BASELINE"); fi
+prompt="You are the MSM $ROLE role. Captured non-secret worktree baseline: $baseline_context. Evaluate only the task delta relative to that baseline: listed pre-existing paths, including the protected Pine when its SHA256 matches the baseline, are preserved user state and are not task violations. Report any change to a baseline path, protected-Pine staging, or task-created path outside the allowlist. Read only task package $TASK and allowlist $ALLOWLIST. Return ONLY JSON: {\"role\":\"$ROLE\",\"verdict\":\"PASS|TECHNICAL_CORRECTION_REQUIRED|USER_DECISION_REQUIRED|FAILED\",\"findings\":[strings],\"summary\":string}. You do not control state transitions. Do not run git mutation/synchronization commands. Implementer/corrector may modify only allowlisted files and leave changes unstaged."
 timeout "$TIMEOUT" bwrap --die-with-parent --ro-bind / / --bind "$REPO" "$REPO" --ro-bind "$REPO/.git" "$REPO/.git" \
   --bind "$RUNTIME_HOME" "$RUNTIME_HOME" --bind "$RUNTIME_CACHE" "$RUNTIME_CACHE" \
   --bind "$RUNTIME_CONFIG" "$RUNTIME_CONFIG" --bind "$RUNTIME_DATA" "$RUNTIME_DATA" \

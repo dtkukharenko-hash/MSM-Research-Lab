@@ -17,6 +17,7 @@ worker_fixture(){ local d output runtime
   d=$(mktemp -d); trap 'rm -rf "$d"' RETURN
   mkdir -p "$d/repo/.git" "$d/bin" "$d/codex-home"
   printf 'task\n' >"$d/repo/task.md"; printf 'allowed\n' >"$d/repo/allow.txt"
+  printf '%s\n' '{"protected_pine_sha256":"fixture-pine-hash","preexisting_paths":{}}' >"$d/repo/baseline.json"
   printf '%s\n' 'fixture-credential-never-print' >"$d/codex-home/auth.json"
   printf '%s\n' 'model = "fixture"' >"$d/codex-home/config.toml"
   chmod 600 "$d/codex-home/auth.json" "$d/codex-home/config.toml"
@@ -32,6 +33,7 @@ while (($#)); do
     -s|--sandbox) echo 'worker must not select a nested Codex sandbox' >&2; exit 1;;
     *)
       if [[ $1 == *'Read only task package '* ]]; then
+        [[ $1 == *'fixture-pine-hash'* ]]
         task=${1#*Read only task package }; task=${task%% and allowlist *}
         allowlist=${1#* and allowlist }; allowlist=${allowlist%%. Return ONLY JSON:*}
       fi
@@ -55,7 +57,7 @@ SH
   chmod 700 "$d/bin/codex"
   output="$d/result.json"
   MSM_REPO="$d/repo" MSM_CODEX="$d/bin/codex" MSM_CODEX_HOME="$d/codex-home" MSM_STATE_DIR="$d/state" \
-    bash "$REPO/automation/msm_worker.sh" --role planner --task "$d/repo/task.md" --allowlist "$d/repo/allow.txt" --output "$output" >"$d/worker.stdout" 2>"$d/worker.stderr"
+    bash "$REPO/automation/msm_worker.sh" --role planner --task "$d/repo/task.md" --allowlist "$d/repo/allow.txt" --baseline-json "$d/repo/baseline.json" --output "$output" >"$d/worker.stdout" 2>"$d/worker.stderr"
   [[ -s $output ]] || { echo 'worker fixture did not preserve output path' >&2; return 1; }
   [[ ! -e "$d/repo/.git/worker-fixture-must-not-exist" ]] || { echo '.git became writable inside worker sandbox' >&2; return 1; }
   runtime=$(find "$d/state/runtime" -type f -name runtime-write-check | wc -l)
@@ -81,13 +83,10 @@ source, repo = map(pathlib.Path, sys.argv[1:])
 spec = importlib.util.spec_from_file_location('orchestrator_fixture', source)
 module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
 module.protected_ok = lambda _: ('fixture-pine-hash', True)
-def git_run(_, *args):
-    if args == ('diff', '--name-only'): return SimpleNamespace(stdout='outside-allowlist.txt\n')
-    if args == ('ls-files', '--others', '--exclude-standard'): return SimpleNamespace(stdout='')
-    raise AssertionError('allowlist rejection should occur before Git mutation: ' + repr(args))
-module.git_run = git_run
+module.status_entries = lambda _: {'outside-allowlist.txt':'??'}
+module.path_signature = lambda _, path, code: {'status':code,'sha256':'fixture','mode':0o644}
 try:
-    module.commit_once(repo, {'allowlist_path': 'allowlist-for-orchestrator.txt', 'protected_pine_sha256': 'fixture-pine-hash'})
+    module.validate_task_delta(repo, {'allowlist_path': 'allowlist-for-orchestrator.txt','baseline':{'protected_pine_sha256':'fixture-pine-hash','preexisting_paths':{}}})
 except RuntimeError as exc:
     assert str(exc) == 'changed path outside allowlist'
 else:
@@ -100,7 +99,7 @@ mock(){ local d; d=$(mktemp -d); trap 'rm -rf "$d"' RETURN
 import hashlib,json,pathlib,sys,importlib.util
 sys.dont_write_bytecode=True
 py,d=map(pathlib.Path,sys.argv[1:]); sp=importlib.util.spec_from_file_location('o',py); m=importlib.util.module_from_spec(sp); sp.loader.exec_module(m)
-pine=pathlib.Path('/home/nnv/MSM-Research-Lab/experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine'); before=hashlib.sha256(pine.read_bytes()).hexdigest()
+actual_pine=pathlib.Path('/home/nnv/MSM-Research-Lab/experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine'); before=hashlib.sha256(actual_pine.read_bytes()).hexdigest()
 def make(name='mock', different=False):
  r=d/name/'repo'; s=d/name/'state'; r.mkdir(parents=True); (r/'task.md').write_text('task '+('different' if different else '')+'\n'); (r/'allow.txt').write_text('allowed\n'); h=hashlib.sha256((r/'task.md').read_bytes()).hexdigest(); e={'schema_version':'1','task_id':name,'task_hash':h,'status':'READY','task_path':'task.md','allowlist_path':'allow.txt','created_at':'2026-01-01T00:00:00Z','attempt':0,'max_corrections':2}; (s/'queue').mkdir(parents=True); m.atomic(s/'queue'/(name+'.json'),e); return r,s
 def step(r,s,v=None,bad=False):
@@ -113,13 +112,31 @@ def step(r,s,v=None,bad=False):
  else: z={'role':role,'verdict':v,'findings':[],'summary':'deterministic mock'}
  e=m.process(r,s,e,z); dest={'COMPLETED':'completed','BLOCKED_USER_DECISION':'blocked','FAILED_TECHNICAL':'failed'}.get(e['status'],'running'); m.move(f,s/dest,e)
 r,s=make(); step(r,s); step(r,s,'PASS'); step(r,s,'PASS'); step(r,s,'PASS'); assert (s/'completed/mock.json').exists()
-r,s=make('corrections'); step(r,s); step(r,s,'PASS'); step(r,s,'PASS'); step(r,s,'TECHNICAL_CORRECTION_REQUIRED'); step(r,s,'PASS'); step(r,s,'TECHNICAL_CORRECTION_REQUIRED'); step(r,s,'PASS'); step(r,s,'TECHNICAL_CORRECTION_REQUIRED'); assert (s/'blocked/corrections.json').exists()
+r,s=make('corrections'); step(r,s); step(r,s,'PASS'); step(r,s,'PASS'); step(r,s,'TECHNICAL_CORRECTION_REQUIRED'); assert m.load(s/'running/corrections.json')['status']=='CORRECTING_R1'; step(r,s,'PASS'); step(r,s,'TECHNICAL_CORRECTION_REQUIRED'); assert m.load(s/'running/corrections.json')['status']=='CORRECTING_R2'; step(r,s,'PASS'); step(r,s,'TECHNICAL_CORRECTION_REQUIRED'); assert (s/'failed/corrections.json').exists()
+r,s=make('user-decision'); step(r,s); step(r,s,'USER_DECISION_REQUIRED'); assert (s/'blocked/user-decision.json').exists()
+# SMOKE-005: an unchanged dirty protected Pine is baseline state, while only an
+# allowlisted task file is delta.  Later Pine changes, staging, and outside paths fail closed.
+r=d/'baseline-repo'; r.mkdir(); pine=r/'experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine'; pine.parent.mkdir(parents=True); pine.write_text('pre-existing dirty pine\n'); (r/'allowed.txt').write_text('allowed\n'); (r/'allow.txt').write_text('allowed.txt\n')
+statuses={m.PINE:' M'}; m.status_entries=lambda _: dict(statuses); m.protected_ok=lambda _: (hashlib.sha256(pine.read_bytes()).hexdigest(),True)
+baseline=m.capture_baseline(r); e={'allowlist_path':'allow.txt','baseline':baseline}; statuses['allowed.txt']='??'; assert m.validate_task_delta(r,e)=={'allowed.txt'}
+pine.write_text('changed after baseline\n')
+try: m.validate_task_delta(r,e)
+except RuntimeError as exc: assert 'protected Pine integrity failure' == str(exc)
+else: raise AssertionError('protected Pine byte change was accepted')
+pine.write_text('pre-existing dirty pine\n'); statuses[m.PINE]='M '
+try: m.validate_task_delta(r,e)
+except RuntimeError as exc: assert 'staged changes detected after task start' == str(exc)
+else: raise AssertionError('protected Pine staging was accepted')
+statuses[m.PINE]=' M'; statuses['outside.txt']='??'
+try: m.validate_task_delta(r,e)
+except RuntimeError as exc: assert 'changed path outside allowlist' == str(exc)
+else: raise AssertionError('outside task delta was accepted')
 r,s=make('malformed'); step(r,s); step(r,s,bad=True); assert (s/'failed/malformed.json').exists()
 r,s=make('recovery'); step(r,s); e=m.load(s/'running/recovery.json'); assert e['status']=='PLANNING'; step(r,s,'PASS'); assert m.load(s/'running/recovery.json')['status']=='IMPLEMENTING'
 r,s=make('duplicate'); step(r,s); step(r,s,'PASS'); step(r,s,'PASS'); step(r,s,'PASS'); done=m.load(s/'completed/duplicate.json'); m.atomic(s/'queue'/'again.json',done); m.cycle(r,s,{'role':'planner','verdict':'PASS','findings':[],'summary':'deterministic mock'}); assert not (s/'queue/again.json').exists()
 (r/'conflict.md').write_text('other task\n'); e=dict(done); e['task_path']='conflict.md'; e['task_hash']=hashlib.sha256((r/'conflict.md').read_bytes()).hexdigest(); e['status']='READY'; m.atomic(s/'queue'/'conflict.json',e); m.cycle(r,s,{'role':'planner','verdict':'PASS','findings':[],'summary':'deterministic mock'}); assert (s/'blocked/conflict.json').exists()
 r,s=make('kill'); (s/'KILL').parent.mkdir(parents=True,exist_ok=True); (s/'KILL').write_text('stop'); step(r,s); assert (s/'failed/kill.json').exists()
-assert hashlib.sha256(pine.read_bytes()).hexdigest()==before
+assert hashlib.sha256(actual_pine.read_bytes()).hexdigest()==before
 print('all deterministic scenarios passed')
 PY
   echo MOCK_CYCLE_OK; }
