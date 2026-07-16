@@ -10,6 +10,7 @@ PINE="$REPO/experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/art
 LOG_ROOT=${MSM_ORCH_BOOTSTRAP_LOG_DIR:-/home/nnv/.local/state/msm-runner/orchestrator-bootstrap}
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 LOG_DIR="$LOG_ROOT/$STAMP"
+BASE_TASK_ID=AUTOMATION-004-LOCAL-ORCHESTRATOR-V1
 
 fail(){ echo "ORCHESTRATOR_V1_FAILED: $*" >&2; exit 1; }
 field(){ sed -nE "s/^- $1: *\`?([^\`[:space:]]+)\`? *$/\1/p" "$TASK" | head -n1; }
@@ -20,7 +21,6 @@ install -d -m 700 -o "$RUN_USER" -g "$RUN_USER" "$LOG_DIR"
 exec > >(tee -a "$LOG_DIR/bootstrap.log") 2>&1
 
 old_was_enabled=$(systemctl is-enabled "$OLD_TIMER" 2>/dev/null || true)
-new_was_enabled=$(systemctl is-enabled "$NEW_SERVICE" 2>/dev/null || true)
 pine_before=$(sha256sum "$PINE" | awk '{print $1}')
 
 rollback(){
@@ -42,7 +42,6 @@ if [[ $local_sha != "$remote_sha" ]]; then
   sudo -u "$RUN_USER" git merge-base --is-ancestor "$local_sha" "$remote_sha" || fail "local main diverged"
   sudo -u "$RUN_USER" git merge --ff-only origin/main
 fi
-[[ $(field task_id) == AUTOMATION-004-LOCAL-ORCHESTRATOR-V1 ]] || fail "unexpected active task"
 
 # Only the known protected Pine may be dirty.
 while IFS= read -r line; do
@@ -50,26 +49,40 @@ while IFS= read -r line; do
   [[ ${line:0:2} == ' M' && "$REPO/${line:3}" == "$PINE" ]] || fail "unexpected dirty path: $line"
 done < <(sudo -u "$RUN_USER" git status --porcelain=v1 --untracked-files=all)
 
-task_status=$(field status)
-case "$task_status" in
+active_task=$(field task_id)
+active_status=$(field status)
+active_original=$(field original_task_id)
+active_infra=$(field infrastructure_maintenance)
+
+case "$active_status" in
   READY)
-    echo "[2/7] Build, validate, commit and push through existing safe bootstrap"
-    bash "$REPO/automation/apply_ready_infrastructure_task.sh"
-    [[ $(field status) == COMPLETED ]] || fail "AUTOMATION-004 was not completed"
+    if [[ $active_task == "$BASE_TASK_ID" || $active_original == "$BASE_TASK_ID" ]]; then
+      [[ $active_infra == true ]] || fail "active AUTOMATION-004 task is not infrastructure maintenance"
+      echo "[2/7] Execute active AUTOMATION-004 task: $active_task"
+      bash "$REPO/automation/apply_ready_infrastructure_task.sh"
+      [[ $(field status) == COMPLETED ]] || fail "$active_task was not completed"
+    else
+      fail "unrelated READY task blocks orchestrator installation: $active_task"
+    fi
     ;;
   COMPLETED)
-    echo "[2/7] Build already completed; resume installation and verification"
+    if [[ $active_task == "$BASE_TASK_ID" || $active_original == "$BASE_TASK_ID" ]]; then
+      echo "[2/7] AUTOMATION-004 build/correction already completed; resume installation"
+    else
+      # The orchestrator files are already committed; an unrelated completed task must not block installation.
+      echo "[2/7] Active task is unrelated but completed; resume committed orchestrator installation"
+    fi
     ;;
   *)
-    fail "AUTOMATION-004 has unsupported status: $task_status"
+    fail "unsupported active task state: task=$active_task status=$active_status"
     ;;
 esac
 
 [[ -f "$REPO/automation/install_orchestrator.sh" ]] || fail "installer missing"
 [[ -f "$REPO/automation/verify_orchestrator.sh" ]] || fail "verifier missing"
+[[ -f "$REPO/automation/msm_orchestrator.py" ]] || fail "orchestrator missing"
 
-# GitHub content writes may create shell files as 0644. Execute repository scripts
-# through bash; installed copies receive their executable modes from the installer.
+# GitHub content writes may create shell files as 0644. Execute repository scripts through bash.
 echo "[3/7] Static verification"
 bash -n "$REPO/automation/"*.sh
 python3 -m py_compile "$REPO/automation/msm_orchestrator.py"
@@ -107,6 +120,6 @@ trap - EXIT
 echo "ORCHESTRATOR_V1_OK"
 echo "service=$NEW_SERVICE"
 echo "old_timer=disabled"
-echo "task=$(field task_id)"
+echo "active_task=$(field task_id)"
 echo "commit=$(sudo -u "$RUN_USER" git rev-parse HEAD)"
 echo "logs=$LOG_DIR"
