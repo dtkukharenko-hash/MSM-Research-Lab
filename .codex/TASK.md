@@ -1,10 +1,12 @@
 # Current Codex Task
 
 - task_id: `AUTOMATION-005-R1-RESTORE-ALLOWLISTED-RESEARCH-PATHS`
-- status: `READY`
+- status: `COMPLETED`
+- completed_at: `2026-07-16`
 - published_at: `2026-07-16`
 - original_task_id: `AUTOMATION-005-FEEDER-V1`
 - correction_attempt: `1`
+- completion_commit: `3c8b673be39cffcaf64aa14a4b2de9065bc0cac1`
 - target_branch: `main`
 - commit_message: `AUTOMATION-005-R1 restore allowlisted research paths`
 - infrastructure_maintenance: `true`
