@@ -1,8 +1,10 @@
 # Current Codex Task
 
 - task_id: `AUTOMATION-008-PREEXISTING-DIRTY-BASELINE`
-- status: `READY`
+- status: `COMPLETED`
+- completed_at: `2026-07-16`
 - published_at: `2026-07-16`
+- completion_commit: `46a37fa2468821ba85c8df2370da56009f61d7f1`
 - target_branch: `main`
 - infrastructure_maintenance: `true`
 - commit_message: `AUTOMATION-008 preserve pre-existing dirty baseline`
