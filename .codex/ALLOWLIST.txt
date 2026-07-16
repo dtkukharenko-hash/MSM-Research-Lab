@@ -1,1 +1,4 @@
-automation/SMOKE-005-RESULT.md
+automation/msm_orchestrator.py
+automation/msm_worker.sh
+automation/verify_orchestrator.sh
+automation/AUTOMATION-008-RESULT.md
