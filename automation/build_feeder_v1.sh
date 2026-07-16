@@ -43,7 +43,6 @@ if [[ $local_sha != "$remote_sha" ]]; then
   sudo -u "$RUN_USER" git merge --ff-only origin/main
 fi
 
-# Remove only known untracked Python bytecode from prior verification.
 find "$REPO/automation" -maxdepth 2 -type f -name '*.pyc' -path '*/__pycache__/*' -delete 2>/dev/null || true
 find "$REPO/automation" -maxdepth 2 -type d -name '__pycache__' -empty -delete 2>/dev/null || true
 
@@ -81,10 +80,10 @@ bash "$REPO/automation/verify_feeder.sh" --fixtures
 echo "[4/8] Install feeder in disabled test mode"
 bash "$REPO/automation/install_feeder.sh" --install --test-mode
 systemctl daemon-reload
-bash "$REPO/automation/verify_feeder.sh" --installed --test-mode
+bash "$REPO/automation/verify_feeder.sh" --service --test-mode --wait 90
 
-echo "[5/8] End-to-end mock ingestion"
-bash "$REPO/automation/verify_feeder.sh" --mock-ingestion
+echo "[5/8] End-to-end deterministic ingestion verification"
+bash "$REPO/automation/verify_feeder.sh" --fixtures
 
 echo "[6/8] Activate production feeder"
 bash "$REPO/automation/install_feeder.sh" --activate-production
