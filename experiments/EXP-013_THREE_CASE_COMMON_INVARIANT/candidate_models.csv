@@ -1,0 +1,8 @@
+model,common_definition,cases_present,case_mean,control_mean,effect_direction,ablation_result,selection
+M1_COUNTER_PROGRESS_DECAY,smaller late progress,3,0.06619,0.09443,descriptive contrast,not needed for minimal rule,not selected
+M2_FAILED_COUNTER_EXTENSION,attempt returns inside prior range,3,0.33333,0.66667,descriptive contrast,retained,not selected
+M3_CONFLICT_COMPRESSION,overlap/alternation with lower efficiency,3,0.64831,0.61148,descriptive contrast,not needed for minimal rule,not selected
+M4_PARENT_REASSERTION,closed parent-direction displacement,3,0.35324,-0.46278,descriptive contrast,retained,SELECTED_MINIMAL
+M5_COMBINED_RESOLUTION,M1/M2/M3 plus M4,3,0.33333,0.66667,descriptive contrast,not needed for minimal rule,not selected
+M6_COUNTER_BALANCE_CONTINUATION,balance then parent displacement,3,0.8276,1.05889,descriptive contrast,not needed for minimal rule,not selected
+M7_RELATIVE_SCALE_TRANSITION,relative amplitude/duration,3,2.54124,1.66921,descriptive contrast,not needed for minimal rule,not selected

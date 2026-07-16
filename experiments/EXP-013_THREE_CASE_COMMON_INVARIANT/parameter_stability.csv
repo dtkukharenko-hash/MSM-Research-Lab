@@ -1,0 +1,4 @@
+parameter_factor,progress_decay_threshold,overlap_threshold,reassertion_atr_threshold,target_cases_present,additional_detections,stable,note
+0.8,0.16,0.36,0.4,3,2,YES,same closed-bar state ordering across ±20% neighbour
+1.0,0.2,0.45,0.5,3,2,YES,same closed-bar state ordering across ±20% neighbour
+1.2,0.24,0.54,0.6,3,2,YES,same closed-bar state ordering across ±20% neighbour
