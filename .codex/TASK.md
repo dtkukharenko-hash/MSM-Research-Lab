@@ -11,9 +11,11 @@
 
 ## Objective
 
-Correct purely technical defects in the existing EXP-013 implementation and regenerate its nine allowlisted outputs. Preserve the original research question, date window, reconstructed case intervals, evidence sources, candidate mechanisms M1-M7, holdout policy, and prohibition on visual or research judgment.
+Correct purely technical defects in the already completed EXP-013 implementation and regenerate its nine allowlisted outputs. This is a maintenance repair of calculations and reproducibility only, not a revision of the EXP-013 research question, model family, selected invariant, or verdict. Preserve the original research question, date window, reconstructed case intervals, evidence sources, candidate mechanisms M1-M7, validation policy, and prohibition on chart-based or subjective research judgment.
 
-Do not introduce new definitions, hypotheses, case windows, instruments, data after `2024-01-03 23:59:59 UTC`, visual judgments, or manual-review requirements.
+Allowed work is limited to metric calculation repair, parameter-stability repair, CSV/REPORT reproducibility, and the concrete auditor findings listed below.
+
+Do not introduce new definitions, new research premises, case windows, instruments, data after `2024-01-03 23:59:59 UTC`, chart-based judgments, or manual-review requirements. Do not reconsider the selected invariant and do not add a new research premise. No manual approval is required; lack of manual approval must not block execution.
 
 ## Defects to correct
 
@@ -33,7 +35,7 @@ Do not introduce new definitions, hypotheses, case windows, instruments, data af
 - Analysis window: `2023-10-19 00:00:00 UTC` through `2024-01-03 23:59:59 UTC`, inclusive.
 - Primary scale: `4H`; child scale remains the documented available fallback used by the existing implementation.
 - Use only closed bars; no future pivots, lookahead, repainting, future returns, or future-derived labels.
-- Keep the three existing reconstructed case intervals and evidence confidence unchanged unless a timestamp is proven to be a simple serialization error. Any change requiring visual interpretation or research judgment must stop with `USER_DECISION_REQUIRED` rather than being made automatically.
+- Keep the three existing reconstructed case intervals and evidence confidence unchanged unless a timestamp is proven to be a simple serialization error. Any repair requiring chart interpretation, replacement of reconstructed cases, or subjective research judgment is outside this technical repair scope and must not be made automatically.
 - No predictive or profitability claims.
 
 ## Required outputs
@@ -84,7 +86,7 @@ Before PASS:
 
 ## Stop conditions
 
-Return `USER_DECISION_REQUIRED` without changing research outputs if correction would require visual chart interpretation, a new holdout, a definition or hypothesis change, replacement of the reconstructed cases, or any subjective research decision.
+Do not change research outputs if correction would require chart interpretation, a new validation split, revised definitions, a revised research premise, replacement of the reconstructed cases, or any subjective research judgment. Absence of manual approval is not a stop condition for this technical repair.
 
 ## Result contract
 
