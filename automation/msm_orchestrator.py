@@ -115,6 +115,14 @@ def validate_task_delta(repo: Path, e: dict):
     if not changed <= allowed_paths(repo,e): raise RuntimeError("changed path outside allowlist")
     return changed
 
+def empty_required_output_result(role: str):
+    return {
+        "role": role,
+        "verdict": "TECHNICAL_CORRECTION_REQUIRED",
+        "findings": ["no task-created allowlisted output paths exist; required task outputs were not created"],
+        "summary": "No task-created paths exist. Required allowlisted outputs must be created before audit can pass.",
+    }
+
 def git_preflight(repo, e):
     """The sole Git synchronization owner; callers cannot bypass this gate."""
     if git_run(repo,"branch","--show-current").stdout.strip() != "main": raise RuntimeError("branch is not main")
@@ -151,8 +159,10 @@ def process(repo: Path, root: Path, e: dict, mock=None):
     try:
         if mock is None: validate_task_delta(repo,e)
         result=worker(repo,root,e,role,mock)
-        if mock is None: validate_task_delta(repo,e)
+        changed=validate_task_delta(repo,e) if mock is None else set()
     except Exception as ex: return fail(e,str(ex))
+    if mock is None and role == "auditor" and not changed:
+        result=empty_required_output_result(role)
     # Research stop gates always dominate a role verdict.
     gates=("definition change","hypothesis change","holdout","tradingview","ambiguous","conflict")
     if any(any(g in f.lower() for g in gates) for f in result["findings"]): verdict="USER_DECISION_REQUIRED"

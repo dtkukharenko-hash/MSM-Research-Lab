@@ -114,6 +114,13 @@ def step(r,s,v=None,bad=False):
 r,s=make(); step(r,s); step(r,s,'PASS'); step(r,s,'PASS'); step(r,s,'PASS'); assert (s/'completed/mock.json').exists()
 r,s=make('corrections'); step(r,s); step(r,s,'PASS'); step(r,s,'PASS'); step(r,s,'TECHNICAL_CORRECTION_REQUIRED'); assert m.load(s/'running/corrections.json')['status']=='CORRECTING_R1'; step(r,s,'PASS'); step(r,s,'TECHNICAL_CORRECTION_REQUIRED'); assert m.load(s/'running/corrections.json')['status']=='CORRECTING_R2'; step(r,s,'PASS'); step(r,s,'TECHNICAL_CORRECTION_REQUIRED'); assert (s/'failed/corrections.json').exists()
 r,s=make('user-decision'); step(r,s); step(r,s,'USER_DECISION_REQUIRED'); assert (s/'blocked/user-decision.json').exists()
+r,s=make('empty-delta-audit'); e=m.load(s/'queue/empty-delta-audit.json'); e['status']='AUDITING'; e['baseline']={'protected_pine_sha256':'fixture-pine-hash','preexisting_paths':{}}; m.move(s/'queue/empty-delta-audit.json',s/'running',e)
+orig_validate,orig_worker=m.validate_task_delta,m.worker
+m.validate_task_delta=lambda repo,envelope: set()
+m.worker=lambda repo,root,envelope,role,mock=None: {'role':'auditor','verdict':'PASS','findings':[],'summary':'model accepted empty delta'}
+m.cycle(r,s)
+e=m.load(s/'running/empty-delta-audit.json'); assert e['status']=='CORRECTING_R1' and e['attempt']==1 and e['last_result']['verdict']=='TECHNICAL_CORRECTION_REQUIRED'
+m.validate_task_delta, m.worker = orig_validate, orig_worker
 # SMOKE-005: an unchanged dirty protected Pine is baseline state, while only an
 # allowlisted task file is delta.  Later Pine changes, staging, and outside paths fail closed.
 r=d/'baseline-repo'; r.mkdir(); pine=r/'experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine'; pine.parent.mkdir(parents=True); pine.write_text('pre-existing dirty pine\n'); (r/'allowed.txt').write_text('allowed\n'); (r/'allow.txt').write_text('allowed.txt\n')
