@@ -24,13 +24,13 @@ ATR displacement is signed close-to-close displacement divided by trailing 14-ba
 
 |Model|Result|Ablation|
 |---|---|---|
-|M1_COUNTER_PROGRESS_DECAY|descriptive contrast|not needed for minimal rule|
-|M2_FAILED_COUNTER_EXTENSION|descriptive contrast|retained|
-|M3_CONFLICT_COMPRESSION|descriptive contrast|not needed for minimal rule|
+|M1_COUNTER_PROGRESS_DECAY|descriptive contrast|not necessary in all three cases|
+|M2_FAILED_COUNTER_EXTENSION|descriptive contrast|not necessary in all three cases|
+|M3_CONFLICT_COMPRESSION|overlap|not necessary in all three cases|
 |M4_PARENT_REASSERTION|descriptive contrast|retained|
-|M5_COMBINED_RESOLUTION|descriptive contrast|not needed for minimal rule|
-|M6_COUNTER_BALANCE_CONTINUATION|descriptive contrast|not needed for minimal rule|
-|M7_RELATIVE_SCALE_TRANSITION|descriptive contrast|not needed for minimal rule|
+|M5_COMBINED_RESOLUTION|descriptive contrast|not necessary in all three cases|
+|M6_COUNTER_BALANCE_CONTINUATION|descriptive contrast|not necessary in all three cases|
+|M7_RELATIVE_SCALE_TRANSITION|descriptive contrast|not necessary in all three cases|
 
 Ablation removes progress-decay, failed-extension, and compression in turn. They improve the descriptive narration but do not survive as necessary common discriminators in this n=3 reconstruction. The smallest retained observable rule is therefore `ParentIntact -> BalanceOrOverlap -> ParentReassertion`; failed extension is a frequent confirmatory annotation, not a required trigger.
 

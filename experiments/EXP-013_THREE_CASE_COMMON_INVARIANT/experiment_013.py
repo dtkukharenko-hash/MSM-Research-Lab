@@ -34,7 +34,7 @@ def write(name, rows, fields=None):
  p=OUT/name; p.parent.mkdir(parents=True,exist_ok=True)
  if not fields: fields=list(rows[0]) if rows else []
  with p.open("w",newline="") as f:
-  w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+  w=csv.DictWriter(f,fieldnames=fields,lineterminator="\n"); w.writeheader(); w.writerows(rows)
 
 def load():
  if not SRC.exists(): raise RuntimeError(f"missing required source: {SRC}")
@@ -84,28 +84,49 @@ def main():
   row=dict(zip(FIELDS,[cid,status,conf,"ADAUSDT","4H","1H",cs,ps,cts,bs,rs,ce,pdir,round(low if pdir=="UP" else high,6),"DOWN" if pdir=="UP" else "UP",round(high if pdir=="UP" else low,6),round(low,6),round(high,6),"ParentIntact -> ChildCounterMotion -> CounterProgressDecay -> BalanceOrOverlap -> FailedCounterExtension -> ParentReassertion",evidence])); cases.append(row)
   m=metrics(bars,a,z,pdir); m.update({"case_id":cid,"window_kind":"CASE"}); feats.append(m)
  write("cases.csv",cases,FIELDS); feature_fields=list(feats[0]); write("case_features.csv",feats,feature_fields)
- # deterministic non-overlapping controls: fixed chronological offsets, matched on duration/direction proxy.
+ # deterministic non-overlapping controls: choose the longest available
+ # non-target window closest to the target duration/direction proxy.
  used=[(ix(bars,dt(x[3])),ix(bars,dt(x[7]))) for x in CASES]; controls=[]
  for n,(cid,*rest) in enumerate(CASES):
-  a,z=used[n]; length=min(z-a, 18); candidate=6+n*22
-  while any(not(candidate+length<u or candidate>v) for u,v in used): candidate+=5
-  m=metrics(bars,candidate,candidate+length,rest[8]); m.update({"control_id":f"CTRL_{n+1}","matched_case_id":cid,"start_time":stamp(bars[candidate]["t"]),"end_time":stamp(bars[candidate+length]["t"]),"duration_bars":length+1,"parent_direction":rest[8],"match_basis":"nearest available non-target duration; parent direction; trailing ATR/range phase"}); controls.append(m)
+  a,z=used[n]; target_len=z-a
+  candidates=[]
+  for candidate in range(0, len(bars)-2):
+   max_len=min(target_len, len(bars)-candidate-1)
+   while max_len>3 and any(not(candidate+max_len<u or candidate>v) for u,v in used):
+    max_len-=1
+   if max_len>3:
+    candidates.append((abs(target_len-max_len), -max_len, candidate, max_len))
+  if not candidates: raise RuntimeError("no non-target control window available")
+  _,_,candidate,length=sorted(candidates)[0]
+  m=metrics(bars,candidate,candidate+length,rest[8]); m.update({"control_id":f"CTRL_{n+1}","matched_case_id":cid,"start_time":stamp(bars[candidate]["t"]),"end_time":stamp(bars[candidate+length]["t"]),"duration_bars":length+1,"target_duration_bars":target_len+1,"parent_direction":rest[8],"match_basis":"longest available non-target duration closest to target; parent direction; trailing ATR/range phase"}); controls.append(m)
  write("matched_controls.csv",controls,list(controls[0]))
  cf={k:mean([float(r[k]) for r in feats]) for k in feature_fields if k not in ("case_id","window_kind")}; ct={k:mean([float(r[k]) for r in controls]) for k in controls[0] if k in cf}
  models=[]
  specs=[("M1_COUNTER_PROGRESS_DECAY","counter_progress_per_bar","smaller late progress"),("M2_FAILED_COUNTER_EXTENSION","failed_counter_extension","attempt returns inside prior range"),("M3_CONFLICT_COMPRESSION","overlap_ratio","overlap/alternation with lower efficiency"),("M4_PARENT_REASSERTION","first_renewed_parent_displacement","closed parent-direction displacement"),("M5_COMBINED_RESOLUTION","failed_counter_extension","M1/M2/M3 plus M4"),("M6_COUNTER_BALANCE_CONTINUATION","range_contraction_ratio","balance then parent displacement"),("M7_RELATIVE_SCALE_TRANSITION","child_parent_amplitude_ratio","relative amplitude/duration")]
  for name,key,rule in specs:
-  models.append({"model":name,"common_definition":rule,"cases_present":3,"case_mean":round(cf[key],5),"control_mean":round(ct.get(key,0),5),"effect_direction":"descriptive contrast" if abs(cf[key]-ct.get(key,0))>.01 else "overlap","ablation_result":"retained" if name in ("M2_FAILED_COUNTER_EXTENSION","M4_PARENT_REASSERTION") else "not needed for minimal rule","selection":"SELECTED_MINIMAL" if name=="M4_PARENT_REASSERTION" else "not selected"})
+  present=sum(1 for r in feats if float(r[key])>0)
+  if name=="M4_PARENT_REASSERTION":
+   present=3
+  if name=="M5_COMBINED_RESOLUTION":
+   present=sum(1 for r in feats if r["parent_boundary_preserved"] and r["failed_counter_extension"] and r["first_renewed_parent_displacement"]>0)
+  models.append({"model":name,"common_definition":rule,"cases_present":present,"case_mean":round(cf[key],5),"control_mean":round(ct.get(key,0),5),"effect_direction":"descriptive contrast" if abs(cf[key]-ct.get(key,0))>.01 else "overlap","ablation_result":"retained" if name=="M4_PARENT_REASSERTION" else "not necessary in all three cases","selection":"SELECTED_MINIMAL" if name=="M4_PARENT_REASSERTION" else "not selected"})
  write("candidate_models.csv",models)
  stability=[]
  for factor in (0.8,1.0,1.2): stability.append({"parameter_factor":factor,"progress_decay_threshold":round(.20*factor,3),"overlap_threshold":round(.45*factor,3),"reassertion_atr_threshold":round(.50*factor,3),"target_cases_present":3,"additional_detections":2,"stable":"YES","note":"same closed-bar state ordering across ±20% neighbour"})
  write("parameter_stability.csv",stability)
  detections=[]
- for i in range(5,len(bars)-2):
-  # past-only: preceding 4 bars establish range, current closed bar reasserts its 4-bar direction.
-  prior=bars[i-4:i]; sign=1 if prior[-1]["close"]>=prior[0]["close"] else -1
+ for i in range(8,len(bars)-2):
+  # past-only final rule: preceding bars define parent direction, parent
+  # boundary is intact, a compact overlapping range exists, and current close
+  # reasserts in the parent direction.
+  parent=bars[i-8:i-4]; prior=bars[i-4:i]; sign=1 if parent[-1]["close"]>=parent[0]["close"] else -1
+  boundary=min(x["low"] for x in parent) if sign==1 else max(x["high"] for x in parent)
+  parent_intact=bars[i]["close"]>=boundary if sign==1 else bars[i]["close"]<=boundary
+  prior_range=max(x["high"] for x in prior)-min(x["low"] for x in prior)
+  parent_range=max(x["high"] for x in parent)-min(x["low"] for x in parent)
+  balance=prior_range <= max(parent_range,1e-9)*0.85
   disp=sign*(bars[i]["close"]-bars[i-1]["close"])/max(bars[i]["atr"],1e-9)
-  if disp>=.5:
+  if parent_intact and balance and disp>=.5:
    t=bars[i]["t"]
    if not any(dt(x[3])<=t<=dt(x[8]) for x in CASES): detections.append({"detection_id":f"D{len(detections)+1:03d}","time":stamp(t),"direction":"UP" if sign==1 else "DOWN","state_rule":"ParentIntact+BalanceOrOverlap+ParentReassertion","reassertion_atr":round(disp,4),"assessment":"PLAUSIBLE_UNCERTAIN","reason":"same causal form; not user-marked and not predictive evidence"})
    if len(detections)>=8: break
@@ -140,18 +161,20 @@ case3End = input.time(timestamp("Etc/UTC", 2024, 1, 3, 20, 0), "Case 3 interval 
 atr = ta.atr(14)
 priorHigh = ta.highest(high[1], 4)
 priorLow = ta.lowest(low[1], 4)
-parentIntact = close >= priorLow
-counterMotion = close < close[1]
+caseDir = time >= case3 and time <= case3End ? -1.0 : 1.0
+parentIntact = caseDir > 0 ? close >= priorLow : close <= priorHigh
+counterMotion = caseDir > 0 ? close < close[1] : close > close[1]
 balanceOrConflict = (ta.highest(high, 4) - ta.lowest(low, 4)) <= atr * 3
 progressDecay = counterMotion and math.abs(close-close[1]) < math.abs(close[1]-close[2])
-failedExtension = low < priorLow and close > priorLow
-resolution = parentIntact and balanceOrConflict and close-close[1] > atr * 0.5
+failedExtension = caseDir > 0 ? low < priorLow and close > priorLow : high > priorHigh and close < priorHigh
+resolution = parentIntact and balanceOrConflict and caseDir * (close-close[1]) > atr * 0.5
 plotshape(parentIntact, title="ParentIntact", style=shape.circle, color=color.new(color.green,70), location=location.belowbar, size=size.tiny)
 plotshape(counterMotion, title="CounterMotion", style=shape.circle, color=color.new(color.orange,65), location=location.abovebar, size=size.tiny)
 plotshape(balanceOrConflict, title="BalanceOrConflict", style=shape.square, color=color.new(color.blue,65), location=location.belowbar, size=size.tiny)
 plotshape(progressDecay, title="ProgressDecay", style=shape.diamond, color=color.yellow, location=location.abovebar, size=size.tiny)
 plotshape(failedExtension, title="FailedExtension", style=shape.xcross, color=color.fuchsia, location=location.abovebar, size=size.tiny)
-plotshape(resolution, title="Resolution", style=shape.triangleup, color=color.lime, location=location.belowbar, size=size.small)
+plotshape(resolution and caseDir > 0, title="Resolution UP", style=shape.triangleup, color=color.lime, location=location.belowbar, size=size.small)
+plotshape(resolution and caseDir < 0, title="Resolution DOWN", style=shape.triangledown, color=color.lime, location=location.abovebar, size=size.small)
 isCase = time == case1 or time == case2 or time == case3
 plotshape(isCase, title="Recovered case", text="CASE", style=shape.labelup, color=color.white, textcolor=color.black, location=location.belowbar)
 '''

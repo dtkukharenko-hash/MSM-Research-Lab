@@ -1,9 +1,9 @@
 detection_id,time,direction,state_rule,reassertion_atr,assessment,reason
-D001,2023-10-19 20:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.8235,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D002,2023-10-20 00:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.6247,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D003,2023-10-20 08:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.5986,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D004,2023-10-21 08:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,1.3397,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D005,2023-10-21 12:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,1.0228,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D006,2023-10-22 20:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.9405,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D007,2023-10-23 00:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.65,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D008,2023-10-23 20:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,2.101,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
+D001,2023-10-21 04:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.6683,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
+D002,2023-10-21 08:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,1.3397,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
+D003,2023-10-22 16:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.8502,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
+D004,2023-10-23 20:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,2.101,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
+D005,2023-10-25 16:00:00,DOWN,ParentIntact+BalanceOrOverlap+ParentReassertion,0.9121,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
+D006,2023-10-30 08:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,1.8172,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
+D007,2023-11-06 08:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.9049,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
+D008,2023-11-07 16:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,1.027,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
