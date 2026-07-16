@@ -1,67 +1,53 @@
 # Current Codex Task
 
-- task_id: `AUTOMATION-004-R2-WRITABLE-CODEX-RUNTIME`
-- status: `COMPLETED`
-- completed_at: `2026-07-16`
+- task_id: `SMOKE-003-ORCHESTRATOR-REAL-CYCLE`
+- status: `READY`
 - published_at: `2026-07-16`
-- original_task_id: `AUTOMATION-004-LOCAL-ORCHESTRATOR-V1`
-- correction_attempt: `2`
-- completion_commit: `f61220e314bd9c127e2696976098ed3cdbdc9e42`
 - target_branch: `main`
-- commit_message: `AUTOMATION-004-R2 writable Codex runtime`
-- infrastructure_maintenance: `true`
+- infrastructure_maintenance: `false`
+- commit_message: `SMOKE-003 real orchestrator cycle`
 
 ## Objective
 
-Correct the worker sandbox so the installed Codex CLI can initialize its own runtime files while the repository Git metadata remains read-only and all task allowlist protections remain unchanged.
+Complete one production feeder and orchestrator smoke cycle.
 
-## Required correction
+## Required implementation
 
-1. In `automation/msm_worker.sh`, create a per-task private runtime directory under the existing MSM orchestrator state tree.
-2. Provide writable values for `HOME`, `XDG_CACHE_HOME`, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`, and `TMPDIR` inside that private runtime directory when invoking Codex.
-3. Bind only those private runtime directories writable inside `bwrap`.
-4. Keep the repository mounted writable only as currently required for allowlisted implementation files.
-5. Keep `$REPO/.git` explicitly read-only.
-6. Preserve the existing role contract, timeout, output paths, model invocation, and prohibition on Git mutation commands.
-7. Do not make the host home directory or any credential directory broadly writable inside the sandbox.
-8. Add deterministic verification proving that the worker reaches Codex initialization without the previous read-only filesystem error and that `.git` remains read-only.
+Create exactly one file:
+
+- `automation/SMOKE-003-RESULT.md`
+
+Exact content:
+
+```markdown
+# SMOKE-003 Result
+
+- status: `PASS`
+- task_id: `SMOKE-003-ORCHESTRATOR-REAL-CYCLE`
+- execution: `production feeder -> planner -> implementer -> auditor -> commit -> push`
+
+The local MSM orchestrator completed the real technical smoke cycle.
+```
+
+Do not create or modify any other file.
 
 ## Allowed changes
 
 Only:
 
-- `automation/msm_worker.sh`
-- `automation/verify_orchestrator.sh`
-- `automation/AUTOMATION-004-R2-RESULT.md`
+- `automation/SMOKE-003-RESULT.md`
 
-No other file may be created, modified, staged, committed, renamed, deleted, or chmodded.
-
-## Hard protections
-
-Never modify, stage, commit, delete, rename, chmod, rewrite, or include in any allowlist:
-
-- `docs/DEFINITIONS.md`
-- `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
-- `.codex/RESULT.md`
-- `.git` internals
-- any research document or artifact
-- feeder files or feeder services
-
-The protected Pine may already be modified locally. It must remain byte-identical, unstaged, and uncommitted.
+The same path is the sole entry in `.codex/ALLOWLIST.txt`.
 
 ## Validation
 
-Run and record at minimum:
+Before PASS, verify:
 
-- `bash -n automation/msm_worker.sh automation/verify_orchestrator.sh`
-- an isolated worker fixture using a temporary runtime root;
-- confirmation that Codex runtime paths are writable inside the sandbox;
-- confirmation that repository `.git` remains read-only inside the sandbox;
-- confirmation that the prior `failed to initialize in-process app-server client: Read-only file system` failure is absent;
-- `git diff --check`;
-- confirmation that only the three allowed files changed;
-- confirmation that protected files are unchanged and unstaged.
+- the file exists and matches exactly;
+- `git diff --check` passes;
+- no other path changed;
+- no files are staged.
 
 ## Result contract
 
-Write `automation/AUTOMATION-004-R2-RESULT.md` only after all validations pass. Set status `IMPLEMENTED_AWAITING_MANUAL_COMMIT`. Leave implementation changes unstaged and uncommitted for the deterministic infrastructure bootstrap.
+Planner, implementer, and auditor use the required JSON role contract. The implementer leaves the allowed file unstaged. The orchestrator performs the final allowlist check, commits once, and pushes to `main`.
