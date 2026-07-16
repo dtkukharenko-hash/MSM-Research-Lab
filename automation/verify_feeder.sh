@@ -39,9 +39,26 @@ with tempfile.TemporaryDirectory() as raw:
     write(r,task(body='ordinary implementation changed')); assert run(r,s)[0]=='BLOCKED'; assert len(list((s/'blocked').glob('*.json')))==1
     write(r,task(status='COMPLETED')); assert run(r,s)[0]=='IGNORED'
     write(r,task(infra='true')); assert run(r,s)[0]=='BLOCKED'
-    for allow in ('\n','/tmp/x\n','../x\n','automation//x.py\n','automation/x.py\nautomation/x.py\n','docs/DEFINITIONS.md\n', 'experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine\n'):
-        q=base/('bad'+str(abs(hash(allow)))); write(q,task('BAD-'+str(abs(hash(allow)))[:8]),allow)
-        try: run(q,base/('state'+str(abs(hash(allow))))); raise AssertionError(allow)
+    # Ordinary experiment files, including experiment-local artifacts, are valid only
+    # when listed exactly; task-text gates remain independently enforced below.
+    for index, allow in enumerate((
+        'experiments/EXP-TEST/source.py\n',
+        'experiments/EXP-TEST/artifacts/report.md\n',
+        'experiments/EXP-TEST/artifacts/metrics.csv\n',
+    ), 1):
+        q=base/('research'+str(index)); st=base/('research-state'+str(index)); write(q,task('RESEARCH-'+str(index)),allow)
+        assert f.read_allowlist(q)==[allow.strip()]
+        assert run(q,st)[0]=='ENQUEUED'
+    bad_allows=(
+        '\n', '/tmp/x\n', '/usr/local/lib/msm-orchestrator/x.py\n', '/etc/msm/x\n', '/home/nnv/x\n',
+        '../x\n', 'automation/../x.py\n', 'automation/./x.py\n', 'automation//x.py\n', 'automation/x.py/\n',
+        'automation/x.py\nautomation/x.py\n', 'docs/DEFINITIONS.md\n', '.codex/RESULT.md\n', '.git\n', '.git/config\n',
+        'automation/secret.txt\n', 'automation/credentials.json\n', 'automation/private_key.txt\n', 'automation/key.pem\n', 'automation/key.key\n', 'automation/.env\n',
+        'experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine\n',
+    )
+    for index, allow in enumerate(bad_allows, 1):
+        q=base/('bad'+str(index)); write(q,task('BAD-'+str(index)),allow)
+        try: run(q,base/('bad-state'+str(index))); raise AssertionError(allow)
         except f.FeedError: pass
     for word in ('TradingView review','definition change','hypothesis change','holdout extension','ambiguous research judgment','user decision'):
         q=base/('gate'+str(abs(hash(word)))); st=base/('gate-state'+str(abs(hash(word)))); write(q,task('GATE-'+str(abs(hash(word)))[:8],body=word)); assert run(q,st)[0]=='BLOCKED'; assert not list((st/'queue').glob('*.json'))

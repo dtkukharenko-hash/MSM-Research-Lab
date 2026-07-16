@@ -109,13 +109,10 @@ def parse_metadata(task_bytes: bytes) -> dict[str, str]:
 
 def is_protected(path: str) -> bool:
     lower = path.lower()
-    parts = path.split("/")
     return (
         path in FORBIDDEN_EXACT
         or path == ".git" or path.startswith(".git/")
         or path.startswith("/usr/") or path.startswith("/etc/") or path.startswith("/home/")
-        or "artifacts" in parts
-        or (path.startswith("experiments/") and lower.endswith((".md", ".txt", ".csv", ".pine", ".json")))
         or any(token in lower for token in ("secret", "credential", "private_key", ".pem", ".key", ".env"))
     )
 
