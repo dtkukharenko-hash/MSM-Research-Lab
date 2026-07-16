@@ -15,8 +15,11 @@ PY
 worker_fixture(){ local d output runtime
   command -v bwrap >/dev/null || { echo 'bwrap is required for worker fixture' >&2; return 1; }
   d=$(mktemp -d); trap 'rm -rf "$d"' RETURN
-  mkdir -p "$d/repo/.git" "$d/bin"
+  mkdir -p "$d/repo/.git" "$d/bin" "$d/codex-home"
   printf 'task\n' >"$d/repo/task.md"; printf 'allowed\n' >"$d/repo/allow.txt"
+  printf '%s\n' 'fixture-credential-never-print' >"$d/codex-home/auth.json"
+  printf '%s\n' 'model = "fixture"' >"$d/codex-home/config.toml"
+  chmod 600 "$d/codex-home/auth.json" "$d/codex-home/config.toml"
   cat >"$d/bin/codex" <<'SH'
 #!/usr/bin/env bash
 set -Eeuo pipefail
@@ -25,6 +28,9 @@ while (($#)); do
   case $1 in -o) out=$2; shift 2;; *) shift;; esac
 done
 [[ -n $out ]]
+[[ ${CODEX_HOME:?} != "$HOME" ]]
+[[ $(<"$CODEX_HOME/auth.json") == fixture-credential-never-print ]]
+[[ $(stat -c '%a' "$CODEX_HOME" "$CODEX_HOME/auth.json" "$CODEX_HOME/config.toml") == $'700\n600\n600' ]]
 for path in "$HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$TMPDIR"; do
   touch "$path/runtime-write-check"
 done
@@ -34,13 +40,24 @@ printf '%s\n' '{"role":"planner","verdict":"PASS","findings":[],"summary":"runti
 SH
   chmod 700 "$d/bin/codex"
   output="$d/result.json"
-  MSM_REPO="$d/repo" MSM_CODEX="$d/bin/codex" MSM_STATE_DIR="$d/state" \
-    bash "$REPO/automation/msm_worker.sh" --role planner --task "$d/repo/task.md" --allowlist "$d/repo/allow.txt" --output "$output"
+  MSM_REPO="$d/repo" MSM_CODEX="$d/bin/codex" MSM_CODEX_HOME="$d/codex-home" MSM_STATE_DIR="$d/state" \
+    bash "$REPO/automation/msm_worker.sh" --role planner --task "$d/repo/task.md" --allowlist "$d/repo/allow.txt" --output "$output" >"$d/worker.stdout" 2>"$d/worker.stderr"
   [[ -s $output ]] || { echo 'worker fixture did not preserve output path' >&2; return 1; }
   [[ ! -e "$d/repo/.git/worker-fixture-must-not-exist" ]] || { echo '.git became writable inside worker sandbox' >&2; return 1; }
   runtime=$(find "$d/state/runtime" -type f -name runtime-write-check | wc -l)
   [[ $runtime == 6 ]] || { echo "worker fixture expected six writable runtime paths, got $runtime" >&2; return 1; }
+  runtime=$(find "$d/state/runtime" -type f -name auth.json | wc -l)
+  [[ $runtime == 1 ]] || { echo "worker fixture expected one private credential copy, got $runtime" >&2; return 1; }
+  [[ $(stat -c '%a' "$d/state"/runtime/*/planner/codex "$d/state"/runtime/*/planner/codex/auth.json) == $'700\n600' ]] || { echo 'worker fixture credential modes are unsafe' >&2; return 1; }
+  ! rg -q -F 'fixture-credential-never-print' "$output" "${output%.json}.jsonl" "$d/worker.stdout" "$d/worker.stderr" "$d/repo"
   ! rg -q 'failed to initialize in-process app-server client: Read-only file system' "$output" "${output%.json}.jsonl"
+  if MSM_REPO="$d/repo" MSM_CODEX="$d/bin/codex" MSM_CODEX_HOME="$d/no-credentials" MSM_STATE_DIR="$d/missing-state" \
+    bash "$REPO/automation/msm_worker.sh" --role planner --task "$d/repo/task.md" --allowlist "$d/repo/allow.txt" --output "$d/missing.json" >"$d/missing.stdout" 2>"$d/missing.stderr"; then
+    echo 'worker fixture accepted absent credentials' >&2; return 1
+  fi
+  rg -qx 'Codex credentials are unavailable' "$d/missing.stderr" || { echo 'worker fixture missing-credential failure was not controlled' >&2; return 1; }
+  [[ ! -e $d/missing.json && ! -e ${d}/missing.jsonl ]] || { echo 'worker fixture emitted output without credentials' >&2; return 1; }
+  ! rg -q -F 'fixture-credential-never-print' "$d/missing.stdout" "$d/missing.stderr"
   echo WORKER_RUNTIME_FIXTURE_OK
 }
 mock(){ local d; d=$(mktemp -d); trap 'rm -rf "$d"' RETURN
