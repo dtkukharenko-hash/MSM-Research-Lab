@@ -1,1 +1,1 @@
-automation/SMOKE-002-RESULT.md
+automation/SMOKE-003-RESULT.md
