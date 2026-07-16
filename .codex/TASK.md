@@ -1,190 +1,44 @@
 # Current Codex Task
 
-- task_id: `EXP-013-THREE-CASE-COMMON-INVARIANT`
+- task_id: `EXP-013-R1-TECHNICAL-METRIC-AND-STABILITY-REPAIR`
 - status: `READY`
 - published_at: `2026-07-16`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- commit_message: `EXP-013 three-case common invariant`
+- original_task_id: `EXP-013-THREE-CASE-COMMON-INVARIANT`
+- correction_attempt: `1`
+- commit_message: `EXP-013 R1 technical metric and stability repair`
 
 ## Objective
 
-On ADAUSDT, using only the period from `2023-10-19 00:00:00 UTC` through `2024-01-03 23:59:59 UTC`, reconstruct the three visual cases previously supplied by the user, describe all three with one formal MSM language, and find the smallest causal structural invariant shared by all three.
+Correct purely technical defects in the existing EXP-013 implementation and regenerate its nine allowlisted outputs. Preserve the original research question, date window, reconstructed case intervals, evidence sources, candidate mechanisms M1-M7, holdout policy, and prohibition on visual or research judgment.
 
-This is a research task, not infrastructure work and not a trading-strategy task. A positive solution means a common observable structural mechanism. It does not require profitability or a predictive edge.
+Do not introduce new definitions, hypotheses, case windows, instruments, data after `2024-01-03 23:59:59 UTC`, visual judgments, or manual-review requirements.
 
-Do not stop after the first rejected candidate. Continue through feature analysis, ablation, matched controls, and parameter-neighbour checks until one strongest common structural invariant is identified and honestly bounded.
+## Defects to correct
 
-## Required evidence recovery
+1. `matched_controls.csv` is not actually duration-matched: the implementation truncates every control to at most 18 bars while claiming duration matching. Select deterministic non-target controls with the same duration as their matched case, or report a transparent nearest feasible duration and its mismatch. Do not claim a match that was not computed.
+2. `parent_age_bars` currently stores an absolute array index, and `child_parent_duration_ratio` divides by that index. Compute both from elapsed bars within the relevant reconstructed parent and child intervals.
+3. Counter features currently reuse parent-direction progress over the whole counter-to-resolution window. Compute counter displacement, progress, boundary updates, update sizes, update intervals, last counter extreme, and failed extension in the actual counter direction and over the documented counter phase, using only closed past bars.
+4. `parent_boundary_preserved` is hardcoded to `1`. Derive it from the stated parent invalidation boundary and closed bars through resolution.
+5. `candidate_models.csv` hardcodes `cases_present=3`, generic effect labels, and ablation outcomes. Recompute presence and summaries from generated case/control features. Do not force a model to pass.
+6. `parameter_stability.csv` hardcodes all three cases present and two additional detections. Re-run the actual detector at factors `0.8`, `1.0`, and `1.2`, recording observed target-case presence and observed additional detections.
+7. `cases.csv` hardcodes the full sequence including `FailedCounterExtension` for every case although generated features show it absent in some cases. Make each ordered sequence agree with its computed causal states. The selected minimal invariant must be the actual common intersection, not a prefilled string.
+8. The Pine artifact must implement the same direction-aware minimal rule as Python. It must support both UP and DOWN parents, mark each full editable case interval distinctly, use closed-bar logic, and remain visual-only. Do not alter the protected EXP009A Pine.
+9. Ensure `REPORT.md`, terminal summary, CSV files, and Pine describe the same computed result without contradictory counts or claims.
 
-1. Read `PROJECT_INSTRUCTIONS.md`, `README.md`, and relevant research documents and experiment reports.
-2. Read, but never modify, the current working-tree version of:
-   - `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
-3. Treat that protected Pine as primary evidence for the three user-marked cases. Extract every explicit timestamp, input time, label, window, boundary, and state definition it contains.
-4. Search the full repository and readable Git history for:
-   - `EXP-011`, `EXP-011B`, `EXP-012`;
-   - `conflict`, `window`, `disputed`, `parent`, `child`;
-   - `counter`, `balance`, `density`, `rejection`;
-   - `19.10.2023`, `03.01.2024`, `three cases`, `три случая`.
-5. Cross-reference the protected Pine, research notes, CSV files, Markdown reports, JSON files, and existing artifacts.
-6. Do not stop merely because the original screenshots are absent. Reconstruct the three most strongly evidenced cases and mark each as `EXACT` or `RECONSTRUCTED` with a confidence score and an evidence note.
-7. Use ADAUSDT unless repository evidence proves that one or more cases used another instrument. Record any such proof explicitly.
+## Fixed research constraints
 
-## Data and causal constraints
-
-- Analysis window is strictly `2023-10-19` through `2024-01-03` inclusive.
-- Primary scale: `4H`.
-- Internal structure: `15m`.
-- `1H` may be used only if the available data are complete enough for the specific case.
-- Use existing project loaders and local data sources. Do not create a second incompatible data pipeline when an existing one works.
-- Use only closed bars.
-- No future pivots, lookahead, repainting, or future-derived labels.
-- Any state that cannot be known on the current closed bar must be `UNKNOWN`.
-- Do not use data after `2024-01-03` for feature selection, thresholds, ranking, or evaluation.
-- Do not infer a case from outcome alone.
-
-## Formal description of each case
-
-For each of the three cases record at minimum:
-
-- `case_id`;
-- `case_status`: `EXACT` or `RECONSTRUCTED`;
-- `confidence`;
-- `instrument`;
-- `primary_timeframe` and `child_timeframe`;
-- `case_start`;
-- `parent_start`;
-- `counter_start`;
-- `balance_or_conflict_start`;
-- `resolution_time`;
-- `case_end`;
-- parent direction;
-- parent invalidation boundary;
-- counter direction;
-- counter boundary;
-- balance or conflict boundaries;
-- ordered state sequence;
-- evidence source.
-
-Describe all three using the same definitions and the same feature calculations.
-
-## Required features
-
-Calculate causally for each case and for controls:
-
-- parent displacement normalized by ATR;
-- parent directional efficiency;
-- counter displacement normalized by ATR;
-- counter progress per bar;
-- number of counter-boundary updates;
-- size of successive counter-boundary updates;
-- time between successive boundary updates;
-- bars since the last counter extreme;
-- overlap ratio;
-- alternation rate;
-- wick rejection relative to the counter boundary;
-- close location in the local range;
-- range contraction or expansion;
-- failed counter extension;
-- first renewed displacement in the parent direction;
-- parent-boundary preservation;
-- child-to-parent amplitude ratio;
-- child-to-parent duration ratio;
-- age of the parent and counter motions.
-
-## Candidate mechanisms
-
-Test all of the following with common definitions and common parameters:
-
-### M1 — Counter-progress decay
-
-The counter motion remains present, but each new advance is smaller, slower, or both.
-
-### M2 — Failed counter extension
-
-A new counter-boundary attempt is not retained by subsequent closes and price returns inside the prior child range.
-
-### M3 — Conflict compression
-
-Overlap and alternation rise while counter directional efficiency falls.
-
-### M4 — Parent reassertion
-
-A new closed-bar displacement in the parent direction exceeds local noise while the parent invalidation boundary remains intact.
-
-### M5 — Combined resolution
-
-`ParentIntact` plus at least two of `CounterProgressDecay`, `FailedCounterExtension`, and `ConflictCompression`, followed by `ParentReassertion`.
-
-### M6 — Counter to balance to continuation
-
-A counter motion transitions into balance, then a renewed parent-direction displacement occurs without requiring a failed extension.
-
-### M7 — Relative scale transition
-
-The common structure is explained by counter-to-parent amplitude and duration ratios rather than candle shape or one absolute threshold.
-
-Do not accept M5 in advance. Compare all models, perform ablation, and select the smallest model that still describes all three cases.
-
-## Common-invariant requirement
-
-Find one minimal state sequence that is present in all three cases using the same definitions and parameters.
-
-The primary candidate to test is:
-
-`ParentIntact -> ChildCounterMotion -> CounterProgressDecay -> BalanceOrOverlap -> FailedCounterExtension -> ParentReassertion`
-
-The final solution may be simpler or different. Prefer relative, ATR-normalized, and past-only percentile features over case-specific absolute thresholds.
-
-A valid common invariant must:
-
-1. describe all three cases;
-2. use one parameter set;
-3. be observable from closed bars;
-4. not depend on a future pivot;
-5. remain present when key thresholds are varied by approximately `±20%`;
-6. be stronger in the three cases than in matched controls on at least one predeclared composite or component measure;
-7. identify additional plausible cases in the same date window, with false or uncertain detections documented.
-
-If discriminative contrast is weak, do not invent predictive strength. The positive result may be a confirmed descriptive transition with only partial separation from controls.
-
-## Matched controls
-
-Within the same date window, construct control windows matched as closely as possible on:
-
-- duration;
-- ATR or realized range;
-- parent direction;
-- parent age;
-- phase of the parent movement.
-
-Exclude bars belonging to the three target cases from controls.
-
-Because there are only three marked cases, do not claim large-sample certainty. Report effect direction, rank contrast, overlap with controls, and uncertainty.
-
-## Iteration and stopping rule
-
-Do not stop at the first negative or equivocal candidate.
-
-Proceed through:
-
-1. reconstruction of the three cases;
-2. common feature extraction;
-3. M1–M7 comparison;
-4. ablation;
-5. threshold normalization;
-6. parameter-neighbour checks;
-7. matched-control comparison;
-8. search for additional detections;
-9. counterexample review.
-
-Stop only after identifying the strongest minimal shared mechanism and documenting exactly which parts are causal, which are confirmatory, and which fail to separate from controls.
-
-The report must always state the strongest positive structural knowledge found. It must not convert weak control separation into a claim of predictive power.
+- Instrument: ADAUSDT.
+- Analysis window: `2023-10-19 00:00:00 UTC` through `2024-01-03 23:59:59 UTC`, inclusive.
+- Primary scale: `4H`; child scale remains the documented available fallback used by the existing implementation.
+- Use only closed bars; no future pivots, lookahead, repainting, future returns, or future-derived labels.
+- Keep the three existing reconstructed case intervals and evidence confidence unchanged unless a timestamp is proven to be a simple serialization error. Any change requiring visual interpretation or research judgment must stop with `USER_DECISION_REQUIRED` rather than being made automatically.
+- No predictive or profitability claims.
 
 ## Required outputs
 
-Create exactly these files:
+Modify only the existing nine allowlisted paths:
 
 - `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/REPORT.md`
 - `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/cases.csv`
@@ -198,65 +52,6 @@ Create exactly these files:
 
 Do not create or modify any other path.
 
-## REPORT.md requirements
-
-The report must contain:
-
-1. how each case was recovered and the evidence confidence;
-2. a separate formal description of Case 1, Case 2, and Case 3;
-3. one comparison table showing shared and differing properties;
-4. definitions of every measured feature;
-5. results for M1–M7;
-6. ablation results;
-7. the selected minimal common invariant;
-8. causal versus post-confirmation components;
-9. matched-control contrast;
-10. parameter-neighbour stability;
-11. additional detections;
-12. counterexamples and uncertain cases;
-13. one final formal state rule;
-14. limitations;
-15. verdict: `CONFIRMED_COMMON_INVARIANT` or `PARTIAL_COMMON_INVARIANT`.
-
-`PARTIAL_COMMON_INVARIANT` is appropriate when the shared transition is clear but matched-control separation or causal timing is weak.
-
-## Python requirements
-
-`experiment_013.py` must:
-
-- reproduce all CSV outputs from the available local data;
-- use deterministic settings;
-- validate the requested date interval;
-- fail loudly on missing required columns or insufficient data;
-- contain no future-dependent detection logic;
-- print a compact terminal summary with:
-  - all three recovered case intervals;
-  - the selected invariant;
-  - matched-control contrast;
-  - parameter stability;
-  - number of additional detections;
-  - report path;
-  - Pine path.
-
-## Pine requirements
-
-`EXP013_THREE_CASE_REVIEW.pine` must:
-
-- be visual only;
-- contain no strategy or order commands;
-- use closed-bar causal state logic;
-- contain no future pivots;
-- display `ParentIntact`, `CounterMotion`, `BalanceOrConflict`, `ProgressDecay`, `FailedExtension`, and `Resolution`;
-- mark the three recovered cases distinctly;
-- expose the three case intervals as editable time inputs;
-- remain an automatically generated artifact for optional later chart inspection without changing the protected EXP-009A Pine.
-
-## Automatic completion rule
-
-This experiment completes automatically from `experiment_013.py`, the generated CSV files, `REPORT.md`, and static checks of `EXP013_THREE_CASE_REVIEW.pine`.
-
-Manual chart approval or external chart confirmation is not required. Lack of manual chart confirmation must not produce `USER_DECISION_REQUIRED`.
-
 ## Hard protections
 
 Never modify, stage, delete, rename, chmod, or rewrite:
@@ -267,23 +62,29 @@ Never modify, stage, delete, rename, chmod, or rewrite:
 - `.codex/TASK.md`;
 - `.codex/ALLOWLIST.txt`;
 - `.git` internals;
-- any existing research file or artifact.
+- any existing file outside the nine allowlisted EXP-013 paths.
 
-The protected Pine may already be modified before this task begins. Read it as evidence, preserve it byte-identically, and leave it unstaged and uncommitted.
+The protected EXP009A Pine may already be dirty before task start. Preserve it byte-identically and leave it unstaged and uncommitted.
 
 ## Validation
 
-Before returning PASS:
+Before PASS:
 
-- run `experiment_013.py` successfully;
-- verify all seven CSV files exist, are parseable, and contain the expected columns;
-- verify all three cases appear in `cases.csv`;
-- verify `REPORT.md` contains one explicit final invariant and one verdict;
-- verify the Pine file exists and contains no future-pivot or strategy commands;
-- run `git diff --check`;
-- verify only the nine allowlisted paths differ from the captured baseline;
-- verify the protected Pine hash is unchanged from task start;
-- verify no files are staged.
+1. Run `experiment_013.py` successfully twice and verify deterministic hashes for all generated outputs.
+2. Verify all seven CSV files parse and contain expected columns.
+3. Assert controls do not overlap target cases and report actual duration mismatch for every control.
+4. Assert all counter features use the counter phase and counter direction.
+5. Assert parent ages and duration ratios are elapsed-duration quantities, not absolute source indices.
+6. Assert model presence, ablation summaries, stability counts, and detection counts are computed rather than constants.
+7. Assert every `cases.csv` ordered sequence agrees with computed state flags.
+8. Assert the final invariant is present in all three cases and its reported case/control contrast is numerically reproducible.
+9. Assert Pine contains no strategy/order commands or future pivots, handles both directions, and marks all three editable intervals.
+10. Run `git diff --check` and verify only the nine allowlisted paths differ from baseline.
+11. Verify the protected EXP009A Pine hash is unchanged from task start and no files are staged.
+
+## Stop conditions
+
+Return `USER_DECISION_REQUIRED` without changing research outputs if correction would require visual chart interpretation, a new holdout, a definition or hypothesis change, replacement of the reconstructed cases, or any subjective research decision.
 
 ## Result contract
 
