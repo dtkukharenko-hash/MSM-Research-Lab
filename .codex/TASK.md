@@ -1,8 +1,10 @@
 # Current Codex Task
 
 - task_id: `AUTOMATION-004-R1-INSTALLER-OWNERSHIP-AND-MODE-GUARD`
-- status: `READY`
+- status: `COMPLETED`
+- completed_at: `2026-07-16`
 - published_at: `2026-07-16`
+- completion_commit: `0fac5485ab50bfd1a6fb7b9211a47759875ffff0`
 - target_branch: `main`
 - commit_message: `AUTOMATION-004-R1 fix installer ownership and mode guard`
 - infrastructure_maintenance: `true`
