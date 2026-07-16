@@ -24,10 +24,24 @@ worker_fixture(){ local d output runtime
 #!/usr/bin/env bash
 set -Eeuo pipefail
 out=
+task= allowlist= outer_sandbox_only=false
 while (($#)); do
-  case $1 in -o) out=$2; shift 2;; *) shift;; esac
+  case $1 in
+    -o) out=$2; shift 2;;
+    --dangerously-bypass-approvals-and-sandbox) outer_sandbox_only=true; shift;;
+    -s|--sandbox) echo 'worker must not select a nested Codex sandbox' >&2; exit 1;;
+    *)
+      if [[ $1 == *'Read only task package '* ]]; then
+        task=${1#*Read only task package }; task=${task%% and allowlist *}
+        allowlist=${1#* and allowlist }; allowlist=${allowlist%%. Return ONLY JSON:*}
+      fi
+      shift;;
+  esac
 done
 [[ -n $out ]]
+[[ $outer_sandbox_only == true ]]
+[[ -r $task && -r $allowlist ]]
+[[ $(<"$task") == task && $(<"$allowlist") == allowed ]]
 [[ ${CODEX_HOME:?} != "$HOME" ]]
 [[ $(<"$CODEX_HOME/auth.json") == fixture-credential-never-print ]]
 [[ $(stat -c '%a' "$CODEX_HOME" "$CODEX_HOME/auth.json" "$CODEX_HOME/config.toml") == $'700\n600\n600' ]]
@@ -50,6 +64,7 @@ SH
   [[ $runtime == 1 ]] || { echo "worker fixture expected one private credential copy, got $runtime" >&2; return 1; }
   [[ $(stat -c '%a' "$d/state"/runtime/*/planner/codex "$d/state"/runtime/*/planner/codex/auth.json) == $'700\n600' ]] || { echo 'worker fixture credential modes are unsafe' >&2; return 1; }
   ! rg -q -F 'fixture-credential-never-print' "$output" "${output%.json}.jsonl" "$d/worker.stdout" "$d/worker.stderr" "$d/repo"
+  ! rg -q -F "Can't mkdir /tmp/.git: Read-only file system" "$output" "${output%.json}.jsonl" "$d/worker.stdout" "$d/worker.stderr"
   ! rg -q 'failed to initialize in-process app-server client: Read-only file system' "$output" "${output%.json}.jsonl"
   if MSM_REPO="$d/repo" MSM_CODEX="$d/bin/codex" MSM_CODEX_HOME="$d/no-credentials" MSM_STATE_DIR="$d/missing-state" \
     bash "$REPO/automation/msm_worker.sh" --role planner --task "$d/repo/task.md" --allowlist "$d/repo/allow.txt" --output "$d/missing.json" >"$d/missing.stdout" 2>"$d/missing.stderr"; then
@@ -58,6 +73,26 @@ SH
   rg -qx 'Codex credentials are unavailable' "$d/missing.stderr" || { echo 'worker fixture missing-credential failure was not controlled' >&2; return 1; }
   [[ ! -e $d/missing.json && ! -e ${d}/missing.jsonl ]] || { echo 'worker fixture emitted output without credentials' >&2; return 1; }
   ! rg -q -F 'fixture-credential-never-print' "$d/missing.stdout" "$d/missing.stderr"
+  printf 'allowed.txt\n' >"$d/repo/allowlist-for-orchestrator.txt"
+  python3 -B - "$REPO/automation/msm_orchestrator.py" "$d/repo" <<'PY'
+import importlib.util, pathlib, sys
+from types import SimpleNamespace
+source, repo = map(pathlib.Path, sys.argv[1:])
+spec = importlib.util.spec_from_file_location('orchestrator_fixture', source)
+module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+module.protected_ok = lambda _: ('fixture-pine-hash', True)
+def git_run(_, *args):
+    if args == ('diff', '--name-only'): return SimpleNamespace(stdout='outside-allowlist.txt\n')
+    if args == ('ls-files', '--others', '--exclude-standard'): return SimpleNamespace(stdout='')
+    raise AssertionError('allowlist rejection should occur before Git mutation: ' + repr(args))
+module.git_run = git_run
+try:
+    module.commit_once(repo, {'allowlist_path': 'allowlist-for-orchestrator.txt', 'protected_pine_sha256': 'fixture-pine-hash'})
+except RuntimeError as exc:
+    assert str(exc) == 'changed path outside allowlist'
+else:
+    raise AssertionError('orchestrator accepted an out-of-allowlist change')
+PY
   echo WORKER_RUNTIME_FIXTURE_OK
 }
 mock(){ local d; d=$(mktemp -d); trap 'rm -rf "$d"' RETURN

@@ -36,6 +36,6 @@ timeout "$TIMEOUT" bwrap --die-with-parent --ro-bind / / --bind "$REPO" "$REPO" 
   --setenv HOME "$RUNTIME_HOME" --setenv XDG_CACHE_HOME "$RUNTIME_CACHE" \
   --setenv XDG_CONFIG_HOME "$RUNTIME_CONFIG" --setenv XDG_DATA_HOME "$RUNTIME_DATA" \
   --setenv XDG_STATE_HOME "$RUNTIME_STATE" --setenv TMPDIR "$RUNTIME_TMP" --setenv CODEX_HOME "$RUNTIME_CODEX_HOME" \
-  --proc /proc --dev /dev "$CODEX" exec --json -o "$RUNTIME_OUTPUT" -s workspace-write -C "$REPO" "$prompt" >"$JSONL"
+  --proc /proc --dev /dev "$CODEX" exec --json -o "$RUNTIME_OUTPUT" --dangerously-bypass-approvals-and-sandbox -C "$REPO" "$prompt" >"$JSONL"
 [[ -s $RUNTIME_OUTPUT ]] || { echo 'Codex did not produce a runtime result' >&2; exit 1; }
 mv -f "$RUNTIME_OUTPUT" "$OUTPUT"
