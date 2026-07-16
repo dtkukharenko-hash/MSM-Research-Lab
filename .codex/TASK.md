@@ -1,8 +1,10 @@
 # Current Codex Task
 
 - task_id: `AUTOMATION-006-CODEX-AUTH-RUNTIME`
-- status: `READY`
+- status: `COMPLETED`
+- completed_at: `2026-07-16`
 - published_at: `2026-07-16`
+- completion_commit: `7e3b8aae728ffc270d6c31ff831c7f6627882220`
 - target_branch: `main`
 - infrastructure_maintenance: `true`
 - commit_message: `AUTOMATION-006 provide Codex auth to private runtime`
