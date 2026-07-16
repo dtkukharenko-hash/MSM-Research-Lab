@@ -1,8 +1,10 @@
 # Current Codex Task
 
 - task_id: `AUTOMATION-007-OUTER-SANDBOX-ONLY`
-- status: `READY`
+- status: `COMPLETED`
+- completed_at: `2026-07-16`
 - published_at: `2026-07-16`
+- completion_commit: `8fb6811b8988e58f21f8ce5d1a4f99805bca40d6`
 - target_branch: `main`
 - infrastructure_maintenance: `true`
 - commit_message: `AUTOMATION-007 use outer sandbox only`
