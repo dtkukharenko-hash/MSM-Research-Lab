@@ -1,10 +1,12 @@
 # Current Codex Task
 
 - task_id: `AUTOMATION-004-R2-WRITABLE-CODEX-RUNTIME`
-- status: `READY`
+- status: `COMPLETED`
+- completed_at: `2026-07-16`
 - published_at: `2026-07-16`
 - original_task_id: `AUTOMATION-004-LOCAL-ORCHESTRATOR-V1`
 - correction_attempt: `2`
+- completion_commit: `f61220e314bd9c127e2696976098ed3cdbdc9e42`
 - target_branch: `main`
 - commit_message: `AUTOMATION-004-R2 writable Codex runtime`
 - infrastructure_maintenance: `true`
