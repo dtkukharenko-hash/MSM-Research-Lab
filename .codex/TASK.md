@@ -1,6 +1,6 @@
 # Current Codex Task
 
-- task_id: `EXP-014-COMMON-INVARIANT-TRANSFER`
+- task_id: `EXP-014A-COMMON-INVARIANT-TRANSFER`
 - status: `READY`
 - published_at: `2026-07-17`
 - target_branch: `main`
@@ -18,7 +18,9 @@ The fixed source rule is:
 
 This task evaluates transfer only. Do not revise the EXP-013 case intervals, definitions, source verdict, or source outputs. Do not introduce strategy, profitability, entry, exit, long, short, PnL, or risk language.
 
-Use only existing local market data already accessible through project loaders. Missing data for a requested instrument or period must be recorded as `UNAVAILABLE` and excluded transparently; it must not block the task or require manual approval.
+Use only existing local market data already accessible through project loaders. Missing data for a requested instrument or period must be recorded as `UNAVAILABLE` and excluded transparently; it must not block the task.
+
+This task runs only on fixed executable metrics and requires no interactive approval. Borderline rows must be marked `DIAGNOSTIC_FLAG`, handled automatically, and folded into the most conservative allowed verdict supported by the generated metrics.
 
 ## Fixed definitions
 
@@ -75,7 +77,7 @@ Each detection must include:
 - child-to-parent amplitude ratio;
 - child-to-parent duration ratio;
 - parameter factor;
-- ambiguity reason, if any.
+- `DIAGNOSTIC_FLAG` reason, if any.
 
 ### B. Matched controls
 
@@ -94,7 +96,7 @@ Exclude all target detections and the original EXP-013 case intervals. Record mi
 At minimum calculate per instrument and pooled:
 
 - number of accepted detections;
-- number of ambiguous detections;
+- number of `DIAGNOSTIC_FLAG` detections;
 - detection rate per 1,000 4H bars;
 - median and mean ParentReassertion ATR for detections and controls;
 - rank-biserial or equivalent rank contrast;
@@ -115,7 +117,7 @@ Evaluate whether the additional EXP-013 components improve separation while keep
 - base plus `FailedCounterExtension`;
 - base plus both.
 
-For each variant record support, instrument coverage, control contrast, false/ambiguous reduction, and whether any apparent improvement is caused by severe sample collapse.
+For each variant record support, instrument coverage, control contrast, false/`DIAGNOSTIC_FLAG` reduction, and whether any apparent improvement is caused by severe sample collapse.
 
 Do not replace the base invariant merely because a stricter variant has a larger point estimate.
 
@@ -138,7 +140,7 @@ Record per instrument and pooled:
 
 ### F. Counterexamples
 
-Inspect programmatically the strongest false or ambiguous detections and document why the source transition is insufficient there. Prefer explicit structural reasons such as parent-boundary failure, unstable balance, weak reassertion, phase overlap, or scale mismatch.
+Inspect programmatically the strongest false detections and `DIAGNOSTIC_FLAG` rows and document why the source transition is insufficient there. Prefer explicit structural reasons such as parent-boundary failure, unstable balance, weak reassertion, phase overlap, or scale mismatch.
 
 ## Transfer decision
 
@@ -177,7 +179,7 @@ The report must contain:
 6. pooled results;
 7. component ablation;
 8. parameter-neighbour stability;
-9. strongest counterexamples and ambiguous cases;
+9. strongest counterexamples and `DIAGNOSTIC_FLAG` cases;
 10. dependence on instrument, direction, scale, and time segment;
 11. limitations;
 12. one final verdict from the allowed set;
