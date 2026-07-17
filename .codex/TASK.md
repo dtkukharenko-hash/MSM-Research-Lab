@@ -1,92 +1,235 @@
 # Current Codex Task
 
-- task_id: `EXP-013-R2-EXECUTABLE-METRIC-AND-STABILITY-REPAIR`
+- task_id: `EXP-014-COMMON-INVARIANT-TRANSFER`
 - status: `READY`
 - published_at: `2026-07-17`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- original_task_id: `EXP-013-THREE-CASE-COMMON-INVARIANT`
-- correction_attempt: `2`
-- supersedes_task_id: `EXP-013-R1-TECHNICAL-METRIC-AND-STABILITY-REPAIR`
-- commit_message: `EXP-013 R2 executable metric and stability repair`
+- source_experiment: `EXP-013-THREE-CASE-COMMON-INVARIANT`
+- commit_message: `EXP-014 common invariant transfer`
 
 ## Objective
 
-Complete the still-unimplemented purely technical repairs from EXP-013 R1. The prior R1 result changed some generated text/CSV values but left the executable generator with the original hardcoded and incorrectly scoped calculations. Repair the generator first, regenerate all outputs from it, and prove that no required result is prefilled by hand.
+Test whether the descriptive closed-bar transition identified in EXP-013 transfers beyond the three reconstructed ADAUSDT cases.
 
-This is the second and final automatic correction attempt for original task `EXP-013-THREE-CASE-COMMON-INVARIANT`. It is a technical repair of existing metrics and parameter stability only, not a change to the research question, selected invariant, model family, verdict, or research window. Do not alter definitions, the three reconstructed case intervals, evidence confidence, candidate mechanisms M1-M7, date window, instrument, validation policy, selected model family, or any chart-based/research judgment.
+The fixed source rule is:
 
-Use only existing local data already available in the repository and only the permitted window `2023-10-19 00:00:00 UTC` through `2024-01-03 23:59:59 UTC`. Do not request hidden data, additional periods, or data outside that window. No manual approval is required; missing external validation data must not block this technical repair.
+`ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion`
 
-## Confirmed remaining technical defects
+This task evaluates transfer only. Do not revise the EXP-013 case intervals, definitions, source verdict, or source outputs. Do not introduce strategy, profitability, entry, exit, long, short, PnL, or risk language.
 
-1. `metrics()` still receives only one interval and computes parent and counter quantities from the same whole counter-to-resolution window. Refactor it to receive the documented parent, counter, balance, and resolution boundaries and calculate each feature only on its correct causal phase and direction.
-2. `parent_boundary_preserved` is still literal `1`. Derive it from the fixed parent invalidation boundary and all closed bars through the documented resolution.
-3. `parent_age_bars` still stores the absolute source-array index `a`, and `child_parent_duration_ratio` divides by that index. Compute elapsed bar counts within the reconstructed parent and child intervals.
-4. `cases.csv` ordered sequences are still prefilled identically with `FailedCounterExtension` for all three cases. Construct each sequence from computed state flags, preserving chronological order.
-5. M4 `cases_present` is still forced to `3`, and model selection/ablation strings are preassigned. Compute presence and summaries from generated features. Keep the existing candidate family and selection policy; do not force a pass.
-6. `parameter_stability.csv` is still entirely hardcoded (`target_cases_present=3`, `additional_detections=2`, `stable=YES`). Execute the same detector independently at factors 0.8, 1.0, and 1.2 and record observed target presence and observed additional detections.
-7. Controls must include an explicit duration mismatch column and must be chosen deterministically without overlap with any target case. Exact duration is preferred; otherwise record the nearest feasible mismatch transparently.
-8. The final invariant string, case/control contrast, detection counts, report statements, and Pine rule must all be generated from the same executable result and agree numerically.
-9. Pine must implement the same direction-aware rule for both UP and DOWN parents, use closed bars only, mark each full editable case interval distinctly, and remain visual-only.
+Use only existing local market data already accessible through project loaders. Missing data for a requested instrument or period must be recorded as `UNAVAILABLE` and excluded transparently; it must not block the task or require manual approval.
 
-## Fixed research constraints
+## Fixed definitions
 
-- Instrument: ADAUSDT.
-- Analysis window: `2023-10-19 00:00:00 UTC` through `2024-01-03 23:59:59 UTC`, inclusive.
-- Primary scale: `4H`; child scale remains the existing documented `1H` fallback.
-- Keep the three current reconstructed case intervals and evidence confidence unchanged.
-- Use only closed past bars; no future pivots, lookahead, repainting, future returns, or future-derived labels.
-- No predictive, trading, profitability, entry, exit, long, short, PnL, or risk claims.
-- Stop without changing outputs if any repair requires chart interpretation, revised definitions, revised research premises, replacement case windows, or subjective research judgment. Missing external validation data is not a stop condition because this task uses only the existing local data and fixed window above.
+1. Reuse the executable causal definitions and default parameters from `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/experiment_013.py`.
+2. Primary scale: `4H`.
+3. Child scale: use `15m` when complete local data exist; otherwise use the same documented `1H` fallback used by EXP-013 and mark the selected child scale.
+4. Closed bars only.
+5. No future pivots, lookahead, repainting, future returns, outcome-derived labels, or chart interpretation.
+6. Preserve the same direction-aware UP/DOWN logic.
+7. Default parameter set must be fixed before evaluating transfer rows.
+
+## Evaluation universe
+
+Attempt the following instruments using existing local data:
+
+- ADAUSDT;
+- BTCUSDT;
+- ETHUSDT;
+- SOLUSDT;
+- XRPUSDT.
+
+For ADAUSDT, evaluate available bars outside the original EXP-013 interval `2023-10-19 00:00:00 UTC` through `2024-01-03 23:59:59 UTC`. The original three target intervals must not be included as transfer detections or controls.
+
+For every instrument, use the maximum contiguous locally available interval that supports the required scales and causal warm-up. Record exact start/end, bar counts, child scale, gaps, and availability status before calculating results.
+
+Do not fetch external data and do not request additional periods.
+
+## Required analysis
+
+### A. Causal detections
+
+Run the fixed EXP-013 detector across each available instrument-period and record every complete source-rule occurrence:
+
+`ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion`
+
+Each detection must include:
+
+- instrument;
+- child scale;
+- parent direction;
+- parent start;
+- counter start;
+- balance start;
+- reassertion time;
+- end time;
+- parent invalidation boundary;
+- component flags;
+- ParentReassertion displacement normalized by ATR;
+- counter displacement normalized by ATR;
+- counter efficiency;
+- overlap ratio;
+- alternation rate;
+- parent and child elapsed bars;
+- child-to-parent amplitude ratio;
+- child-to-parent duration ratio;
+- parameter factor;
+- ambiguity reason, if any.
+
+### B. Matched controls
+
+For each accepted detection, select deterministic non-overlapping controls from the same instrument matched as closely as feasible on:
+
+- duration;
+- ATR or realized range;
+- parent direction;
+- parent age;
+- phase location within the available interval.
+
+Exclude all target detections and the original EXP-013 case intervals. Record mismatch columns explicitly. Do not label an inexact match as exact.
+
+### C. Transfer contrasts
+
+At minimum calculate per instrument and pooled:
+
+- number of accepted detections;
+- number of ambiguous detections;
+- detection rate per 1,000 4H bars;
+- median and mean ParentReassertion ATR for detections and controls;
+- rank-biserial or equivalent rank contrast;
+- fraction of detections above matched-control value;
+- overlap between detection and control distributions;
+- direction split;
+- child-scale split;
+- uncertainty appropriate to the available sample size.
+
+This is descriptive structural evaluation. Do not claim prediction.
+
+### D. Component ablation
+
+Evaluate whether the additional EXP-013 components improve separation while keeping the source rule fixed:
+
+- base rule only;
+- base plus `CounterProgressDecay`;
+- base plus `FailedCounterExtension`;
+- base plus both.
+
+For each variant record support, instrument coverage, control contrast, false/ambiguous reduction, and whether any apparent improvement is caused by severe sample collapse.
+
+Do not replace the base invariant merely because a stricter variant has a larger point estimate.
+
+### E. Parameter-neighbour stability
+
+Rerun the same detector at factors:
+
+- `0.8`;
+- `1.0`;
+- `1.2`.
+
+Record per instrument and pooled:
+
+- detection count;
+- detection rate;
+- overlap of detected intervals with the 1.0 set;
+- component support;
+- control contrast direction;
+- verdict stability.
+
+### F. Counterexamples
+
+Inspect programmatically the strongest false or ambiguous detections and document why the source transition is insufficient there. Prefer explicit structural reasons such as parent-boundary failure, unstable balance, weak reassertion, phase overlap, or scale mismatch.
+
+## Transfer decision
+
+Select exactly one verdict:
+
+- `CONFIRMED_TRANSFERABLE_INVARIANT` — the same causal rule is present across at least three instruments including ADA outside the source interval, has consistent effect direction against matched controls, and remains directionally stable at 0.8/1.0/1.2 without dependence on one instrument or a tiny subset.
+- `PARTIAL_TRANSFER` — the rule transfers descriptively but coverage, control separation, parameter stability, or instrument breadth is limited.
+- `REJECT_TRANSFER` — the rule does not reproduce beyond the source cases or its contrast is inconsistent and indistinguishable from matched controls.
+
+Do not force a positive verdict. Report unavailable instruments separately from negative instruments.
 
 ## Required outputs
 
-Modify only these existing nine paths:
+Create exactly these eight files:
 
-- `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/REPORT.md`
-- `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/cases.csv`
-- `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/case_features.csv`
-- `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/matched_controls.csv`
-- `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/candidate_models.csv`
-- `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/detections.csv`
-- `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/parameter_stability.csv`
-- `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/experiment_013.py`
-- `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/artifacts/EXP013_THREE_CASE_REVIEW.pine`
+- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/REPORT.md`
+- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/transfer_cases.csv`
+- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/matched_controls.csv`
+- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/instrument_summary.csv`
+- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/component_ablation.csv`
+- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/parameter_stability.csv`
+- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/detections.csv`
+- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/experiment_014.py`
 
 Do not create or modify any other path.
+
+## REPORT.md requirements
+
+The report must contain:
+
+1. exact reuse map from EXP-013 definitions and parameters;
+2. data inventory and actual evaluated intervals by instrument;
+3. transfer detection counts and rates;
+4. matched-control methodology and mismatch disclosure;
+5. per-instrument results;
+6. pooled results;
+7. component ablation;
+8. parameter-neighbour stability;
+9. strongest counterexamples and ambiguous cases;
+10. dependence on instrument, direction, scale, and time segment;
+11. limitations;
+12. one final verdict from the allowed set;
+13. strongest positive structural knowledge retained even if transfer is rejected.
+
+## Python requirements
+
+`experiment_014.py` must:
+
+- import or reuse EXP-013 executable logic where practical instead of duplicating incompatible definitions;
+- discover existing local data through project loaders;
+- record unavailable instruments without failing the complete experiment;
+- fail loudly on malformed required columns for an available dataset;
+- use deterministic settings;
+- generate all seven CSV outputs and REPORT.md;
+- assert no evaluated ADA transfer row overlaps the original three EXP-013 intervals;
+- assert controls do not overlap accepted detections;
+- assert all reported counts and contrasts reproduce from generated CSV rows;
+- assert all detector states use closed past bars only;
+- print a compact summary containing evaluated instruments, unavailable instruments, detection counts, control contrast, ablation result, stability result, verdict, and report path.
 
 ## Hard protections
 
 Never modify, stage, delete, rename, chmod, or rewrite:
 
-- `docs/DEFINITIONS.md`;
-- `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`;
-- `.codex/RESULT.md`;
 - `.codex/TASK.md`;
 - `.codex/ALLOWLIST.txt`;
+- `.codex/RESULT.md`;
+- `docs/DEFINITIONS.md`;
+- any EXP-013 file;
+- `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`;
+- `start.sh`;
 - `.git` internals;
-- any file outside the nine allowlisted EXP-013 paths.
+- any path outside the eight EXP-014 outputs.
 
-The protected EXP009A Pine may already be dirty before task start. Preserve it byte-identically and leave it unstaged and uncommitted.
+Existing local dirty files must remain byte-identical, unstaged, and uncommitted.
 
 ## Required validation
 
 Before PASS:
 
-1. Run `experiment_013.py` twice from a clean output baseline and verify identical SHA-256 hashes for all eight generated report/data/Pine outputs.
-2. Verify all seven CSV files parse and contain their documented columns.
-3. Add executable assertions proving phase boundaries and directions used by every counter feature.
-4. Add executable assertions proving elapsed parent/child durations are not absolute source indices.
-5. Add executable assertions proving `parent_boundary_preserved`, model presence, sequence membership, stability counts, and additional detections are derived values rather than constants.
-6. Verify every control is non-overlapping and report `duration_mismatch_bars` explicitly.
-7. Verify every ordered sequence agrees exactly with computed flags for that case.
-8. Verify the reported minimal invariant equals the computed intersection of required states across all three cases and its case/control contrast is reproducible from CSV values.
-9. Verify each stability row comes from an actual detector invocation at its stated factor.
-10. Verify Pine has no `strategy`, order, future-pivot, lookahead, or repainting commands; supports both parent directions; and shades/marks all three full editable intervals.
-11. Run `python3 -m py_compile`, `git diff --check`, and a baseline-relative allowlist check.
-12. Verify the protected EXP009A Pine hash is unchanged from task start and no files are staged.
+1. Run `experiment_014.py` twice and verify identical SHA-256 hashes for all eight outputs.
+2. Verify all seven CSV files parse and contain documented columns.
+3. Verify instrument inventory agrees with actual loader results.
+4. Verify the original three EXP-013 intervals are excluded from transfer detections and controls.
+5. Verify every control is non-overlapping and mismatch fields are explicit.
+6. Verify base and ablation variants are generated from executable predicates, not hardcoded labels.
+7. Verify stability rows come from actual detector invocations at 0.8, 1.0, and 1.2.
+8. Verify REPORT values and verdict reproduce from CSV outputs.
+9. Run `python3 -m py_compile`, `git diff --check`, and baseline-relative allowlist validation.
+10. Verify protected and pre-existing dirty files remain byte-identical and no files are staged.
 
 ## Result contract
 
-Planner, implementer, auditor, and corrector use the required JSON role contract. The implementer leaves only the nine allowed outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message, and pushes to `main`.
+Planner, implementer, auditor, and corrector use the required JSON role contract. The implementer leaves only the eight allowlisted EXP-014 outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message, and pushes to `main`.
