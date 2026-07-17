@@ -12,9 +12,11 @@
 
 ## Objective
 
-Complete the still-unimplemented purely technical repairs from EXP-013 R1. The prior R1 result changed some generated text/CSV values but left the executable generator with the original hardcoded and incorrectly scoped calculations. Repair the generator first, regenerate all outputs from it, and prove that no required result is manually prefilled.
+Complete the still-unimplemented purely technical repairs from EXP-013 R1. The prior R1 result changed some generated text/CSV values but left the executable generator with the original hardcoded and incorrectly scoped calculations. Repair the generator first, regenerate all outputs from it, and prove that no required result is prefilled by hand.
 
-This is the second and final automatic correction attempt for original task `EXP-013-THREE-CASE-COMMON-INVARIANT`. Do not alter the research question, definitions, three reconstructed case intervals, evidence confidence, hypotheses M1-M7, date window, instrument, holdout policy, selected model family, or any visual/research judgment.
+This is the second and final automatic correction attempt for original task `EXP-013-THREE-CASE-COMMON-INVARIANT`. It is a technical repair of existing metrics and parameter stability only, not a change to the research question, selected invariant, model family, verdict, or research window. Do not alter definitions, the three reconstructed case intervals, evidence confidence, candidate mechanisms M1-M7, date window, instrument, validation policy, selected model family, or any chart-based/research judgment.
+
+Use only existing local data already available in the repository and only the permitted window `2023-10-19 00:00:00 UTC` through `2024-01-03 23:59:59 UTC`. Do not request hidden data, additional periods, or data outside that window. No manual approval is required; missing external validation data must not block this technical repair.
 
 ## Confirmed remaining technical defects
 
@@ -36,7 +38,7 @@ This is the second and final automatic correction attempt for original task `EXP
 - Keep the three current reconstructed case intervals and evidence confidence unchanged.
 - Use only closed past bars; no future pivots, lookahead, repainting, future returns, or future-derived labels.
 - No predictive, trading, profitability, entry, exit, long, short, PnL, or risk claims.
-- Stop without changing outputs if any repair requires chart interpretation, a new holdout, revised definitions, revised hypotheses, replacement case windows, or subjective research judgment.
+- Stop without changing outputs if any repair requires chart interpretation, revised definitions, revised research premises, replacement case windows, or subjective research judgment. Missing external validation data is not a stop condition because this task uses only the existing local data and fixed window above.
 
 ## Required outputs
 
