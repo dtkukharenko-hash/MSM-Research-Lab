@@ -1,8 +1,8 @@
-experiments/EXP-014_COMMON_INVARIANT_TRANSFER/REPORT.md
-experiments/EXP-014_COMMON_INVARIANT_TRANSFER/transfer_cases.csv
-experiments/EXP-014_COMMON_INVARIANT_TRANSFER/matched_controls.csv
-experiments/EXP-014_COMMON_INVARIANT_TRANSFER/instrument_summary.csv
-experiments/EXP-014_COMMON_INVARIANT_TRANSFER/component_ablation.csv
-experiments/EXP-014_COMMON_INVARIANT_TRANSFER/parameter_stability.csv
-experiments/EXP-014_COMMON_INVARIANT_TRANSFER/detections.csv
-experiments/EXP-014_COMMON_INVARIANT_TRANSFER/experiment_014.py
+experiments/EXP-015_PARENT_BOUNDARY_GATE/REPORT.md
+experiments/EXP-015_PARENT_BOUNDARY_GATE/gated_detections.csv
+experiments/EXP-015_PARENT_BOUNDARY_GATE/matched_controls.csv
+experiments/EXP-015_PARENT_BOUNDARY_GATE/gate_comparison.csv
+experiments/EXP-015_PARENT_BOUNDARY_GATE/parameter_stability.csv
+experiments/EXP-015_PARENT_BOUNDARY_GATE/time_segment_summary.csv
+experiments/EXP-015_PARENT_BOUNDARY_GATE/counterexamples.csv
+experiments/EXP-015_PARENT_BOUNDARY_GATE/experiment_015.py
