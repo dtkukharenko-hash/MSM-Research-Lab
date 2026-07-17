@@ -1,205 +1,127 @@
 # Current Codex Task
 
-- task_id: `EXP-014A-COMMON-INVARIANT-TRANSFER`
+- task_id: `EXP-015-PARENT-BOUNDARY-GATE`
 - status: `READY`
 - published_at: `2026-07-17`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- source_experiment: `EXP-013-THREE-CASE-COMMON-INVARIANT`
-- commit_message: `EXP-014 common invariant transfer`
+- source_experiments: `EXP-013-THREE-CASE-COMMON-INVARIANT`, `EXP-014-COMMON-INVARIANT-TRANSFER`
+- commit_message: `EXP-015 parent boundary gate`
 
 ## Objective
 
-Test whether the descriptive closed-bar transition identified in EXP-013 transfers beyond the three reconstructed ADAUSDT cases.
-
-The fixed source rule is:
+Test whether explicit preservation of the established parent invalidation boundary is a necessary structural gate for the fixed closed-bar transition:
 
 `ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion`
 
-This task evaluates transfer only. Do not revise the EXP-013 case intervals, definitions, source verdict, or source outputs. Do not introduce strategy, profitability, entry, exit, long, short, PnL, or risk language.
+EXP-014 found 369 accepted rows, 56 diagnostic rows, weak case-control separation, and parent-boundary failure as the explicit structural reason in the strongest failed rows. This task tests that gate only. Do not revise EXP-013 or EXP-014 outputs, definitions, source intervals, or verdicts.
 
-Use only existing local market data already accessible through project loaders. Missing data for a requested instrument or period must be recorded as `UNAVAILABLE` and excluded transparently; it must not block the task.
+Use only existing local data. The task runs entirely from fixed executable rules and requires no interactive approval. Missing datasets are recorded as `UNAVAILABLE` and do not stop execution.
 
-This task runs only on fixed executable metrics and requires no interactive approval. Borderline rows must be marked `DIAGNOSTIC_FLAG`, handled automatically, and folded into the most conservative allowed verdict supported by the generated metrics.
+## Fixed scope
 
-## Fixed definitions
+- Instrument: ADAUSDT only, because it is the available local archive established by EXP-014.
+- Data interval: maximum contiguous local interval used by EXP-014, excluding the original EXP-013 source interval `2023-10-19 00:00:00 UTC` through `2024-01-03 23:59:59 UTC`.
+- Parent scale: completed `4H` UTC bars.
+- Child scale: existing documented `1H` fallback.
+- Closed past bars only.
+- No future pivots, lookahead, repainting, future returns, outcome-derived labels, chart interpretation, predictive claims, or strategy language.
+- Reuse the executable EXP-013/EXP-014 detector conventions and default factor `1.0` before evaluating rows.
 
-1. Reuse the executable causal definitions and default parameters from `experiments/EXP-013_THREE_CASE_COMMON_INVARIANT/experiment_013.py`.
-2. Primary scale: `4H`.
-3. Child scale: use `15m` when complete local data exist; otherwise use the same documented `1H` fallback used by EXP-013 and mark the selected child scale.
-4. Closed bars only.
-5. No future pivots, lookahead, repainting, future returns, outcome-derived labels, or chart interpretation.
-6. Preserve the same direction-aware UP/DOWN logic.
-7. Default parameter set must be fixed before evaluating transfer rows.
+## Gate definitions
 
-## Evaluation universe
+Evaluate the same base transition under these executable variants:
 
-Attempt the following instruments using existing local data:
+1. `BASE`: source transition only.
+2. `BOUNDARY_AT_COUNTER_END`: parent invalidation boundary preserved through the counter phase.
+3. `BOUNDARY_THROUGH_BALANCE`: boundary preserved through the balance phase.
+4. `BOUNDARY_THROUGH_REASSERTION`: boundary preserved on every completed parent bar through the reassertion bar.
+5. `BOUNDARY_MARGIN`: variant 4 plus minimum normalized distance from the invalidation boundary at reassertion.
 
-- ADAUSDT;
-- BTCUSDT;
-- ETHUSDT;
-- SOLUSDT;
-- XRPUSDT.
-
-For ADAUSDT, evaluate available bars outside the original EXP-013 interval `2023-10-19 00:00:00 UTC` through `2024-01-03 23:59:59 UTC`. The original three target intervals must not be included as transfer detections or controls.
-
-For every instrument, use the maximum contiguous locally available interval that supports the required scales and causal warm-up. Record exact start/end, bar counts, child scale, gaps, and availability status before calculating results.
-
-Do not fetch external data and do not request additional periods.
+The invalidation boundary, direction-aware sign, phase boundaries, and normalized margin must be derived from existing executable definitions. Do not hardcode row labels or force any gate to pass.
 
 ## Required analysis
 
-### A. Causal detections
+### A. Reconstruct base rows
 
-Run the fixed EXP-013 detector across each available instrument-period and record every complete source-rule occurrence:
+Regenerate the EXP-014 ADA transfer rows from source logic and assert agreement with the committed EXP-014 outputs for interval identity, direction, phase timestamps, and base component flags.
 
-`ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion`
+### B. Gate comparison
 
-Each detection must include:
+For every gate variant calculate:
 
-- instrument;
-- child scale;
-- parent direction;
-- parent start;
-- counter start;
-- balance start;
-- reassertion time;
-- end time;
-- parent invalidation boundary;
-- component flags;
-- ParentReassertion displacement normalized by ATR;
-- counter displacement normalized by ATR;
-- counter efficiency;
-- overlap ratio;
-- alternation rate;
-- parent and child elapsed bars;
-- child-to-parent amplitude ratio;
-- child-to-parent duration ratio;
-- parameter factor;
-- `DIAGNOSTIC_FLAG` reason, if any.
-
-### B. Matched controls
-
-For each accepted detection, select deterministic non-overlapping controls from the same instrument matched as closely as feasible on:
-
-- duration;
-- ATR or realized range;
-- parent direction;
-- parent age;
-- phase location within the available interval.
-
-Exclude all target detections and the original EXP-013 case intervals. Record mismatch columns explicitly. Do not label an inexact match as exact.
-
-### C. Transfer contrasts
-
-At minimum calculate per instrument and pooled:
-
-- number of accepted detections;
-- number of `DIAGNOSTIC_FLAG` detections;
-- detection rate per 1,000 4H bars;
-- median and mean ParentReassertion ATR for detections and controls;
-- rank-biserial or equivalent rank contrast;
-- fraction of detections above matched-control value;
-- overlap between detection and control distributions;
+- support count and rate per 1,000 parent bars;
+- retained fraction from BASE;
+- diagnostic-row retention and removal;
+- median and mean reassertion ATR;
+- matched-control median and mean;
+- paired rank contrast;
+- fraction above matched control;
+- distribution overlap;
 - direction split;
-- child-scale split;
-- uncertainty appropriate to the available sample size.
+- time-segment split;
+- sample-collapse flag.
 
-This is descriptive structural evaluation. Do not claim prediction.
+### C. Matched controls
 
-### D. Component ablation
+Choose deterministic, non-overlapping controls from the same ADA interval, matched as closely as feasible on duration, ATR or realized range, parent direction, parent age, and time location. Record all mismatch columns. Exclude base detections and the original EXP-013 intervals.
 
-Evaluate whether the additional EXP-013 components improve separation while keeping the source rule fixed:
+### D. Boundary-margin stability
 
-- base rule only;
-- base plus `CounterProgressDecay`;
-- base plus `FailedCounterExtension`;
-- base plus both.
+Evaluate fixed normalized boundary-margin thresholds at:
 
-For each variant record support, instrument coverage, control contrast, false/`DIAGNOSTIC_FLAG` reduction, and whether any apparent improvement is caused by severe sample collapse.
+- `0.0 ATR`;
+- `0.1 ATR`;
+- `0.2 ATR`;
+- `0.3 ATR`.
 
-Do not replace the base invariant merely because a stricter variant has a larger point estimate.
+Also rerun detector parameter factors `0.8`, `1.0`, and `1.2`. Record support, detection overlap with factor 1.0, control contrast direction, diagnostic reduction, and verdict stability.
 
-### E. Parameter-neighbour stability
+### E. Time stability
 
-Rerun the same detector at factors:
-
-- `0.8`;
-- `1.0`;
-- `1.2`.
-
-Record per instrument and pooled:
-
-- detection count;
-- detection rate;
-- overlap of detected intervals with the 1.0 set;
-- component support;
-- control contrast direction;
-- verdict stability.
+Split the available ADA transfer interval into deterministic chronological thirds. Report gate support and contrast separately for each third and parent direction. A result dependent on one third must be marked as time-concentrated.
 
 ### F. Counterexamples
 
-Inspect programmatically the strongest false detections and `DIAGNOSTIC_FLAG` rows and document why the source transition is insufficient there. Prefer explicit structural reasons such as parent-boundary failure, unstable balance, weak reassertion, phase overlap, or scale mismatch.
+Export the strongest rows where the base transition appears but the parent boundary fails, and the strongest rows where the strict gate passes without improved control separation. Record explicit causal structural reasons only.
 
-## Transfer decision
+## Decision
 
 Select exactly one verdict:
 
-- `CONFIRMED_TRANSFERABLE_INVARIANT` — the same causal rule is present across at least three instruments including ADA outside the source interval, has consistent effect direction against matched controls, and remains directionally stable at 0.8/1.0/1.2 without dependence on one instrument or a tiny subset.
-- `PARTIAL_TRANSFER` — the rule transfers descriptively but coverage, control separation, parameter stability, or instrument breadth is limited.
-- `REJECT_TRANSFER` — the rule does not reproduce beyond the source cases or its contrast is inconsistent and indistinguishable from matched controls.
+- `BOUNDARY_GATE_SUPPORTED` — preservation through reassertion removes most boundary-failure rows, retains adequate support, improves control separation in the same direction across chronological thirds and parameter factors, and is not dependent on one direction or a tiny subset.
+- `BOUNDARY_GATE_PARTIAL` — the gate removes structural failures but improvement, support, or stability is limited.
+- `BOUNDARY_GATE_REJECTED` — the gate causes severe sample collapse, fails to improve separation, or is unstable across time or parameters.
 
-Do not force a positive verdict. Report unavailable instruments separately from negative instruments.
+Do not force a positive verdict. This is descriptive structural evaluation only.
 
 ## Required outputs
 
 Create exactly these eight files:
 
-- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/REPORT.md`
-- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/transfer_cases.csv`
-- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/matched_controls.csv`
-- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/instrument_summary.csv`
-- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/component_ablation.csv`
-- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/parameter_stability.csv`
-- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/detections.csv`
-- `experiments/EXP-014_COMMON_INVARIANT_TRANSFER/experiment_014.py`
+- `experiments/EXP-015_PARENT_BOUNDARY_GATE/REPORT.md`
+- `experiments/EXP-015_PARENT_BOUNDARY_GATE/gated_detections.csv`
+- `experiments/EXP-015_PARENT_BOUNDARY_GATE/matched_controls.csv`
+- `experiments/EXP-015_PARENT_BOUNDARY_GATE/gate_comparison.csv`
+- `experiments/EXP-015_PARENT_BOUNDARY_GATE/parameter_stability.csv`
+- `experiments/EXP-015_PARENT_BOUNDARY_GATE/time_segment_summary.csv`
+- `experiments/EXP-015_PARENT_BOUNDARY_GATE/counterexamples.csv`
+- `experiments/EXP-015_PARENT_BOUNDARY_GATE/experiment_015.py`
 
-Do not create or modify any other path.
-
-## REPORT.md requirements
-
-The report must contain:
-
-1. exact reuse map from EXP-013 definitions and parameters;
-2. data inventory and actual evaluated intervals by instrument;
-3. transfer detection counts and rates;
-4. matched-control methodology and mismatch disclosure;
-5. per-instrument results;
-6. pooled results;
-7. component ablation;
-8. parameter-neighbour stability;
-9. strongest counterexamples and `DIAGNOSTIC_FLAG` cases;
-10. dependence on instrument, direction, scale, and time segment;
-11. limitations;
-12. one final verdict from the allowed set;
-13. strongest positive structural knowledge retained even if transfer is rejected.
+Do not create or modify any other path. Do not create `__pycache__` or `.pyc` files.
 
 ## Python requirements
 
-`experiment_014.py` must:
+`experiment_015.py` must:
 
-- import or reuse EXP-013 executable logic where practical instead of duplicating incompatible definitions;
-- discover existing local data through project loaders;
-- record unavailable instruments without failing the complete experiment;
-- fail loudly on malformed required columns for an available dataset;
-- use deterministic settings;
-- generate all seven CSV outputs and REPORT.md;
-- assert no evaluated ADA transfer row overlaps the original three EXP-013 intervals;
-- assert controls do not overlap accepted detections;
-- assert all reported counts and contrasts reproduce from generated CSV rows;
-- assert all detector states use closed past bars only;
-- print a compact summary containing evaluated instruments, unavailable instruments, detection counts, control contrast, ablation result, stability result, verdict, and report path.
+- import or reuse EXP-013 and EXP-014 executable logic where practical;
+- regenerate all seven CSV files and REPORT.md deterministically;
+- assert exclusion of the original EXP-013 interval;
+- assert phase ordering and direction-aware boundary calculations;
+- assert gate membership is derived from bar data and not constants;
+- assert controls do not overlap detections;
+- assert report counts, contrasts, and verdict reproduce from CSV rows;
+- print a compact summary with support, diagnostic reduction, contrasts, time stability, parameter stability, verdict, and report path.
 
 ## Hard protections
 
@@ -209,11 +131,10 @@ Never modify, stage, delete, rename, chmod, or rewrite:
 - `.codex/ALLOWLIST.txt`;
 - `.codex/RESULT.md`;
 - `docs/DEFINITIONS.md`;
-- any EXP-013 file;
-- `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`;
+- any EXP-009, EXP-013, or EXP-014 file;
 - `start.sh`;
 - `.git` internals;
-- any path outside the eight EXP-014 outputs.
+- any path outside the eight EXP-015 outputs.
 
 Existing local dirty files must remain byte-identical, unstaged, and uncommitted.
 
@@ -221,17 +142,18 @@ Existing local dirty files must remain byte-identical, unstaged, and uncommitted
 
 Before PASS:
 
-1. Run `experiment_014.py` twice and verify identical SHA-256 hashes for all eight outputs.
-2. Verify all seven CSV files parse and contain documented columns.
-3. Verify instrument inventory agrees with actual loader results.
-4. Verify the original three EXP-013 intervals are excluded from transfer detections and controls.
-5. Verify every control is non-overlapping and mismatch fields are explicit.
-6. Verify base and ablation variants are generated from executable predicates, not hardcoded labels.
-7. Verify stability rows come from actual detector invocations at 0.8, 1.0, and 1.2.
-8. Verify REPORT values and verdict reproduce from CSV outputs.
-9. Run `python3 -m py_compile`, `git diff --check`, and baseline-relative allowlist validation.
-10. Verify protected and pre-existing dirty files remain byte-identical and no files are staged.
+1. Run `experiment_015.py` twice and verify identical SHA-256 hashes for all eight outputs.
+2. Parse all seven CSV files and verify documented columns.
+3. Verify regenerated BASE rows agree with committed EXP-014 ADA rows.
+4. Verify gate variants and margin thresholds are executable predicates rather than labels.
+5. Verify every control is non-overlapping and all mismatch fields are explicit.
+6. Verify chronological thirds are deterministic and exhaustive over evaluated rows.
+7. Verify parameter rows come from actual runs at `0.8`, `1.0`, and `1.2`.
+8. Verify REPORT values and verdict reproduce from generated CSV outputs.
+9. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-015_PARENT_BOUNDARY_GATE/experiment_015.py`.
+10. Run `git diff --check` and baseline-relative allowlist validation.
+11. Verify protected and pre-existing dirty files remain byte-identical and no files are staged.
 
 ## Result contract
 
-Planner, implementer, auditor, and corrector use the required JSON role contract. The implementer leaves only the eight allowlisted EXP-014 outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message, and pushes to `main`.
+Planner, implementer, auditor, and corrector use the required JSON role contract. The implementer leaves only the eight allowlisted EXP-015 outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message, and pushes to `main`.
