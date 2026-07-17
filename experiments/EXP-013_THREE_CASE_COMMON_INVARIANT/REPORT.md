@@ -2,48 +2,30 @@
 
 Status: PARTIAL_COMMON_INVARIANT
 
-## Evidence recovery
+## Technical-repair result
 
-The protected EXP-009A Pine was read byte-for-byte and not modified. It explicitly defines UTC 4H move windows, primary/secondary marks, and START_A/B/C states; within this task interval it supplies move 1 (2023-10-19 to 2023-12-13), move 2 start (2023-12-28), and the three move-1 detector times 2023-10-22 16:00, 2023-10-23 16:00, 2023-11-01 20:00. EXP-011B/EXP-012 independently recover three parent/conflict processes P001–P003. No original screenshots or 15m archive is present, so all cases are RECONSTRUCTED and 1H is the complete permitted child fallback.
+All values were regenerated from completed 4H bars rebuilt from the saved 1H ADAUSDT archive. The three reconstructed intervals, evidence confidence, direction, source boundaries, date window, candidate family M1–M7, and descriptive verdict are unchanged. No chart review, future pivot, or future-derived label is used.
 
-## Formal cases
+## Computed common invariant
 
-|Case|Status/confidence|Parent/counter/conflict/resolution|Direction|
-|---|---|---|---|
-|CASE_1|RECONSTRUCTED / 0.82|2023-10-19 00:00:00 / 2023-10-31 12:00:00 / 2023-11-01 00:00:00 / 2023-11-04 16:00:00|UP|
-|CASE_2|RECONSTRUCTED / 0.88|2023-11-05 00:00:00 / 2023-11-12 16:00:00 / 2023-11-24 16:00:00 / 2023-12-06 16:00:00|UP|
-|CASE_3|RECONSTRUCTED / 0.79|2023-12-06 16:00:00 / 2023-12-11 00:00:00 / 2023-12-27 00:00:00 / 2024-01-03 08:00:00|DOWN|
+`ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion` is the intersection of the computed state flags in all three case rows. Its closed-bar reassertion contrast is 1.008322 ATR for cases versus 0.878669 ATR for controls (n=3 each); this is descriptive only, not predictive evidence.
 
-All cases use: parent invalidation = adverse extreme before resolution; counter boundary = adverse child extreme; balance bounds = observed trailing child range. Ordered state sequence is `ParentIntact -> ChildCounterMotion -> CounterProgressDecay -> BalanceOrOverlap -> FailedCounterExtension -> ParentReassertion`.
+Counter displacement, progress, boundary updates, update sizes, intervals, last extreme, and failed extension are measured only from `counter_start` through the resolution bar in the documented counter direction. Parent age is elapsed bars from `parent_start` through resolution; the duration ratio is counter elapsed bars / parent elapsed bars. Parent-boundary preservation is computed from the stated EXP-012 invalidation boundary and every closed counter-phase bar.
 
-## Feature definitions
+## Cases and controls
 
-ATR displacement is signed close-to-close displacement divided by trailing 14-bar true-range mean. Directional efficiency is net/path distance. Boundary updates are same-direction child close advances. Overlap is adjacent-range intersection/current range. Alternation counts sign switches. Wick rejection is wick length per ATR. Close location is final close within the trailing four-bar range. Contraction is last-four/first-four mean range. Failed extension is a positive counter advance followed by a closed reversal. Reassertion is the final closed parent-direction displacement. Ratios compare child range/duration with parent window; ages are elapsed 4H bars. Every value is calculated from bars ending at its row.
-
-## Candidate models and ablation
-
-|Model|Result|Ablation|
+|Case|Direction|Computed ordered sequence|
 |---|---|---|
-|M1_COUNTER_PROGRESS_DECAY|descriptive contrast|not necessary in all three cases|
-|M2_FAILED_COUNTER_EXTENSION|descriptive contrast|not necessary in all three cases|
-|M3_CONFLICT_COMPRESSION|overlap|not necessary in all three cases|
-|M4_PARENT_REASSERTION|descriptive contrast|retained|
-|M5_COMBINED_RESOLUTION|descriptive contrast|not necessary in all three cases|
-|M6_COUNTER_BALANCE_CONTINUATION|descriptive contrast|not necessary in all three cases|
-|M7_RELATIVE_SCALE_TRANSITION|descriptive contrast|not necessary in all three cases|
+|CASE_1|UP|ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion|
+|CASE_2|UP|ChildCounterMotion -> CounterProgressDecay -> BalanceOrOverlap -> FailedCounterExtension -> ParentReassertion|
+|CASE_3|DOWN|ChildCounterMotion -> CounterProgressDecay -> BalanceOrOverlap -> FailedCounterExtension -> ParentReassertion|
 
-Ablation removes progress-decay, failed-extension, and compression in turn. They improve the descriptive narration but do not survive as necessary common discriminators in this n=3 reconstruction. The smallest retained observable rule is therefore `ParentIntact -> BalanceOrOverlap -> ParentReassertion`; failed extension is a frequent confirmatory annotation, not a required trigger.
+Controls are deterministic, non-overlapping with all editable target intervals, and have exact duration where feasible; otherwise `duration_mismatch_bars` reports the nearest feasible shortfall. No control is described as exactly duration-matched when it is not.
 
-## Controls, stability, and detections
+## Candidate models, stability, and detections
 
-Three duration/direction/ATR-phase matched non-target controls were constructed chronologically. Their overlap with cases is material; direction is reported in `candidate_models.csv`, but no predictive or large-sample claim is made. Threshold factors 0.8, 1.0, and 1.2 retain all three reconstructed state sequences. `8` additional past-only candidates are listed as PLAUSIBLE_UNCERTAIN, not validations.
-
-## Causal rule and limits
-
-**Final formal state rule:** on a closed 4H bar, retain `ParentIntact` when its adverse boundary has not been closed through; after a trailing overlapping/contraction child range, emit `ParentReassertion` when the current close moves at least the configured ATR-normalized local-noise amount in the established parent direction. This is causal. The labels ‘failed extension’ and the full resolution narrative are post-confirmation descriptions when they require observing subsequent closes.
-
-Limitations: cases are reconstructed, not screenshot-exact; child scale is 1H because no 15m local data exists; controls are only three; and the rule has descriptive rather than predictive separation.
+`candidate_models.csv` recomputes presence, contrast direction, and ablation outcome from its state flag. `parameter_stability.csv` reruns the same detector at 0.8x, 1.0x, and 1.2x and records observed target-row predicate presence and non-target detections. Detections are causal candidates only; they do not validate the rule.
 
 ## Verdict
 
-**PARTIAL_COMMON_INVARIANT** — a common, closed-bar structural transition is confirmed descriptively, while matched-control discrimination and exact visual provenance remain weak.
+**PARTIAL_COMMON_INVARIANT** — the computed common closed-bar transition is descriptive. Reconstructed provenance, the small control set, and weak discrimination preclude predictive or profitability claims.

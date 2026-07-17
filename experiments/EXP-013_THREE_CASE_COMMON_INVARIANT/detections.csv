@@ -1,9 +1,32 @@
 detection_id,time,direction,state_rule,reassertion_atr,assessment,reason
-D001,2023-10-21 04:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.6683,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D002,2023-10-21 08:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,1.3397,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D003,2023-10-22 16:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.8502,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D004,2023-10-23 20:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,2.101,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D005,2023-10-25 16:00:00,DOWN,ParentIntact+BalanceOrOverlap+ParentReassertion,0.9121,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D006,2023-10-30 08:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,1.8172,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D007,2023-11-06 08:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,0.9049,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
-D008,2023-11-07 16:00:00,UP,ParentIntact+BalanceOrOverlap+ParentReassertion,1.027,PLAUSIBLE_UNCERTAIN,same causal form; not user-marked and not predictive evidence
+D001,2023-10-21 04:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.668258,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D002,2023-10-21 08:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.339713,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D003,2023-10-21 12:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.022831,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D004,2023-10-22 16:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.850202,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D005,2023-10-22 20:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.940499,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D006,2023-10-23 00:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.65,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D007,2023-10-23 16:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.164869,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D008,2023-10-23 20:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,2.100955,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D009,2023-10-24 08:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.036464,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D010,2023-10-25 12:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.055698,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D011,2023-10-29 08:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.645833,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D012,2023-10-30 08:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.817185,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D013,2023-10-31 08:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.857997,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D017,2023-11-05 08:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.126117,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D018,2023-11-06 00:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.541275,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D019,2023-11-06 08:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.904943,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D020,2023-11-06 16:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.814602,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D021,2023-11-07 16:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.027027,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D022,2023-11-09 08:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.892617,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D023,2023-11-09 20:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.580805,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D024,2023-11-10 16:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.501792,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D025,2023-11-10 20:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.980392,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D026,2023-11-12 04:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.597356,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D055,2023-12-07 12:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.672626,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D056,2023-12-07 16:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.608059,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D057,2023-12-08 00:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.613699,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D058,2023-12-08 04:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.804103,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D059,2023-12-08 08:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,2.638439,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D060,2023-12-08 20:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,0.62513,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D061,2023-12-09 00:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.427399,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence
+D062,2023-12-09 04:00:00,UP,ChildCounterMotion -> BalanceOrOverlap -> ParentReassertion,1.843768,PLAUSIBLE_UNCERTAIN,same past-only rule; not target-case evidence

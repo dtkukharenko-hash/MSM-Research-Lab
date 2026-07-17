@@ -1,8 +1,8 @@
-model,common_definition,cases_present,case_mean,control_mean,effect_direction,ablation_result,selection
-M1_COUNTER_PROGRESS_DECAY,smaller late progress,2,0.06619,0.10213,descriptive contrast,not necessary in all three cases,not selected
-M2_FAILED_COUNTER_EXTENSION,attempt returns inside prior range,1,0.33333,0.66667,descriptive contrast,not necessary in all three cases,not selected
-M3_CONFLICT_COMPRESSION,overlap/alternation with lower efficiency,3,0.64831,0.64225,overlap,not necessary in all three cases,not selected
-M4_PARENT_REASSERTION,closed parent-direction displacement,3,0.35324,-0.24361,descriptive contrast,retained,SELECTED_MINIMAL
-M5_COMBINED_RESOLUTION,M1/M2/M3 plus M4,0,0.33333,0.66667,descriptive contrast,not necessary in all three cases,not selected
-M6_COUNTER_BALANCE_CONTINUATION,balance then parent displacement,3,0.8276,1.78812,descriptive contrast,not necessary in all three cases,not selected
-M7_RELATIVE_SCALE_TRANSITION,relative amplitude/duration,3,2.54124,1.16734,descriptive contrast,not necessary in all three cases,not selected
+model,computed_predicate,computed_case_count,cases_present,controls_present,case_mean,control_mean,effect_direction,ablation_result,selection
+M1_COUNTER_PROGRESS_DECAY,CounterProgressDecay,2,2,1,0.012077,-0.099493,case_gt_control,not_required_in_all_cases,not_selected
+M2_FAILED_COUNTER_EXTENSION,FailedCounterExtension,2,2,1,0.666667,0.333333,case_gt_control,not_required_in_all_cases,not_selected
+M3_CONFLICT_COMPRESSION,BalanceOrOverlap,3,3,3,1.0,1.0,case_lt_or_equal_control,not_required_in_all_cases,not_selected
+M4_PARENT_REASSERTION,ParentReassertion,3,3,3,1.0,1.0,case_lt_or_equal_control,not_required_in_all_cases,not_selected
+M5_COMBINED_RESOLUTION,ChildCounterMotion+BalanceOrOverlap+ParentReassertion,3,3,3,1.008322,0.878669,case_gt_control,required_by_common_invariant,SELECTED_MINIMAL
+M6_COUNTER_BALANCE_CONTINUATION,BalanceOrOverlap+ParentReassertion,3,3,3,1.280326,0.985074,case_gt_control,not_required_in_all_cases,not_selected
+M7_RELATIVE_SCALE_TRANSITION,ChildCounterMotion,3,3,3,2.949461,57.666667,case_lt_or_equal_control,not_required_in_all_cases,not_selected

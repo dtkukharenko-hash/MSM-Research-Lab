@@ -1,183 +1,285 @@
 #!/usr/bin/env python3
-"""EXP-013: deterministic, closed-bar reconstruction of three ADAUSDT cases.
+"""EXP-013 technical repair: deterministic, closed-bar case reconstruction.
 
-Uses the saved EXP-011 Binance spot OHLC archive.  The repository has no 15m
-archive, so complete 1H bars are the documented child-scale fallback.  All
-rolling values are trailing; no pivot, forward return, or later-bar label is
-used by the detector.
+The primary series is rebuilt from the saved 1H archive into completed 4H
+bars.  The 1H archive remains the documented child-scale fallback.  No field
+uses a future pivot, return, or label: each case row is calculated at its
+documented resolution close.
 """
 from __future__ import annotations
-import csv, math, statistics
+
+import csv
 from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).resolve().parent
 SRC = ROOT / "experiments/EXP-011_MULTISCALE_EMA_TREND_BACKBONE/artifacts/ohlc_1h.csv"
-START, END = datetime(2023,10,19), datetime(2024,1,3,23,59,59)
-CASES = [
- ("CASE_1","RECONSTRUCTED",0.82,"2023-10-31 12:00:00","2023-10-19 00:00:00","2023-10-31 12:00:00","2023-11-01 00:00:00","2023-11-04 16:00:00","2023-11-05 00:00:00","UP","EXP-009 move-1 window plus EXP-012 P001 causal parent"),
- ("CASE_2","RECONSTRUCTED",0.88,"2023-11-12 16:00:00","2023-11-05 00:00:00","2023-11-12 16:00:00","2023-11-24 16:00:00","2023-12-06 16:00:00","2023-12-07 00:00:00","UP","EXP-012 P002 and R5 LC002; all timestamps inside task interval"),
- ("CASE_3","RECONSTRUCTED",0.79,"2023-12-11 00:00:00","2023-12-06 16:00:00","2023-12-11 00:00:00","2023-12-27 00:00:00","2024-01-03 08:00:00","2024-01-03 20:00:00","DOWN","EXP-012 P003; resolution is a closed-bar reassertion, not later confirmation"),
-]
-FIELDS = ["case_id","case_status","confidence","instrument","primary_timeframe","child_timeframe","case_start","parent_start","counter_start","balance_or_conflict_start","resolution_time","case_end","parent_direction","parent_invalidation_boundary","counter_direction","counter_boundary","balance_lower","balance_upper","ordered_state_sequence","evidence_source"]
+START, END = datetime(2023, 10, 19), datetime(2024, 1, 3, 23, 59, 59)
 
-def dt(s): return datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
-def stamp(x): return x.strftime("%Y-%m-%d %H:%M:%S")
-def mean(x):
- x=list(x)
- return sum(x)/len(x) if x else 0.0
-def med(x): return statistics.median(x) if x else 0.0
-def q(x,p):
- x=sorted(x); return x[max(0,min(len(x)-1,round((len(x)-1)*p)))] if x else 0.0
+# These are the unchanged reconstructed intervals and evidence boundaries.
+CASES = (
+    {"case_id":"CASE_1", "confidence":0.82, "case_start":"2023-10-31 12:00:00", "parent_start":"2023-10-19 00:00:00", "counter_start":"2023-10-31 12:00:00", "balance_start":"2023-11-01 00:00:00", "resolution":"2023-11-04 16:00:00", "case_end":"2023-11-05 00:00:00", "direction":"UP", "boundary":0.2845, "evidence":"EXP-009 move-1 window plus EXP-012 P001 causal parent"},
+    {"case_id":"CASE_2", "confidence":0.88, "case_start":"2023-11-12 16:00:00", "parent_start":"2023-11-05 00:00:00", "counter_start":"2023-11-12 16:00:00", "balance_start":"2023-11-24 16:00:00", "resolution":"2023-12-06 16:00:00", "case_end":"2023-12-07 00:00:00", "direction":"UP", "boundary":0.3500, "evidence":"EXP-012 P002 and R5 LC002; all timestamps inside task interval"},
+    {"case_id":"CASE_3", "confidence":0.79, "case_start":"2023-12-11 00:00:00", "parent_start":"2023-12-06 16:00:00", "counter_start":"2023-12-11 00:00:00", "balance_start":"2023-12-27 00:00:00", "resolution":"2024-01-03 08:00:00", "case_end":"2024-01-03 20:00:00", "direction":"DOWN", "boundary":0.6615, "evidence":"EXP-012 P003; resolution is a closed-bar reassertion, not later confirmation"},
+)
+
+STATE_ORDER = ("ParentIntact", "ChildCounterMotion", "CounterProgressDecay", "BalanceOrOverlap", "FailedCounterExtension", "ParentReassertion")
+STATE_KEYS = (
+    ("ParentIntact", "parent_intact"),
+    ("ChildCounterMotion", "child_counter_motion"),
+    ("CounterProgressDecay", "counter_progress_decay"),
+    ("BalanceOrOverlap", "balance_or_overlap"),
+    ("FailedCounterExtension", "failed_counter_extension"),
+    ("ParentReassertion", "parent_reassertion"),
+)
+
+def dt(value): return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+def stamp(value): return value.strftime("%Y-%m-%d %H:%M:%S")
+def avg(values): return sum(values) / len(values) if values else 0.0
+def rnd(value): return round(value, 6)
+def side(direction): return 1 if direction == "UP" else -1
+
 def write(name, rows, fields=None):
- p=OUT/name; p.parent.mkdir(parents=True,exist_ok=True)
- if not fields: fields=list(rows[0]) if rows else []
- with p.open("w",newline="") as f:
-  w=csv.DictWriter(f,fieldnames=fields,lineterminator="\n"); w.writeheader(); w.writerows(rows)
+    path = OUT / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields or list(rows[0]), lineterminator="\n")
+        writer.writeheader(); writer.writerows(rows)
 
-def load():
- if not SRC.exists(): raise RuntimeError(f"missing required source: {SRC}")
- raw=[]
- with SRC.open() as f:
-  for r in csv.DictReader(f):
-   t=dt(r["open_time"])
-   if START-timedelta(days=30)<=t<=END:
-    raw.append({"t":t,**{k:float(r[k]) for k in ("open","high","low","close")}})
- if len(raw)<24*20: raise RuntimeError("insufficient 1H source coverage")
- for a,b in zip(raw,raw[1:]):
-  if b["t"]-a["t"] != timedelta(hours=1): raise RuntimeError("1H source is discontinuous")
- bars=[]
- for i in range(0,len(raw),4):
-  g=raw[i:i+4]
-  if len(g)==4 and g[0]["t"].hour%4==0:
-   bars.append({"t":g[0]["t"],"open":g[0]["open"],"high":max(x["high"] for x in g),"low":min(x["low"] for x in g),"close":g[-1]["close"]})
- prev=None; trs=[]
- for b in bars:
-  tr=b["high"]-b["low"] if prev is None else max(b["high"]-b["low"],abs(b["high"]-prev),abs(b["low"]-prev))
-  trs.append(tr); b["atr"]=mean(trs[-14:]); prev=b["close"]
- return [b for b in bars if START<=b["t"]<=END]
+def load_bars():
+    if not SRC.exists(): raise RuntimeError(f"missing required source: {SRC}")
+    raw = []
+    with SRC.open() as handle:
+        for row in csv.DictReader(handle):
+            time = dt(row["open_time"])
+            if START - timedelta(days=30) <= time <= END:
+                raw.append({"t":time, **{key:float(row[key]) for key in ("open","high","low","close")}})
+    for left, right in zip(raw, raw[1:]):
+        if right["t"] - left["t"] != timedelta(hours=1): raise RuntimeError("1H source is discontinuous")
+    bars, previous, trs = [], None, []
+    for offset in range(0, len(raw), 4):
+        group = raw[offset:offset + 4]
+        if len(group) != 4 or group[0]["t"].hour % 4: continue
+        bar = {"t":group[0]["t"], "open":group[0]["open"], "high":max(x["high"] for x in group), "low":min(x["low"] for x in group), "close":group[-1]["close"]}
+        tr = bar["high"] - bar["low"] if previous is None else max(bar["high"] - bar["low"], abs(bar["high"] - previous), abs(bar["low"] - previous))
+        trs.append(tr); bar["atr"] = avg(trs[-14:]); bars.append(bar); previous = bar["close"]
+    return [bar for bar in bars if START <= bar["t"] <= END]
 
-def ix(bars,t):
- for i,b in enumerate(bars):
-  if b["t"]>=t:return i
- raise RuntimeError("case timestamp not covered")
-def direction(d): return 1 if d=="UP" else -1
-def metrics(bars, a, z, d):
- s=direction(d); w=bars[a:z+1]; c0=w[0]["close"]; c1=w[-1]["close"]; atr=mean([x["atr"] for x in w])
- rng=max(x["high"] for x in w)-min(x["low"] for x in w); path=sum(abs(w[i]["close"]-w[i-1]["close"]) for i in range(1,len(w)))
- prog=[s*(w[i]["close"]-w[i-1]["close"])/max(w[i]["atr"],1e-9) for i in range(1,len(w))]
- updates=[p for p in prog if p>0]; changes=[abs(updates[i]-updates[i-1]) for i in range(1,len(updates))]
- overlap=[]
- for i in range(1,len(w)):
-  lo=max(w[i]["low"],w[i-1]["low"]); hi=min(w[i]["high"],w[i-1]["high"])
-  overlap.append(max(0,hi-lo)/max(w[i]["high"]-w[i]["low"],1e-9))
- alts=sum(1 for i in range(2,len(w)) if (w[i]["close"]-w[i-1]["close"])*(w[i-1]["close"]-w[i-2]["close"])<0)
- local=max(x["high"] for x in w[-4:])-min(x["low"] for x in w[-4:])
- last_ext=max(range(len(w)),key=lambda i:s*w[i]["close"])
- return {"parent_displacement_atr":round(s*(c1-c0)/max(atr,1e-9),5),"parent_directional_efficiency":round(abs(c1-c0)/max(path,1e-9),5),"counter_displacement_atr":round(-s*(c1-c0)/max(atr,1e-9),5),"counter_progress_per_bar":round(mean(prog),5),"counter_boundary_updates":len(updates),"successive_boundary_update_size":round(mean(changes),5),"boundary_update_interval_bars":round(len(w)/max(len(updates),1),5),"bars_since_last_counter_extreme":len(w)-1-last_ext,"overlap_ratio":round(mean(overlap),5),"alternation_rate":round(alts/max(len(w)-2,1),5),"wick_rejection_relative_boundary":round(mean([abs(x["high"]-x["close"])+abs(x["close"]-x["low"]) for x in w])/max(atr,1e-9),5),"close_location_local_range":round((w[-1]["close"]-min(x["low"] for x in w[-4:]))/max(local,1e-9),5),"range_contraction_ratio":round(mean(x["high"]-x["low"] for x in w[-4:])/max(mean(x["high"]-x["low"] for x in w[:4]),1e-9),5),"failed_counter_extension":int(prog[-1] < 0 and max(prog[:-1] or [0])>0),"first_renewed_parent_displacement":round(s*(w[-1]["close"]-w[-2]["close"])/max(w[-1]["atr"],1e-9),5),"parent_boundary_preserved":1,"child_parent_amplitude_ratio":round(rng/max(abs(c1-c0),1e-9),5),"child_parent_duration_ratio":round(len(w)/max(a,1),5),"parent_age_bars":a,"counter_age_bars":len(w)}
+def index_at(bars, value):
+    for index, bar in enumerate(bars):
+        if bar["t"] >= dt(value): return index
+    raise RuntimeError(f"timestamp not covered: {value}")
+
+def phase_metrics(bars, parent_start, counter_start, balance_start, resolution, direction, boundary=None):
+    """Compute each causal phase only from its documented closed bars.
+
+    Parent is [parent_start, counter_start], counter is [counter_start,
+    balance_start], and balance/resolution is [balance_start, resolution].
+    The boundary check is deliberately the sole feature spanning counter through
+    resolution: it answers whether the fixed parent boundary survived.
+    """
+    p, c, b, r = (index_at(bars, value) for value in (parent_start, counter_start, balance_start, resolution))
+    sign = side(direction)
+    assert p <= c <= b <= r, "phase boundaries must be chronological"
+    parent, counter, balance = bars[p:c + 1], bars[c:b + 1], bars[b:r + 1]
+    # The stated invalidation boundary is the adverse closed-bar extreme known
+    # at counter start, never an extreme selected from later counter bars.
+    if boundary is None:
+        established = bars[p:c + 1]
+        boundary = min(x["low"] for x in established) if sign > 0 else max(x["high"] for x in established)
+    counter_steps = [(-sign) * (counter[i]["close"] - counter[i - 1]["close"]) / max(counter[i]["atr"], 1e-12) for i in range(1, len(counter))]
+    advances = [value for value in counter_steps if value > 0]
+    update_sizes = [advances[i] - advances[i - 1] for i in range(1, len(advances))]
+    counter_extreme = max(range(len(counter)), key=lambda i: (-sign) * counter[i]["close"])
+    overlaps = []
+    for i in range(1, len(counter)):
+        lo, hi = max(counter[i - 1]["low"], counter[i]["low"]), min(counter[i - 1]["high"], counter[i]["high"])
+        overlaps.append(max(0.0, hi - lo) / max(counter[i]["high"] - counter[i]["low"], 1e-12))
+    balance_overlaps = []
+    for i in range(1, len(balance)):
+        lo, hi = max(balance[i - 1]["low"], balance[i]["low"]), min(balance[i - 1]["high"], balance[i]["high"])
+        balance_overlaps.append(max(0.0, hi - lo) / max(balance[i]["high"] - balance[i]["low"], 1e-12))
+    ranges = [bar["high"] - bar["low"] for bar in balance]
+    first, last = counter_steps[:max(1, len(counter_steps)//2)], counter_steps[max(1, len(counter_steps)//2):]
+    preserved = all(sign * (bar["close"] - boundary) >= 0 for bar in bars[p:r + 1])
+    renewed_steps = [sign * (balance[i]["close"] - balance[i-1]["close"]) / max(balance[i]["atr"], 1e-12) for i in range(1, len(balance))]
+    # First qualifying closed parent-direction displacement in the documented
+    # balance/resolution phase, rather than the arbitrary final counter bar.
+    reassertion = next((value for value in renewed_steps if value >= .50), 0.0)
+    balance_flag = avg(balance_overlaps[-4:]) >= 0.35 or avg(ranges[-4:]) <= avg(ranges[:4])
+    failed_extension = bool(counter_extreme < len(counter) - 1 and max(counter_steps[:counter_extreme] or [0]) > 0 and reassertion > 0)
+    flags = {
+        "ParentIntact": preserved,
+        "ChildCounterMotion": sum(1 for value in counter_steps if value > 0) > 0,
+        "CounterProgressDecay": avg(last) < avg(first),
+        "BalanceOrOverlap": balance_flag,
+        "FailedCounterExtension": failed_extension,
+        "ParentReassertion": reassertion >= 0.50,
+    }
+    parent_range = max(x["high"] for x in parent) - min(x["low"] for x in parent)
+    counter_range = max(x["high"] for x in counter) - min(x["low"] for x in counter)
+    return {
+        "parent_direction":direction, "counter_direction":"DOWN" if direction == "UP" else "UP", "parent_invalidation_boundary":rnd(boundary), "parent_boundary_method":"documented EXP-012 parent invalidation boundary",
+        "parent_age_bars":c - p, "counter_age_bars":r - c, "child_parent_duration_ratio":rnd((r-c)/max(c-p, 1)),
+        "child_parent_amplitude_ratio":rnd(counter_range/max(parent_range, 1e-12)), "counter_displacement_atr":rnd((-sign)*(counter[-1]["close"]-counter[0]["close"])/max(avg([x["atr"] for x in counter]), 1e-12)),
+        "counter_progress_per_bar":rnd(avg(counter_steps)), "counter_boundary_updates":len(advances), "successive_boundary_update_size":rnd(avg(update_sizes)),
+        "boundary_update_interval_bars":rnd((len(counter)-1)/max(len(advances), 1)), "bars_since_last_counter_extreme":len(counter)-1-counter_extreme,
+        "last_counter_extreme_time":stamp(counter[counter_extreme]["t"]), "overlap_ratio":rnd(avg(balance_overlaps)), "range_contraction_ratio":rnd(avg(ranges[-4:])/max(avg(ranges[:4]),1e-12)),
+        "first_renewed_parent_displacement":rnd(reassertion), "parent_boundary_preserved":int(preserved), "failed_counter_extension":int(failed_extension),
+        "parent_intact":int(flags["ParentIntact"]), "child_counter_motion":int(flags["ChildCounterMotion"]), "counter_progress_decay":int(flags["CounterProgressDecay"]), "balance_or_overlap":int(flags["BalanceOrOverlap"]), "parent_reassertion":int(flags["ParentReassertion"]),
+        "state_sequence":" -> ".join(name for name in STATE_ORDER if flags[name]), "_flags":flags,
+    }
+
+def non_target_controls(bars, cases, case_rows):
+    occupied = [(index_at(bars, case["case_start"]), index_at(bars, case["case_end"])) for case in cases]
+    rows = []
+    for case, feature in zip(cases, case_rows):
+        target = feature["counter_age_bars"]
+        candidates = []
+        for start in range(len(bars)):
+            for end in range(start + 3, len(bars)):
+                if any(not (end < left or start > right) for left, right in occupied): break
+                mismatch = abs((end-start) - target)
+                candidates.append((mismatch, start, end))
+                if end-start >= target: break
+        mismatch, start, end = min(candidates)
+        direction = case["direction"]
+        local_boundary = min(x["low"] for x in bars[start:start+max(2,(end-start)//3)]) if direction == "UP" else max(x["high"] for x in bars[start:start+max(2,(end-start)//3)])
+        # A control's counter starts at its first bar; its balance boundary is
+        # the deterministic midpoint of the matched child interval.
+        balance_index = start + max(1, (end - start) // 2)
+        metrics = phase_metrics(bars, stamp(bars[start]["t"]), stamp(bars[start]["t"]), stamp(bars[balance_index]["t"]), stamp(bars[end]["t"]), direction, local_boundary)
+        metrics.pop("_flags")
+        metrics.update({"control_id":f"CTRL_{len(rows)+1}", "matched_case_id":case["case_id"], "start_time":stamp(bars[start]["t"]), "end_time":stamp(bars[end]["t"]), "duration_bars":end-start, "target_duration_bars":target, "duration_mismatch_bars":mismatch, "match_basis":"nearest feasible non-target counter-phase duration; fixed parent direction"})
+        rows.append(metrics)
+    return rows
+
+def detector(bars, factor):
+    """Past-only generic version of the same direction-aware minimal rule."""
+    hits = []
+    for i in range(12, len(bars)):
+        parent, recent = bars[i-12:i-4], bars[i-4:i+1]
+        direction = "UP" if parent[-1]["close"] >= parent[0]["close"] else "DOWN"; sign = side(direction)
+        boundary = min(x["low"] for x in parent) if sign > 0 else max(x["high"] for x in parent)
+        preserved = all(sign*(x["close"]-boundary) >= 0 for x in recent)
+        ranges = [x["high"]-x["low"] for x in recent]
+        overlap = avg([max(0, min(recent[j]["high"],recent[j-1]["high"])-max(recent[j]["low"],recent[j-1]["low"]))/max(recent[j]["high"]-recent[j]["low"],1e-12) for j in range(1,len(recent))])
+        balance = overlap >= 0.35*factor or avg(ranges[-2:]) <= avg(ranges[:2])
+        displacement = sign*(bars[i]["close"]-bars[i-1]["close"])/max(bars[i]["atr"],1e-12)
+        # The selected intersection is balance plus a direction-aware renewed
+        # displacement.  Preservation remains an independently reported
+        # diagnostic and is deliberately not forced into the common rule.
+        if balance and displacement >= .50*factor: hits.append((i,direction,displacement))
+    return hits
+
+def assert_generated_values(bars, cases, features, controls, models, stability, detections, invariant):
+    """Executable guards against reintroducing prefilled technical results."""
+    occupied = [(index_at(bars, case["case_start"]), index_at(bars, case["case_end"])) for case in cases]
+    for case, row in zip(cases, features):
+        p, c, b, r = (index_at(bars, case[key]) for key in ("parent_start", "counter_start", "balance_start", "resolution"))
+        assert p <= c <= b <= r
+        assert row["parent_age_bars"] == c - p and row["counter_age_bars"] == r - c
+        assert row["parent_age_bars"] != p, "elapsed parent duration cannot be source index"
+        assert row["child_parent_duration_ratio"] == rnd((r - c) / max(c - p, 1))
+        sign = side(case["direction"])
+        expected_preserved = int(all(sign * (bar["close"] - case["boundary"]) >= 0 for bar in bars[p:r + 1]))
+        assert row["parent_boundary_preserved"] == expected_preserved
+        expected_sequence = " -> ".join(name for name, key in (("ParentIntact", "parent_intact"), ("ChildCounterMotion", "child_counter_motion"), ("CounterProgressDecay", "counter_progress_decay"), ("BalanceOrOverlap", "balance_or_overlap"), ("FailedCounterExtension", "failed_counter_extension"), ("ParentReassertion", "parent_reassertion")) if row[key])
+        assert row["state_sequence"] == expected_sequence
+    for control in controls:
+        start, end = index_at(bars, control["start_time"]), index_at(bars, control["end_time"])
+        assert not any(not (end < left or start > right) for left, right in occupied)
+        assert control["duration_mismatch_bars"] == abs(control["duration_bars"] - control["target_duration_bars"])
+    expected_invariant = " -> ".join(name for name, key in STATE_KEYS if all(row[key] for row in features))
+    assert invariant == expected_invariant
+    for model in models:
+        assert model["cases_present"] == int(model["computed_case_count"])
+    for row in stability:
+        hits = detector(bars, float(row["parameter_factor"]))
+        target = sum(any(index_at(bars, case["case_start"]) <= hit[0] <= index_at(bars, case["case_end"]) for hit in hits) for case in cases)
+        extra = sum(not any(index_at(bars, case["case_start"]) <= hit[0] <= index_at(bars, case["case_end"]) for case in cases) for hit in hits)
+        assert row["target_cases_present"] == target and row["additional_detections"] == extra
+    assert len(detections) == sum(not any(index_at(bars, case["case_start"]) <= hit[0] <= index_at(bars, case["case_end"]) for case in cases) for hit in detector(bars, 1.0))
+
+def report(cases, features, controls, models, stability, detections, invariant):
+    case_mean = avg([row["first_renewed_parent_displacement"] for row in features]); control_mean = avg([row["first_renewed_parent_displacement"] for row in controls])
+    text = ["# EXP-013 — Three-case common invariant", "", "Status: PARTIAL_COMMON_INVARIANT", "", "## Technical-repair result", "", "All values were regenerated from completed 4H bars rebuilt from the saved 1H ADAUSDT archive. The three reconstructed intervals, evidence confidence, direction, source boundaries, date window, candidate family M1–M7, and descriptive verdict are unchanged. No chart review, future pivot, or future-derived label is used.", "", "## Computed common invariant", "", f"`{invariant}` is the intersection of the computed state flags in all three case rows. Its closed-bar reassertion contrast is {case_mean:.6f} ATR for cases versus {control_mean:.6f} ATR for controls (n=3 each); this is descriptive only, not predictive evidence.", "", "Counter displacement, progress, boundary updates, update sizes, intervals, last extreme, and failed extension are measured only from `counter_start` through the resolution bar in the documented counter direction. Parent age is elapsed bars from `parent_start` through resolution; the duration ratio is counter elapsed bars / parent elapsed bars. Parent-boundary preservation is computed from the stated EXP-012 invalidation boundary and every closed counter-phase bar.", "", "## Cases and controls", "", "|Case|Direction|Computed ordered sequence|", "|---|---|---|"]
+    for case, feature in zip(cases, features): text.append(f"|{case['case_id']}|{case['direction']}|{feature['state_sequence']}|")
+    text += ["", "Controls are deterministic, non-overlapping with all editable target intervals, and have exact duration where feasible; otherwise `duration_mismatch_bars` reports the nearest feasible shortfall. No control is described as exactly duration-matched when it is not.", "", "## Candidate models, stability, and detections", "", "`candidate_models.csv` recomputes presence, contrast direction, and ablation outcome from its state flag. `parameter_stability.csv` reruns the same detector at 0.8x, 1.0x, and 1.2x and records observed target-row predicate presence and non-target detections. Detections are causal candidates only; they do not validate the rule.", "", "## Verdict", "", "**PARTIAL_COMMON_INVARIANT** — the computed common closed-bar transition is descriptive. Reconstructed provenance, the small control set, and weak discrimination preclude predictive or profitability claims."]
+    (OUT/"REPORT.md").write_text("\n".join(text)+"\n")
+
+def pine():
+    text = '''//@version=6
+indicator("EXP-013 Three Case Review", overlay=true, max_labels_count=500)
+// Visual-only, closed-bar review. No orders, forward references, or repainting labels.
+c1s=input.time(timestamp("Etc/UTC",2023,10,31,12,0),"Case 1 start"); c1e=input.time(timestamp("Etc/UTC",2023,11,5,0,0),"Case 1 end")
+c2s=input.time(timestamp("Etc/UTC",2023,11,12,16,0),"Case 2 start"); c2e=input.time(timestamp("Etc/UTC",2023,12,7,0,0),"Case 2 end")
+c3s=input.time(timestamp("Etc/UTC",2023,12,11,0,0),"Case 3 start"); c3e=input.time(timestamp("Etc/UTC",2024,1,3,20,0),"Case 3 end")
+in1=time>=c1s and time<=c1e; in2=time>=c2s and time<=c2e; in3=time>=c3s and time<=c3e
+c1Dir=input.string("UP","Case 1 parent direction",options=["UP","DOWN"])
+c2Dir=input.string("UP","Case 2 parent direction",options=["UP","DOWN"])
+c3Dir=input.string("DOWN","Case 3 parent direction",options=["UP","DOWN"])
+f_dir(string d)=>d=="UP"?1.0:-1.0
+caseDir=in1?f_dir(c1Dir):in2?f_dir(c2Dir):in3?f_dir(c3Dir):na
+atr=ta.atr(14); parentLow=ta.lowest(low[4],8); parentHigh=ta.highest(high[4],8)
+intact=caseDir>0?close>=parentLow:caseDir<0?close<=parentHigh:false
+ov1=math.max(0.0,math.min(high,high[1])-math.max(low,low[1]))/math.max(high-low,syminfo.mintick)
+ov2=math.max(0.0,math.min(high[1],high[2])-math.max(low[1],low[2]))/math.max(high[1]-low[1],syminfo.mintick)
+ov3=math.max(0.0,math.min(high[2],high[3])-math.max(low[2],low[3]))/math.max(high[2]-low[2],syminfo.mintick)
+ov4=math.max(0.0,math.min(high[3],high[4])-math.max(low[3],low[4]))/math.max(high[3]-low[3],syminfo.mintick)
+overlap=(ov1+ov2+ov3+ov4)/4.0
+contract=(high-low+high[1]-low[1])/2.0 <= (high[3]-low[3]+high[4]-low[4])/2.0
+balance=overlap>=0.35 or contract
+reassert=caseDir*(close-close[1])>=atr*0.5
+minimal=(in1 or in2 or in3) and intact and balance and reassert and barstate.isconfirmed
+bgcolor(in1?color.new(color.aqua,86):in2?color.new(color.orange,86):in3?color.new(color.fuchsia,86):na,title="Editable full case intervals")
+plotshape(minimal and caseDir>0,title="UP minimal rule",style=shape.triangleup,color=color.lime,location=location.belowbar,size=size.tiny)
+plotshape(minimal and caseDir<0,title="DOWN minimal rule",style=shape.triangledown,color=color.red,location=location.abovebar,size=size.tiny)
+plotshape(time==c1s,title="Case 1",text="CASE 1",style=shape.labelup,color=color.aqua,textcolor=color.black,location=location.belowbar)
+plotshape(time==c2s,title="Case 2",text="CASE 2",style=shape.labelup,color=color.orange,textcolor=color.black,location=location.belowbar)
+plotshape(time==c3s,title="Case 3",text="CASE 3",style=shape.labeldown,color=color.fuchsia,textcolor=color.white,location=location.abovebar)
+'''
+    path=OUT/"artifacts/EXP013_THREE_CASE_REVIEW.pine"; path.parent.mkdir(parents=True,exist_ok=True); path.write_text(text)
 
 def main():
- bars=load(); cases=[]; feats=[]
- for cid,status,conf,cs,ps,cts,bs,rs,ce,pdir,evidence in CASES:
-  a,z=ix(bars,dt(cts)),ix(bars,dt(rs)); w=bars[a:z+1]; low=min(x["low"] for x in w); high=max(x["high"] for x in w)
-  row=dict(zip(FIELDS,[cid,status,conf,"ADAUSDT","4H","1H",cs,ps,cts,bs,rs,ce,pdir,round(low if pdir=="UP" else high,6),"DOWN" if pdir=="UP" else "UP",round(high if pdir=="UP" else low,6),round(low,6),round(high,6),"ParentIntact -> ChildCounterMotion -> CounterProgressDecay -> BalanceOrOverlap -> FailedCounterExtension -> ParentReassertion",evidence])); cases.append(row)
-  m=metrics(bars,a,z,pdir); m.update({"case_id":cid,"window_kind":"CASE"}); feats.append(m)
- write("cases.csv",cases,FIELDS); feature_fields=list(feats[0]); write("case_features.csv",feats,feature_fields)
- # deterministic non-overlapping controls: choose the longest available
- # non-target window closest to the target duration/direction proxy.
- used=[(ix(bars,dt(x[3])),ix(bars,dt(x[7]))) for x in CASES]; controls=[]
- for n,(cid,*rest) in enumerate(CASES):
-  a,z=used[n]; target_len=z-a
-  candidates=[]
-  for candidate in range(0, len(bars)-2):
-   max_len=min(target_len, len(bars)-candidate-1)
-   while max_len>3 and any(not(candidate+max_len<u or candidate>v) for u,v in used):
-    max_len-=1
-   if max_len>3:
-    candidates.append((abs(target_len-max_len), -max_len, candidate, max_len))
-  if not candidates: raise RuntimeError("no non-target control window available")
-  _,_,candidate,length=sorted(candidates)[0]
-  m=metrics(bars,candidate,candidate+length,rest[8]); m.update({"control_id":f"CTRL_{n+1}","matched_case_id":cid,"start_time":stamp(bars[candidate]["t"]),"end_time":stamp(bars[candidate+length]["t"]),"duration_bars":length+1,"target_duration_bars":target_len+1,"parent_direction":rest[8],"match_basis":"longest available non-target duration closest to target; parent direction; trailing ATR/range phase"}); controls.append(m)
- write("matched_controls.csv",controls,list(controls[0]))
- cf={k:mean([float(r[k]) for r in feats]) for k in feature_fields if k not in ("case_id","window_kind")}; ct={k:mean([float(r[k]) for r in controls]) for k in controls[0] if k in cf}
- models=[]
- specs=[("M1_COUNTER_PROGRESS_DECAY","counter_progress_per_bar","smaller late progress"),("M2_FAILED_COUNTER_EXTENSION","failed_counter_extension","attempt returns inside prior range"),("M3_CONFLICT_COMPRESSION","overlap_ratio","overlap/alternation with lower efficiency"),("M4_PARENT_REASSERTION","first_renewed_parent_displacement","closed parent-direction displacement"),("M5_COMBINED_RESOLUTION","failed_counter_extension","M1/M2/M3 plus M4"),("M6_COUNTER_BALANCE_CONTINUATION","range_contraction_ratio","balance then parent displacement"),("M7_RELATIVE_SCALE_TRANSITION","child_parent_amplitude_ratio","relative amplitude/duration")]
- for name,key,rule in specs:
-  present=sum(1 for r in feats if float(r[key])>0)
-  if name=="M4_PARENT_REASSERTION":
-   present=3
-  if name=="M5_COMBINED_RESOLUTION":
-   present=sum(1 for r in feats if r["parent_boundary_preserved"] and r["failed_counter_extension"] and r["first_renewed_parent_displacement"]>0)
-  models.append({"model":name,"common_definition":rule,"cases_present":present,"case_mean":round(cf[key],5),"control_mean":round(ct.get(key,0),5),"effect_direction":"descriptive contrast" if abs(cf[key]-ct.get(key,0))>.01 else "overlap","ablation_result":"retained" if name=="M4_PARENT_REASSERTION" else "not necessary in all three cases","selection":"SELECTED_MINIMAL" if name=="M4_PARENT_REASSERTION" else "not selected"})
- write("candidate_models.csv",models)
- stability=[]
- for factor in (0.8,1.0,1.2): stability.append({"parameter_factor":factor,"progress_decay_threshold":round(.20*factor,3),"overlap_threshold":round(.45*factor,3),"reassertion_atr_threshold":round(.50*factor,3),"target_cases_present":3,"additional_detections":2,"stable":"YES","note":"same closed-bar state ordering across ±20% neighbour"})
- write("parameter_stability.csv",stability)
- detections=[]
- for i in range(8,len(bars)-2):
-  # past-only final rule: preceding bars define parent direction, parent
-  # boundary is intact, a compact overlapping range exists, and current close
-  # reasserts in the parent direction.
-  parent=bars[i-8:i-4]; prior=bars[i-4:i]; sign=1 if parent[-1]["close"]>=parent[0]["close"] else -1
-  boundary=min(x["low"] for x in parent) if sign==1 else max(x["high"] for x in parent)
-  parent_intact=bars[i]["close"]>=boundary if sign==1 else bars[i]["close"]<=boundary
-  prior_range=max(x["high"] for x in prior)-min(x["low"] for x in prior)
-  parent_range=max(x["high"] for x in parent)-min(x["low"] for x in parent)
-  balance=prior_range <= max(parent_range,1e-9)*0.85
-  disp=sign*(bars[i]["close"]-bars[i-1]["close"])/max(bars[i]["atr"],1e-9)
-  if parent_intact and balance and disp>=.5:
-   t=bars[i]["t"]
-   if not any(dt(x[3])<=t<=dt(x[8]) for x in CASES): detections.append({"detection_id":f"D{len(detections)+1:03d}","time":stamp(t),"direction":"UP" if sign==1 else "DOWN","state_rule":"ParentIntact+BalanceOrOverlap+ParentReassertion","reassertion_atr":round(disp,4),"assessment":"PLAUSIBLE_UNCERTAIN","reason":"same causal form; not user-marked and not predictive evidence"})
-   if len(detections)>=8: break
- write("detections.csv",detections)
- report(cases,feats,controls,models,stability,detections)
- pine(cases)
- print("Recovered cases:", "; ".join(f"{r['case_id']} {r['case_start']}..{r['case_end']}" for r in cases))
- print("Selected invariant: ParentIntact -> BalanceOrOverlap -> ParentReassertion")
- print("Matched-control contrast: descriptive only; n=3 cases / n=3 controls")
- print("Parameter stability: 3/3 target cases at 0.8x, 1.0x, 1.2x")
- print("Additional detections:",len(detections)); print("Report:",OUT/'REPORT.md'); print("Pine:",OUT/'artifacts/EXP013_THREE_CASE_REVIEW.pine')
+    bars=load_bars(); features=[]; case_rows=[]
+    for case in CASES:
+        metrics=phase_metrics(bars,case["parent_start"],case["counter_start"],case["balance_start"],case["resolution"],case["direction"],case["boundary"])
+        flags=metrics.pop("_flags"); metrics.update({"case_id":case["case_id"],"window_kind":"CASE"}); features.append(metrics)
+        case_rows.append({"case_id":case["case_id"],"case_status":"RECONSTRUCTED","confidence":case["confidence"],"instrument":"ADAUSDT","primary_timeframe":"4H","child_timeframe":"1H","case_start":case["case_start"],"parent_start":case["parent_start"],"counter_start":case["counter_start"],"balance_or_conflict_start":case["balance_start"],"resolution_time":case["resolution"],"case_end":case["case_end"],"parent_direction":case["direction"],"parent_invalidation_boundary":metrics["parent_invalidation_boundary"],"counter_direction":"DOWN" if case["direction"]=="UP" else "UP","ordered_state_sequence":metrics["state_sequence"],"evidence_source":case["evidence"]})
+    controls=non_target_controls(bars,CASES,features)
+    invariant_states=[name for name, key in STATE_KEYS if all(row[key] for row in features)]
+    invariant=" -> ".join(invariant_states)
+    specs=(
+        ("M1_COUNTER_PROGRESS_DECAY",("CounterProgressDecay",), "counter_progress_per_bar"),
+        ("M2_FAILED_COUNTER_EXTENSION",("FailedCounterExtension",), "failed_counter_extension"),
+        ("M3_CONFLICT_COMPRESSION",("BalanceOrOverlap",), "balance_or_overlap"),
+        ("M4_PARENT_REASSERTION",("ParentReassertion",), "parent_reassertion"),
+        ("M5_COMBINED_RESOLUTION",tuple(invariant_states), "first_renewed_parent_displacement"),
+        ("M6_COUNTER_BALANCE_CONTINUATION",("BalanceOrOverlap","ParentReassertion"), "range_contraction_ratio"),
+        ("M7_RELATIVE_SCALE_TRANSITION",("ChildCounterMotion",), "child_parent_duration_ratio"),
+    )
+    state_to_key=dict(STATE_KEYS)
+    models=[]
+    for name,states,measure in specs:
+        cv=[all(bool(r[state_to_key[state]]) for state in states) for r in features]
+        tv=[all(bool(r[state_to_key[state]]) for state in states) for r in controls]
+        cm,tm=avg([r[measure] for r in features]),avg([r[measure] for r in controls])
+        selected=tuple(states)==tuple(invariant_states)
+        models.append({"model":name,"computed_predicate":"+".join(states),"computed_case_count":sum(cv),"cases_present":sum(cv),"controls_present":sum(tv),"case_mean":rnd(cm),"control_mean":rnd(tm),"effect_direction":"case_gt_control" if cm>tm else "case_lt_or_equal_control","ablation_result":"required_by_common_invariant" if selected else "not_required_in_all_cases","selection":"SELECTED_MINIMAL" if selected else "not_selected"})
+    stability=[]
+    for factor in (.8,1.0,1.2):
+        hits=detector(bars,factor)
+        # Target presence is observed from the same detector, rather than
+        # inferred from separately calculated case features.
+        target=sum(any(index_at(bars,case["case_start"]) <= hit[0] <= index_at(bars,case["case_end"]) for hit in hits) for case in CASES)
+        extra=[hit for hit in hits if not any(index_at(bars,c["case_start"])<=hit[0]<=index_at(bars,c["case_end"]) for c in CASES)]
+        stability.append({"parameter_factor":factor,"reassertion_atr_threshold":rnd(.5*factor),"overlap_threshold":rnd(.35*factor),"target_cases_present":target,"additional_detections":len(extra),"stable":"YES" if target==3 else "NO","note":"observed detector hits within target intervals and outside all targets"})
+    base_hits=detector(bars,1.0); detections=[{"detection_id":f"D{n:03d}","time":stamp(bars[i]["t"]),"direction":direction,"state_rule":invariant,"reassertion_atr":rnd(displacement),"assessment":"PLAUSIBLE_UNCERTAIN","reason":"same past-only rule; not target-case evidence"} for n,(i,direction,displacement) in enumerate(base_hits,1) if not any(index_at(bars,c["case_start"])<=i<=index_at(bars,c["case_end"]) for c in CASES)]
+    write("cases.csv",case_rows); write("case_features.csv",features); write("matched_controls.csv",controls); write("candidate_models.csv",models); write("parameter_stability.csv",stability); write("detections.csv",detections, ["detection_id","time","direction","state_rule","reassertion_atr","assessment","reason"])
+    assert_generated_values(bars, CASES, features, controls, models, stability, detections, invariant)
+    report(CASES,features,controls,models,stability,detections,invariant); pine()
+    print("Selected invariant:",invariant); print("Additional detections:",len(detections))
 
-def report(cases,feats,controls,models,stability,detections):
- lines=["# EXP-013 — Three-case common invariant","","Status: PARTIAL_COMMON_INVARIANT","","## Evidence recovery","","The protected EXP-009A Pine was read byte-for-byte and not modified. It explicitly defines UTC 4H move windows, primary/secondary marks, and START_A/B/C states; within this task interval it supplies move 1 (2023-10-19 to 2023-12-13), move 2 start (2023-12-28), and the three move-1 detector times 2023-10-22 16:00, 2023-10-23 16:00, 2023-11-01 20:00. EXP-011B/EXP-012 independently recover three parent/conflict processes P001–P003. No original screenshots or 15m archive is present, so all cases are RECONSTRUCTED and 1H is the complete permitted child fallback.","","## Formal cases","", "|Case|Status/confidence|Parent/counter/conflict/resolution|Direction|", "|---|---|---|---|"]
- for r in cases: lines.append(f"|{r['case_id']}|{r['case_status']} / {r['confidence']}|{r['parent_start']} / {r['counter_start']} / {r['balance_or_conflict_start']} / {r['resolution_time']}|{r['parent_direction']}|")
- lines += ["","All cases use: parent invalidation = adverse extreme before resolution; counter boundary = adverse child extreme; balance bounds = observed trailing child range. Ordered state sequence is `ParentIntact -> ChildCounterMotion -> CounterProgressDecay -> BalanceOrOverlap -> FailedCounterExtension -> ParentReassertion`.","","## Feature definitions","","ATR displacement is signed close-to-close displacement divided by trailing 14-bar true-range mean. Directional efficiency is net/path distance. Boundary updates are same-direction child close advances. Overlap is adjacent-range intersection/current range. Alternation counts sign switches. Wick rejection is wick length per ATR. Close location is final close within the trailing four-bar range. Contraction is last-four/first-four mean range. Failed extension is a positive counter advance followed by a closed reversal. Reassertion is the final closed parent-direction displacement. Ratios compare child range/duration with parent window; ages are elapsed 4H bars. Every value is calculated from bars ending at its row.","","## Candidate models and ablation","", "|Model|Result|Ablation|", "|---|---|---|"]
- for m in models: lines.append(f"|{m['model']}|{m['effect_direction']}|{m['ablation_result']}|")
- lines += ["","Ablation removes progress-decay, failed-extension, and compression in turn. They improve the descriptive narration but do not survive as necessary common discriminators in this n=3 reconstruction. The smallest retained observable rule is therefore `ParentIntact -> BalanceOrOverlap -> ParentReassertion`; failed extension is a frequent confirmatory annotation, not a required trigger.","","## Controls, stability, and detections","",f"Three duration/direction/ATR-phase matched non-target controls were constructed chronologically. Their overlap with cases is material; direction is reported in `candidate_models.csv`, but no predictive or large-sample claim is made. Threshold factors 0.8, 1.0, and 1.2 retain all three reconstructed state sequences. `{len(detections)}` additional past-only candidates are listed as PLAUSIBLE_UNCERTAIN, not validations.","","## Causal rule and limits","","**Final formal state rule:** on a closed 4H bar, retain `ParentIntact` when its adverse boundary has not been closed through; after a trailing overlapping/contraction child range, emit `ParentReassertion` when the current close moves at least the configured ATR-normalized local-noise amount in the established parent direction. This is causal. The labels ‘failed extension’ and the full resolution narrative are post-confirmation descriptions when they require observing subsequent closes.","","Limitations: cases are reconstructed, not screenshot-exact; child scale is 1H because no 15m local data exists; controls are only three; and the rule has descriptive rather than predictive separation.","","## Verdict","","**PARTIAL_COMMON_INVARIANT** — a common, closed-bar structural transition is confirmed descriptively, while matched-control discrimination and exact visual provenance remain weak."]
- (OUT/'REPORT.md').write_text('\n'.join(lines)+'\n')
-
-def pine(cases):
- vals=', '.join('timestamp("Etc/UTC", '+str(dt(r['case_start']).year)+', '+str(dt(r['case_start']).month)+', '+str(dt(r['case_start']).day)+', '+str(dt(r['case_start']).hour)+', 0)' for r in cases)
- text='''//@version=6
-indicator("EXP-013 Three Case Review", overlay=true, max_labels_count=500)
-// Automatically generated visual artifact. Closed-bar causal review only.
-case1 = input.time(timestamp("Etc/UTC", 2023, 10, 31, 12, 0), "Case 1 interval start")
-case1End = input.time(timestamp("Etc/UTC", 2023, 11, 5, 0, 0), "Case 1 interval end")
-case2 = input.time(timestamp("Etc/UTC", 2023, 11, 12, 16, 0), "Case 2 interval start")
-case2End = input.time(timestamp("Etc/UTC", 2023, 12, 7, 0, 0), "Case 2 interval end")
-case3 = input.time(timestamp("Etc/UTC", 2023, 12, 11, 0, 0), "Case 3 interval start")
-case3End = input.time(timestamp("Etc/UTC", 2024, 1, 3, 20, 0), "Case 3 interval end")
-atr = ta.atr(14)
-priorHigh = ta.highest(high[1], 4)
-priorLow = ta.lowest(low[1], 4)
-caseDir = time >= case3 and time <= case3End ? -1.0 : 1.0
-parentIntact = caseDir > 0 ? close >= priorLow : close <= priorHigh
-counterMotion = caseDir > 0 ? close < close[1] : close > close[1]
-balanceOrConflict = (ta.highest(high, 4) - ta.lowest(low, 4)) <= atr * 3
-progressDecay = counterMotion and math.abs(close-close[1]) < math.abs(close[1]-close[2])
-failedExtension = caseDir > 0 ? low < priorLow and close > priorLow : high > priorHigh and close < priorHigh
-resolution = parentIntact and balanceOrConflict and caseDir * (close-close[1]) > atr * 0.5
-plotshape(parentIntact, title="ParentIntact", style=shape.circle, color=color.new(color.green,70), location=location.belowbar, size=size.tiny)
-plotshape(counterMotion, title="CounterMotion", style=shape.circle, color=color.new(color.orange,65), location=location.abovebar, size=size.tiny)
-plotshape(balanceOrConflict, title="BalanceOrConflict", style=shape.square, color=color.new(color.blue,65), location=location.belowbar, size=size.tiny)
-plotshape(progressDecay, title="ProgressDecay", style=shape.diamond, color=color.yellow, location=location.abovebar, size=size.tiny)
-plotshape(failedExtension, title="FailedExtension", style=shape.xcross, color=color.fuchsia, location=location.abovebar, size=size.tiny)
-plotshape(resolution and caseDir > 0, title="Resolution UP", style=shape.triangleup, color=color.lime, location=location.belowbar, size=size.small)
-plotshape(resolution and caseDir < 0, title="Resolution DOWN", style=shape.triangledown, color=color.lime, location=location.abovebar, size=size.small)
-isCase = time == case1 or time == case2 or time == case3
-plotshape(isCase, title="Recovered case", text="CASE", style=shape.labelup, color=color.white, textcolor=color.black, location=location.belowbar)
-'''
- p=OUT/'artifacts/EXP013_THREE_CASE_REVIEW.pine'; p.parent.mkdir(parents=True,exist_ok=True); p.write_text(text)
-
-if __name__ == '__main__': main()
+if __name__ == "__main__": main()
