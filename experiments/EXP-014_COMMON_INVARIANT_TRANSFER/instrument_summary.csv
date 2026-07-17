@@ -1,0 +1,6 @@
+instrument,availability_status,start_time,end_time,parent_bars,child_scale,gaps,accepted_detections,diagnostic_detections,rate_per_1000_4h,detection_median_reassertion_atr,control_median_reassertion_atr,rank_biserial,above_control_fraction,uncertainty
+ADAUSDT,AVAILABLE,2023-07-01 00:00:00,2024-12-31 20:00:00,3300,1H_FALLBACK,0,369,56,111.818182,0.755653,0.764307,0.105691,0.552846,paired descriptive sample; no inferential claim
+BTCUSDT,UNAVAILABLE,,,0,,,0,0,,,,,,no existing local OHLC loader archive
+ETHUSDT,UNAVAILABLE,,,0,,,0,0,,,,,,no existing local OHLC loader archive
+SOLUSDT,UNAVAILABLE,,,0,,,0,0,,,,,,no existing local OHLC loader archive
+XRPUSDT,UNAVAILABLE,,,0,,,0,0,,,,,,no existing local OHLC loader archive

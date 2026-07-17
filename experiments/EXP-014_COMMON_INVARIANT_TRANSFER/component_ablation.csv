@@ -1,0 +1,5 @@
+variant,support,instrument_coverage,diagnostic_count,control_rank_biserial,above_control_fraction,sample_collapse_warning,predicate_components
+base_rule,425,1,56,0.105691,0.552846,NO,base only
+base_plus_counter_progress_decay,328,1,43,0.038596,0.519298,NO,counter_progress_decay
+base_plus_failed_counter_extension,163,1,25,0.028986,0.514493,YES,failed_counter_extension
+base_plus_both,163,1,25,0.028986,0.514493,YES,counter_progress_decay + failed_counter_extension

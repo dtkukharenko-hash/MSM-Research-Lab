@@ -1,0 +1,4 @@
+parameter_factor,instrument,detection_count,rate_per_1000_4h,interval_overlap_with_1_0,component_support,control_contrast_direction,verdict_stability
+0.8,ADAUSDT,545,165.151515,0.779817,409,POSITIVE,LIMITED
+1.0,ADAUSDT,425,128.787879,1.0,328,NONPOSITIVE,LIMITED
+1.2,ADAUSDT,318,96.363636,0.748235,253,POSITIVE,LIMITED
