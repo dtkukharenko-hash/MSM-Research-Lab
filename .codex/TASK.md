@@ -5,7 +5,7 @@
 - published_at: `2026-07-17`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- source_experiments: `EXP-013-THREE-CASE-COMMON-INVARIANT`, `EXP-014-COMMON-INVARIANT-TRANSFER`
+- source_experiment: `EXP-014-COMMON-INVARIANT-TRANSFER`
 - commit_message: `EXP-015 parent boundary gate`
 
 ## Objective
