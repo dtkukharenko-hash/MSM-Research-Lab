@@ -1,0 +1,6 @@
+variant,margin_threshold_atr,support_count,support_rate_per_1000_parent_bars,retained_fraction_from_base,diagnostic_retained,diagnostic_removed,reassertion_atr_median,reassertion_atr_mean,matched_control_median,matched_control_mean,paired_rank_contrast,above_matched_control_fraction,distribution_overlap,up_count,down_count,sample_collapse_flag,predicate
+BASE,0.0,425,128.787879,1.0,56,0,0.759124,0.912342,0.797351,0.864021,0.204706,0.602353,0.87767,192,233,NO,closed-bar executable boundary predicate
+BOUNDARY_AT_COUNTER_END,0.0,385,116.666667,0.905882,16,40,0.752837,0.918119,0.797351,0.867182,0.21039,0.605195,0.876282,175,210,NO,closed-bar executable boundary predicate
+BOUNDARY_THROUGH_BALANCE,0.0,369,111.818182,0.868235,0,56,0.755653,0.921139,0.797351,0.869078,0.219512,0.609756,0.874953,166,203,NO,closed-bar executable boundary predicate
+BOUNDARY_THROUGH_REASSERTION,0.0,369,111.818182,0.868235,0,56,0.755653,0.921139,0.797351,0.869078,0.219512,0.609756,0.874953,166,203,NO,closed-bar executable boundary predicate
+BOUNDARY_MARGIN,0.1,369,111.818182,0.868235,0,56,0.755653,0.921139,0.797351,0.869078,0.219512,0.609756,0.874953,166,203,NO,closed-bar executable boundary predicate

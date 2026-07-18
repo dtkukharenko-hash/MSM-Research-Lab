@@ -1,0 +1,51 @@
+counterexample_type,interval_id,parent_direction,reassertion_atr,reason
+BASE_BOUNDARY_FAIL,ADA_2056,DOWN,2.764628,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_2116,UP,1.778689,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_2826,UP,1.369973,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1493,UP,1.320538,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1990,DOWN,1.305521,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_2241,DOWN,1.301569,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1877,DOWN,1.188859,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1992,DOWN,1.143488,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1353,DOWN,1.041555,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1721,UP,1.021246,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1330,UP,1.013677,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1562,UP,1.012048,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1188,UP,1.003953,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_2322,DOWN,0.944079,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_2499,DOWN,0.934579,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_2446,DOWN,0.933333,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1147,UP,0.930133,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1530,DOWN,0.909747,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_0355,DOWN,0.893617,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1879,DOWN,0.892466,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_0645,DOWN,0.864706,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1395,DOWN,0.853974,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1329,UP,0.822828,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_1547,UP,0.819912,completed child close crossed established direction-aware parent invalidation boundary
+BASE_BOUNDARY_FAIL,ADA_2325,DOWN,0.80531,completed child close crossed established direction-aware parent invalidation boundary
+STRICT_NO_PROVEN_SEPARATION,ADA_2987,UP,3.173999,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_2406,DOWN,2.831111,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_3123,UP,2.468738,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_3230,DOWN,2.375906,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_1276,UP,2.32656,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_2506,UP,2.257679,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_0287,DOWN,2.201183,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_3167,DOWN,2.185325,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_2470,DOWN,2.159496,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_2118,DOWN,2.129604,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_0602,DOWN,2.105263,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_1726,DOWN,2.037006,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_2751,DOWN,2.006405,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_0351,UP,1.967568,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_1656,DOWN,1.959385,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_1826,DOWN,1.919435,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_1791,DOWN,1.901015,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_0274,DOWN,1.846457,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_2184,UP,1.835252,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_1210,DOWN,1.822691,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_1359,UP,1.815291,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_2973,UP,1.80959,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_0263,DOWN,1.744108,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_0179,UP,1.733075,strict boundary preservation alone does not establish improved matched-control separation
+STRICT_NO_PROVEN_SEPARATION,ADA_2988,UP,1.71264,strict boundary preservation alone does not establish improved matched-control separation
