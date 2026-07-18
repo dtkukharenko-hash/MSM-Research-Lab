@@ -1,8 +1,8 @@
-experiments/EXP-018_PARENT_STATE/REPORT.md
-experiments/EXP-018_PARENT_STATE/parent_state.csv
-experiments/EXP-018_PARENT_STATE/matched_controls.csv
-experiments/EXP-018_PARENT_STATE/state_comparison.csv
-experiments/EXP-018_PARENT_STATE/parameter_stability.csv
-experiments/EXP-018_PARENT_STATE/time_segment_summary.csv
-experiments/EXP-018_PARENT_STATE/counterexamples.csv
-experiments/EXP-018_PARENT_STATE/experiment_018.py
+experiments/EXP-019_PARENT_REPRESENTATION/REPORT.md
+experiments/EXP-019_PARENT_REPRESENTATION/parent_representations.csv
+experiments/EXP-019_PARENT_REPRESENTATION/matched_controls.csv
+experiments/EXP-019_PARENT_REPRESENTATION/representation_comparison.csv
+experiments/EXP-019_PARENT_REPRESENTATION/parameter_stability.csv
+experiments/EXP-019_PARENT_REPRESENTATION/time_segment_summary.csv
+experiments/EXP-019_PARENT_REPRESENTATION/counterexamples.csv
+experiments/EXP-019_PARENT_REPRESENTATION/experiment_019.py
