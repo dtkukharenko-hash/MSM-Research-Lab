@@ -1,0 +1,33 @@
+counterexample_type,interval_id,parent_direction,reassertion_atr,reason
+MATURE_DECELERATING_STRONG,ADA_2987,UP,3.173999,pre-counter deceleration coexists with strong closed reassertion
+MATURE_DECELERATING_STRONG,ADA_2406,DOWN,2.831111,pre-counter deceleration coexists with strong closed reassertion
+MATURE_DECELERATING_STRONG,ADA_1276,UP,2.32656,pre-counter deceleration coexists with strong closed reassertion
+MATURE_DECELERATING_STRONG,ADA_2506,UP,2.257679,pre-counter deceleration coexists with strong closed reassertion
+MATURE_DECELERATING_STRONG,ADA_0287,DOWN,2.201183,pre-counter deceleration coexists with strong closed reassertion
+MATURE_DECELERATING_STRONG,ADA_0351,UP,1.967568,pre-counter deceleration coexists with strong closed reassertion
+MATURE_DECELERATING_STRONG,ADA_1826,DOWN,1.919435,pre-counter deceleration coexists with strong closed reassertion
+MATURE_DECELERATING_STRONG,ADA_1791,DOWN,1.901015,pre-counter deceleration coexists with strong closed reassertion
+MATURE_DECELERATING_STRONG,ADA_2184,UP,1.835252,pre-counter deceleration coexists with strong closed reassertion
+MATURE_DECELERATING_STRONG,ADA_1359,UP,1.815291,pre-counter deceleration coexists with strong closed reassertion
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_AGE_1_2,,,fixed executable age/range structure or boundary membership prevents independence claim
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_AGE_3_4,,,fixed executable age/range structure or boundary membership prevents independence claim
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_AGE_5_8,,,fixed executable age/range structure or boundary membership prevents independence claim
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_AGE_9_PLUS,,,fixed executable age/range structure or boundary membership prevents independence claim
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_EFFICIENCY_3,,,fixed executable age/range structure or boundary membership prevents independence claim
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_EFFICIENCY_4,,,fixed executable age/range structure or boundary membership prevents independence claim
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_CLOSE_LOCATION_1,,,fixed executable age/range structure or boundary membership prevents independence claim
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_RANGE_CONTRACTION,,,fixed executable age/range structure or boundary membership prevents independence claim
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_RANGE_STABLE,,,fixed executable age/range structure or boundary membership prevents independence claim
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_RANGE_EXPANSION,,,fixed executable age/range structure or boundary membership prevents independence claim
+BOUNDARY_OR_REDUNDANCY_EXPLANATION,AGGREGATE_YOUNG_EFFICIENT,,,fixed executable age/range structure or boundary membership prevents independence claim
+EXHAUSTION_BOUNDARY_FAILURE,ADA_1493,UP,1.320538,apparent exhaustion row is outside the fixed parent-boundary subgroup
+EXHAUSTION_BOUNDARY_FAILURE,ADA_1353,DOWN,1.041555,apparent exhaustion row is outside the fixed parent-boundary subgroup
+EXHAUSTION_BOUNDARY_FAILURE,ADA_1562,UP,1.012048,apparent exhaustion row is outside the fixed parent-boundary subgroup
+EXHAUSTION_BOUNDARY_FAILURE,ADA_1879,DOWN,0.892466,apparent exhaustion row is outside the fixed parent-boundary subgroup
+EXHAUSTION_BOUNDARY_FAILURE,ADA_3218,UP,0.771965,apparent exhaustion row is outside the fixed parent-boundary subgroup
+EXHAUSTION_BOUNDARY_FAILURE,ADA_2587,UP,0.710988,apparent exhaustion row is outside the fixed parent-boundary subgroup
+EXHAUSTION_BOUNDARY_FAILURE,ADA_1750,UP,0.70979,apparent exhaustion row is outside the fixed parent-boundary subgroup
+EXHAUSTION_BOUNDARY_FAILURE,ADA_2239,UP,0.699001,apparent exhaustion row is outside the fixed parent-boundary subgroup
+EXHAUSTION_BOUNDARY_FAILURE,ADA_1782,DOWN,0.675524,apparent exhaustion row is outside the fixed parent-boundary subgroup
+EXHAUSTION_BOUNDARY_FAILURE,ADA_0079,DOWN,0.651698,apparent exhaustion row is outside the fixed parent-boundary subgroup
+INVALID_OR_MINIMUM_HISTORY,NONE,,,no invalid or insufficient-history rows: every reconstructed source parent has the committed eight completed bars
