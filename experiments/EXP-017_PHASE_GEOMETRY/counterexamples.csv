@@ -1,0 +1,38 @@
+counterexample_type,interval_id,parent_direction,reassertion_magnitude_atr,reason
+PROPORTIONAL_NO_SEPARATION,ADA_2623,UP,0.5005586592178733,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_1748,DOWN,0.5021306818181817,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_1369,UP,0.5028968713789095,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_0535,UP,0.5060240963855445,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_2414,DOWN,0.5069495245062189,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_2777,UP,0.5084745762711869,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_2912,UP,0.518518518518518,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_2941,DOWN,0.5235975066785373,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_3215,DOWN,0.525943834852148,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_0045,UP,0.5269761606022597,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_0633,UP,0.5299684542586657,causal proportional counter membership does not itself establish matched-control separation
+PROPORTIONAL_NO_SEPARATION,ADA_0559,UP,0.5305263157894793,causal proportional counter membership does not itself establish matched-control separation
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_2987,UP,3.173999207292904,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_2406,DOWN,2.831111111111111,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_3123,UP,2.468737607402512,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_3230,DOWN,2.3759055540649325,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_1276,UP,2.3265602322206047,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_2506,UP,2.2576791808873717,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_0287,DOWN,2.2011834319526558,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_3167,DOWN,2.1853246948922673,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_2470,DOWN,2.1594963273871985,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_2118,DOWN,2.129604365620735,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_0602,DOWN,2.1052631578947363,large causal reassertion can coexist with extreme phase relation; no predictive inference
+EXTREME_GEOMETRY_STRONG_REASSERTION,ADA_1726,DOWN,2.0370058873002557,large causal reassertion can coexist with extreme phase relation; no predictive inference
+INVALID_DENOMINATOR,ADA_0263,DOWN,1.7441077441077677,balance_counter_ratio:non_positive_or_missing_denominator;reassertion_counter_ratio:non_positive_or_missing_denominator;reassertion_counter_speed_ratio:non_positive_or_missing_denominator;transition_symmetry:non_positive_ratio_for_log
+INVALID_DENOMINATOR,ADA_0657,DOWN,0.5819070904645502,balance_counter_ratio:non_positive_or_missing_denominator;reassertion_counter_ratio:non_positive_or_missing_denominator;reassertion_counter_speed_ratio:non_positive_or_missing_denominator;transition_symmetry:non_positive_ratio_for_log
+INVALID_DENOMINATOR,ADA_2443,UP,0.5440414507772026,balance_counter_ratio:non_positive_or_missing_denominator;reassertion_counter_ratio:non_positive_or_missing_denominator;reassertion_counter_speed_ratio:non_positive_or_missing_denominator;transition_symmetry:non_positive_ratio_for_log
+JOINT_CHAIN_SUPPORT_COLLAPSE,AGGREGATE_balance_counter_ratio_B0.25_0.5,,,predeclared comparison retained only 16 rows; support-collapse flag prevents independence claim
+JOINT_CHAIN_SUPPORT_COLLAPSE,AGGREGATE_reassertion_counter_ratio_B0.25_0.5,,,predeclared comparison retained only 24 rows; support-collapse flag prevents independence claim
+JOINT_CHAIN_SUPPORT_COLLAPSE,AGGREGATE_reassertion_counter_speed_ratio_B0.25_0.5,,,predeclared comparison retained only 0 rows; support-collapse flag prevents independence claim
+JOINT_CHAIN_SUPPORT_COLLAPSE,AGGREGATE_reassertion_counter_speed_ratio_B0.5_1,,,predeclared comparison retained only 3 rows; support-collapse flag prevents independence claim
+JOINT_CHAIN_SUPPORT_COLLAPSE,AGGREGATE_balance_time_ratio_Q1,,,predeclared comparison retained only 0 rows; support-collapse flag prevents independence claim
+JOINT_CHAIN_SUPPORT_COLLAPSE,AGGREGATE_balance_time_ratio_Q2,,,predeclared comparison retained only 0 rows; support-collapse flag prevents independence claim
+JOINT_CHAIN_SUPPORT_COLLAPSE,AGGREGATE_balance_time_ratio_Q3,,,predeclared comparison retained only 0 rows; support-collapse flag prevents independence claim
+JOINT_CHAIN_SUPPORT_COLLAPSE,AGGREGATE_balance_time_ratio_B0.5_1,,,predeclared comparison retained only 0 rows; support-collapse flag prevents independence claim
+JOINT_CHAIN_SUPPORT_COLLAPSE,AGGREGATE_balance_time_ratio_B1_2,,,predeclared comparison retained only 0 rows; support-collapse flag prevents independence claim
+JOINT_CHAIN_SUPPORT_COLLAPSE,AGGREGATE_balance_time_ratio_B2_INF,,,predeclared comparison retained only 0 rows; support-collapse flag prevents independence claim
