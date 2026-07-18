@@ -1,0 +1,21 @@
+counterexample_type,interval_id,parent_direction,reassertion_atr,overlap_ratio,compression_ratio,reason
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_1748,DOWN,0.502131,1.0,0.5378151260504218,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_1369,UP,0.502897,1.0,0.4174757281553433,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_0085,UP,0.505308,1.0,0.11581920903954786,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_1232,DOWN,0.507655,1.0,0.5458937198067608,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_3042,UP,0.514182,1.0,0.28143712574850155,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_2601,DOWN,0.51497,1.0,0.3925925925925917,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_1680,UP,0.51881,1.0,0.2425742574257434,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_2864,UP,0.521036,1.0,0.5319148936170238,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_2522,UP,0.521058,1.0,0.32558139534883523,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_2874,UP,0.525597,1.0,0.5270270270270297,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_3215,DOWN,0.525944,1.0,0.6281138790035603,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_0045,UP,0.526976,1.0,0.5079365079365071,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_2126,DOWN,0.530699,1.0,0.19999999999999915,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_2070,DOWN,0.531646,1.0,0.28421052631578714,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_3194,DOWN,0.534626,1.0,0.5790554414784399,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_1900,DOWN,0.536036,1.0,0.5862068965517294,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_2106,DOWN,0.53717,1.0,0.5689655172413768,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_3146,DOWN,0.549341,1.0,0.1583011583011603,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_2845,DOWN,0.552316,1.0,0.48421052631579414,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
+COMPACT_NO_CONTROL_IMPROVEMENT,ADA_1539,DOWN,0.560538,1.0,0.4873239436619717,closed-bar compact balance; reassertion magnitude is not itself matched-control separation
