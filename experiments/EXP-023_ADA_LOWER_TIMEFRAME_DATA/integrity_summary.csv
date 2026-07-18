@@ -1,0 +1,4 @@
+interval,status,first_timestamp_utc,last_timestamp_utc,row_count,expected_timestamps,observed_timestamps,missing_bar_count,gap_episodes,duplicate_timestamps,nonmonotonic_timestamps,ohlc_violations,nonpositive_prices,negative_volume_or_turnover,utc_alignment_errors,incomplete_terminal_bars,sha256,byte_size,unavailable_prefix,unavailable_suffix
+3,READY,2023-07-01T00:00:00Z,2024-12-31T23:00:00Z,263981,263981,263981,0,0,0,0,0,0,0,0,0,ac96daf57a4e118565db3d12f729173a3fd59fddd0b9fbcbda0cc4fefd93d87d,17578069,:,:
+5,READY,2023-07-01T00:00:00Z,2024-12-31T23:00:00Z,158389,158389,158389,0,0,0,0,0,0,0,0,0,1caa68f3fa7ac3dd56b50e42173653fdd0a5d4c71223c0eef0811b5fb84049d6,10632563,:,:
+15,CONFLICTED,2023-07-01T00:00:00Z,2024-12-31T23:00:00Z,52797,52797,52797,0,0,0,0,0,0,0,0,0,0ddfb8ad29eee1b279e39c79dbf94a019392b162dd2117a9137e01f5fcff7954,3601434,:,:

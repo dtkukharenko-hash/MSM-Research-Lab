@@ -1,0 +1,80 @@
+{
+  "EXP022_RERUN_READY": false,
+  "blockers": [
+    "One or more native intervals are not READY or cross-interval equality does not meet the declared tolerance."
+  ],
+  "canonical_decimal_tolerance": "0.00000001",
+  "cross_interval_validation": {
+    "15m_to_1H": {
+      "exact": 27,
+      "maxabs": "0.0047",
+      "maxrel": "0.0085657007472207034809549845088390741753234918899216",
+      "mismatch": 13172,
+      "overlap": 13199,
+      "samples": "2023-07-01T00:00:00Z|2023-07-01T01:00:00Z|2023-07-01T02:00:00Z|2023-07-01T03:00:00Z|2023-07-01T04:00:00Z"
+    },
+    "3m_to_15m": {
+      "exact": 52796,
+      "maxabs": "0",
+      "maxrel": "0",
+      "mismatch": 0,
+      "overlap": 52796,
+      "samples": ""
+    },
+    "5m_to_15m": {
+      "exact": 52796,
+      "maxabs": "0",
+      "maxrel": "0",
+      "mismatch": 0,
+      "overlap": 52796,
+      "samples": ""
+    }
+  },
+  "endpoint": "https://api.bybit.com/v5/market/kline",
+  "frozen_1h_source": "experiments/EXP-011_MULTISCALE_EMA_TREND_BACKBONE/artifacts/ohlc_1h.csv",
+  "frozen_range_utc": [
+    "2023-07-01T00:00:00Z",
+    "2024-12-31T23:00:00Z"
+  ],
+  "raw_archives": {
+    "15": {
+      "bytes": 3601434,
+      "path": "/home/nnv/.local/state/msm-orchestrator/runtime/eb71c82e1c35223d23641163945b453d21ea0974a719f47663a1d3333a4f6995/corrector/home/.local/share/msm-market-data/bybit/linear/ADAUSDT/ADAUSDT_15m.csv",
+      "sha256": "0ddfb8ad29eee1b279e39c79dbf94a019392b162dd2117a9137e01f5fcff7954",
+      "status": "CONFLICTED"
+    },
+    "3": {
+      "bytes": 17578069,
+      "path": "/home/nnv/.local/state/msm-orchestrator/runtime/eb71c82e1c35223d23641163945b453d21ea0974a719f47663a1d3333a4f6995/corrector/home/.local/share/msm-market-data/bybit/linear/ADAUSDT/ADAUSDT_3m.csv",
+      "sha256": "ac96daf57a4e118565db3d12f729173a3fd59fddd0b9fbcbda0cc4fefd93d87d",
+      "status": "READY"
+    },
+    "5": {
+      "bytes": 10632563,
+      "path": "/home/nnv/.local/state/msm-orchestrator/runtime/eb71c82e1c35223d23641163945b453d21ea0974a719f47663a1d3333a4f6995/corrector/home/.local/share/msm-market-data/bybit/linear/ADAUSDT/ADAUSDT_5m.csv",
+      "sha256": "1caa68f3fa7ac3dd56b50e42173653fdd0a5d4c71223c0eef0811b5fb84049d6",
+      "status": "READY"
+    }
+  },
+  "request_parameters": {
+    "category": "linear",
+    "intervals": [
+      "3",
+      "5",
+      "15"
+    ],
+    "limit": 1000,
+    "symbol": "ADAUSDT"
+  },
+  "schema": [
+    "timestamp_utc",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "turnover"
+  ],
+  "task_id": "EXP-023-ADA-LOWER-TIMEFRAME-DATA",
+  "verdict": "DATA_NOT_READY"
+}
