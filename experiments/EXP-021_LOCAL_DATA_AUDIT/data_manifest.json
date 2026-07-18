@@ -1,0 +1,104 @@
+{
+  "EXP020_RERUN_READY": false,
+  "blockers": [
+    "BTCUSDT: no usable local OHLC source discovered",
+    "ETHUSDT: no usable local OHLC source discovered"
+  ],
+  "common_core_overlap": {
+    "complete_4h_bars": 0,
+    "end_utc": "",
+    "missing_complete_4h_bars": 0,
+    "start_utc": "",
+    "unresolved_conflicts": false
+  },
+  "generated_utc": "1970-01-01T00:00:00Z",
+  "requirements": {
+    "common_overlap_met": false,
+    "core_status": false,
+    "minimum_complete_4h_bars": 2500,
+    "sources_frozen": false,
+    "zero_missing_complete_4h": true
+  },
+  "symbols": {
+    "ADAUSDT": {
+      "native_derived_interval_status": {
+        "1H": "NATIVE_COMPLETE",
+        "4H": "NATIVE_COMPLETE_AND_DERIVABLE_FROM_1H"
+      },
+      "readiness": "READY_NATIVE",
+      "reason": "Committed EXP-011 sources selected by provenance and native/derived equality; the external feature archive is not selected because it materially disagrees, not by downstream results",
+      "selected_sources": [
+        {
+          "aggregation_rule": "native 1H; 4H must equal UTC-aligned complete 1H components",
+          "complete_bar_count": 13200,
+          "conflict_status": "NONE",
+          "gap_status": "NONE",
+          "interval": "1H",
+          "path": "experiments/EXP-011_MULTISCALE_EMA_TREND_BACKBONE/artifacts/ohlc_1h.csv",
+          "schema": "open_time|close_time|open|high|low|close",
+          "sha256": "a901e11b95d02f06330e54c81578a8caac77817f76d0dd73a55f6e6d6d1875e1",
+          "timestamp_unit": "iso",
+          "timezone": "ISO timestamps are naive; prior EXP-011 documents Binance UTC",
+          "valid_range_utc": [
+            "2023-07-01T00:00:00Z",
+            "2024-12-31T23:00:00Z"
+          ]
+        },
+        {
+          "aggregation_rule": "native 1H; 4H must equal UTC-aligned complete 1H components",
+          "complete_bar_count": 3300,
+          "conflict_status": "selected committed source; external overlap MATERIAL_OHLC_MISMATCH (6/3300 equal)",
+          "gap_status": "NONE",
+          "interval": "4H",
+          "path": "experiments/EXP-011_MULTISCALE_EMA_TREND_BACKBONE/artifacts/ohlc_4h.csv",
+          "schema": "open_time|close_time|open|high|low|close",
+          "sha256": "e860b6f7919cddc69d29fd5900916dfb304e2cd68af0832977fa5c947d9603a7",
+          "timestamp_unit": "iso",
+          "timezone": "ISO timestamps are naive; prior EXP-011 documents Binance UTC",
+          "valid_range_utc": [
+            "2023-07-01T00:00:00Z",
+            "2024-12-31T20:00:00Z"
+          ]
+        }
+      ]
+    },
+    "BTCUSDT": {
+      "native_derived_interval_status": {
+        "1H": "UNAVAILABLE",
+        "4H": "UNAVAILABLE"
+      },
+      "readiness": "UNAVAILABLE",
+      "reason": "No usable local source found in the documented repository/local-data locations",
+      "selected_sources": []
+    },
+    "ETHUSDT": {
+      "native_derived_interval_status": {
+        "1H": "UNAVAILABLE",
+        "4H": "UNAVAILABLE"
+      },
+      "readiness": "UNAVAILABLE",
+      "reason": "No usable local source found in the documented repository/local-data locations",
+      "selected_sources": []
+    },
+    "SOLUSDT": {
+      "native_derived_interval_status": {
+        "1H": "UNAVAILABLE",
+        "4H": "UNAVAILABLE"
+      },
+      "readiness": "UNAVAILABLE",
+      "reason": "No usable local source found in the documented repository/local-data locations",
+      "selected_sources": []
+    },
+    "XRPUSDT": {
+      "native_derived_interval_status": {
+        "1H": "UNAVAILABLE",
+        "4H": "UNAVAILABLE"
+      },
+      "readiness": "UNAVAILABLE",
+      "reason": "No usable local source found in the documented repository/local-data locations",
+      "selected_sources": []
+    }
+  },
+  "task_id": "EXP-021-LOCAL-DATA-AUDIT",
+  "verdict": "DATA_NOT_READY"
+}

@@ -1,0 +1,4 @@
+symbol,path,interval,timestamp_unit,expected_timestamps,observed_rows,missing_bars,duplicate_timestamps,non_monotonic,invalid_ohlc,numeric_invalid,volume_available,volume_invalid,terminal_bar,timezone_evidence,conflict_status
+ADAUSDT,experiments/EXP-011_MULTISCALE_EMA_TREND_BACKBONE/artifacts/ohlc_1h.csv,1H,iso,13200,13200,0,0,False,0,0,False,0,COMPLETE,ISO timestamps are naive; prior EXP-011 documents Binance UTC,NO_OVERLAP_CONFLICT_MEASURED
+ADAUSDT,experiments/EXP-011_MULTISCALE_EMA_TREND_BACKBONE/artifacts/ohlc_4h.csv,4H,iso,3300,3300,0,0,False,0,0,False,0,COMPLETE,ISO timestamps are naive; prior EXP-011 documents Binance UTC,MATERIAL_OHLC_MISMATCH; overlap_equal=6/3300
+ADAUSDT,/home/nnv/Irobot/logs/msm/features/ada4h_features_v1.csv,4H,ms,6577,6577,0,0,False,0,0,False,0,NOT_REPORTED,epoch milliseconds are UTC,MATERIAL_OHLC_MISMATCH; overlap_equal=6/3300
