@@ -1,163 +1,174 @@
 # Current Codex Task
 
-- task_id: `EXP-019-PARENT-REPRESENTATION`
+- task_id: `EXP-020-PARENT-REPRESENTATION-TRANSFER`
 - status: `READY`
 - published_at: `2026-07-18`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- source_experiment: `EXP-018-PARENT-STATE`
-- commit_message: `EXP-019 parent representation`
+- source_experiment: `EXP-019-PARENT-REPRESENTATION`
+- commit_message: `EXP-020 parent representation transfer`
 
 ## Objective
 
-Test whether the fixed eight-bar parent window used by EXP-017 and EXP-018 suppresses real structural variability. Compare multiple causal definitions of parent origin, age, duration, magnitude, boundary, and extreme before `ChildCounterMotion`.
+Test whether the causal parent representations that restored non-degenerate age/origin variability in EXP-019 transfer beyond the original ADA sample. This task evaluates the representation itself, not a trading rule and not another outcome-selected filter.
 
-EXP-018 rejected parent-state fields partly because `parent_age_bars=8` and `parent_maturity_fraction=1.0` were mechanically fixed. This task evaluates the representation itself. Do not add another filter to the existing eight-bar state and do not tune prior boundary, balance, or phase-geometry thresholds.
+EXP-019 returned `PARENT_REPRESENTATION_PARTIAL`: `ATR_ORIGIN` and `CONFIRMED_DIRECTION_CHANGE` restored meaningful variability, while `DIRECTION_RUN` and `HYBRID_ORIGIN` remained strongly redundant with displacement and boundary distance. No representation may be selected from aggregate outcome statistics.
 
-Use only existing local data. Missing datasets are recorded as `UNAVAILABLE` and do not stop execution.
+Use only existing local data. Missing symbol or interval data must be recorded as `UNAVAILABLE` and must not stop available analyses.
 
 ## Fixed scope
 
-- Instrument: ADAUSDT only.
-- Data interval, source exclusion, 4H parent scale, 1H fallback, closed-bar rules, and factor conventions: exactly as committed in EXP-014 through EXP-018.
-- Starting population: reconstruct the 425 EXP-014 BASE rows at factor `1.0`; retain the 369 EXP-015 boundary-preserved rows as a declared subgroup.
-- Every parent representation must end at the last completed 4H bar strictly before counter start.
+- Primary symbols: ADAUSDT, BTCUSDT, ETHUSDT. Include SOLUSDT and XRPUSDT only when the committed local dataset supports the same complete interval and conventions.
+- Parent scale: 4H; child fallback and closed-bar conventions exactly as committed in EXP-014 through EXP-019.
+- Reconstruct the same causal transition detector independently for every available symbol at factors `0.8`, `1.0`, and `1.2`.
+- For ADA factor `1.0`, assert exact identity with the committed 425 EXP-014 BASE rows and applicable EXP-019 representation fields.
 - No future pivots, lookahead, repainting, future returns, outcome-derived labels, chart interpretation, predictive claims, or strategy language.
 
-## Predeclared parent representations
+## Frozen representations
 
-Implement these independently and causally:
+Implement unchanged from EXP-019:
 
-1. `FIXED_8`: committed eight completed parent bars before counter start. This is the reference only.
-2. `DIRECTION_RUN`: walk backward over completed parent bars while direction-aware close displacement remains with the established parent direction; stop at the first opposite close step or maximum 32 bars.
-3. `ATR_ORIGIN`: walk backward until cumulative direction-aware displacement from the candidate origin first reaches at least `1.0 ATR` measured causally at counter start; maximum 32 bars. If never reached, mark invalid.
-4. `CONFIRMED_DIRECTION_CHANGE`: origin is the first completed bar after the most recent causal two-bar direction change confirmed before counter start; maximum lookback 32 bars.
-5. `HYBRID_ORIGIN`: choose the later origin from `DIRECTION_RUN` and `ATR_ORIGIN`, preserving only information available before counter start.
+1. `FIXED_8` — reference only.
+2. `DIRECTION_RUN` — backward same-direction close run, maximum 32 bars.
+3. `ATR_ORIGIN` — backward origin reaching at least `1.0 ATR` causal displacement, maximum 32 bars; invalid if not reached.
+4. `CONFIRMED_DIRECTION_CHANGE` — first completed bar after the most recent causal two-bar direction change, maximum 32 bars.
+5. `HYBRID_ORIGIN` — later of `DIRECTION_RUN` and `ATR_ORIGIN`.
 
-Do not introduce arbitrary alternatives or select a representation from outcome statistics.
+Do not tune thresholds, confirmation length, or maximum lookback. Do not create new representations.
 
-## Representation measurements
+## Required measurements
 
-For every source row and representation calculate:
+For every symbol, detection, factor, and representation preserve:
 
-- `origin_time`, `end_time`, `age_bars`, `duration_hours`;
-- direction-aware `displacement_atr` and `extension_atr`;
-- `efficiency` = absolute net displacement / cumulative true range;
-- `close_location` within the representation range;
-- `distance_to_boundary_atr` and `distance_from_extreme_atr` using a boundary and extreme derived from that representation;
-- recent and whole-window direction-aware slope;
-- validity, minimum-history, cap-hit, zero-denominator, and origin-reason fields.
+- origin/end timestamps, age bars, duration hours;
+- displacement, extension, efficiency and close location;
+- representation-derived boundary and extreme distances;
+- recent and whole-window slopes;
+- validity, minimum-history, cap-hit, zero-denominator and origin-reason fields.
 
-All ATR and boundaries must use values available by the representation end. Invalid cases remain explicit and are never imputed.
+All measurements must use only bars completed before counter start.
 
 ## Required analysis
 
-### A. Reconstruction
+### A. Reconstruction and availability
 
-Regenerate and identity-assert the 425 BASE rows and 369 boundary subgroup against committed outputs.
+Report symbol availability, intervals, bar counts, exclusions and detector support. Assert exact ADA reconstruction and document any unavailable symbol without substituting data.
 
-### B. Representation audit
+### B. Representation invariance
 
-For each representation report:
+For every symbol and representation report:
 
 - valid support and invalid reasons;
-- age/duration distribution and cap-hit rate;
-- origin disagreement with `FIXED_8` in bars and hours;
-- direction split and chronological-third split;
-- pairwise overlap and rank correlations for age, displacement, efficiency, boundary distance, and extreme distance;
-- fraction of rows where the representation restores non-degenerate age variability.
+- age quantiles, unique ages, entropy or equivalent non-degeneracy measure, and cap-hit rate;
+- origin disagreement from `FIXED_8`;
+- pairwise rank correlations among age, displacement, efficiency, boundary distance and extreme distance;
+- direction and chronological-third splits.
 
-### C. Structural comparison
+A representation is structurally transferable only if restored variability is not confined to ADA, one direction, one time segment, or invalid-row removal.
 
-Compare representations without selecting arbitrary thresholds. Use deterministic full-source quartiles for age, displacement, efficiency, and boundary distance. For every representation and quartile report:
+### C. Cross-symbol geometry
 
-- support and rate per 1,000 parent bars;
-- support inside/outside the boundary subgroup;
-- median/mean closed reassertion ATR;
-- matched-control median/mean;
-- paired rank contrast, fraction above control, and distribution overlap;
-- UP/DOWN and chronological-third support/contrast;
-- sample-collapse, concentration, invalidity, and cap-hit flags;
-- equal-support contrast relative to `FIXED_8`.
+Using fixed physical definitions rather than outcome-selected bins, compare normalized distributions across symbols:
 
-### D. Representation independence
+- age bins `1-2`, `3-4`, `5-8`, `9+`;
+- displacement quartiles calculated separately per symbol;
+- efficiency bands `<0.25`, `[0.25,0.50)`, `[0.50,0.75)`, `>=0.75`;
+- boundary-distance quartiles calculated separately per symbol.
 
-A representation is useful only if it creates genuine upstream variability and any structural separation is not explained by support reduction, invalid-row exclusion, direction imbalance, time concentration, or direct duplication of the EXP-015 boundary.
+Report distribution distances, rank-order agreement, support concentration, and direction/time stability. Separate representational invariance from any downstream reassertion contrast.
 
-Compare identical source rows where both candidate and `FIXED_8` are valid. Include deterministic equal-support subsets and row-paired representation differences.
+### D. Descriptive structural contrast
 
-### E. Matched controls
+For every symbol and fixed family report closed reassertion ATR, deterministic non-overlapping matched controls, paired rank contrast, fraction above control and overlap. Include equal-support comparisons against `FIXED_8`.
 
-Use deterministic non-overlapping controls from the same ADA interval, excluding all source detections and the original EXP-013 interval. Match as closely as feasible on parent direction, ATR/range, calendar time, transition duration, and counter duration, without matching away the tested representation field. Record all mismatches.
+No representation is supported merely because one symbol or one bin has the largest contrast.
 
-### F. Stability
+### E. Transfer and factor stability
 
-Rerun detector factors `0.8`, `1.0`, and `1.2` with unchanged representation definitions. Report source-row overlap, representation validity, age variability, origin agreement, contrast direction, direction/time stability, and verdict stability.
+For factors `0.8`, `1.0`, and `1.2`, report:
+
+- detector support and overlap with factor `1.0`;
+- representation validity and age variability;
+- origin agreement;
+- distribution-rank agreement across symbols;
+- contrast direction by symbol, direction and chronological third;
+- invalidity and cap stability.
+
+### F. Representation selection rule
+
+Selection must be based first on causal and representational properties:
+
+1. non-degenerate age/origin variability across at least ADA, BTC and ETH when available;
+2. acceptable validity without material support selection;
+3. low mechanical redundancy relative to displacement and boundary fields;
+4. stable definitions across directions, time thirds and factors;
+5. only then use descriptive structural contrast as secondary evidence.
+
+If multiple representations satisfy these conditions, retain all as unresolved rather than selecting from the best aggregate contrast.
 
 ### G. Counterexamples
 
-Export strongest causal examples of:
+Export causal examples of:
 
-- large origin disagreement with no structural difference;
-- variable-age representation collapsing to the same geometry as `FIXED_8`;
-- apparent improvement caused by invalid-row removal or cap hits;
-- aggregate effects reversed by direction or chronological third;
-- rows where representations disagree on boundary preservation.
-
-Record structural reasons only.
+- representation valid on ADA but invalid or degenerate on another symbol;
+- origin disagreement without downstream structural difference;
+- apparent transfer caused by invalid-row removal or support collapse;
+- cross-symbol rank reversal;
+- direction, time-third or factor reversal;
+- disagreement between `ATR_ORIGIN` and `CONFIRMED_DIRECTION_CHANGE`.
 
 ## Decision
 
 Select exactly one verdict:
 
-- `PARENT_REPRESENTATION_SUPPORTED` — at least one predeclared causal representation restores meaningful age/origin variability and adds stable independent structural separation across directions, chronological thirds, and detector factors without support or invalidity artifacts.
-- `PARENT_REPRESENTATION_PARTIAL` — alternative representations restore variability or clarify boundaries, but separation, support, transfer, or stability remains limited.
-- `PARENT_REPRESENTATION_REJECTED` — alternative origins do not create useful independent structure, or apparent effects arise from invalidity, support reduction, concentration, redundancy, or instability.
+- `REPRESENTATION_TRANSFER_SUPPORTED` — at least one frozen representation restores non-degenerate upstream variability across available core symbols, remains causally valid and non-redundant across directions/time/factors, and shows stable secondary structural evidence without support-selection artifacts.
+- `REPRESENTATION_TRANSFER_PARTIAL` — variability transfers, but validity, redundancy, symbol coverage, direction/time/factor stability, or secondary structural evidence remains limited.
+- `REPRESENTATION_TRANSFER_REJECTED` — restored variability is ADA-specific, mechanically redundant, unstable, invalidity-driven, or fails cross-symbol reconstruction.
 
-Do not force a positive verdict. This is descriptive structural evaluation only.
+Do not force a positive verdict.
 
 ## Required outputs
 
 Create exactly these eight files:
 
-- `experiments/EXP-019_PARENT_REPRESENTATION/REPORT.md`
-- `experiments/EXP-019_PARENT_REPRESENTATION/parent_representations.csv`
-- `experiments/EXP-019_PARENT_REPRESENTATION/matched_controls.csv`
-- `experiments/EXP-019_PARENT_REPRESENTATION/representation_comparison.csv`
-- `experiments/EXP-019_PARENT_REPRESENTATION/parameter_stability.csv`
-- `experiments/EXP-019_PARENT_REPRESENTATION/time_segment_summary.csv`
-- `experiments/EXP-019_PARENT_REPRESENTATION/counterexamples.csv`
-- `experiments/EXP-019_PARENT_REPRESENTATION/experiment_019.py`
+- `experiments/EXP-020_PARENT_REPRESENTATION_TRANSFER/REPORT.md`
+- `experiments/EXP-020_PARENT_REPRESENTATION_TRANSFER/representation_transfer.csv`
+- `experiments/EXP-020_PARENT_REPRESENTATION_TRANSFER/symbol_summary.csv`
+- `experiments/EXP-020_PARENT_REPRESENTATION_TRANSFER/distribution_comparison.csv`
+- `experiments/EXP-020_PARENT_REPRESENTATION_TRANSFER/matched_controls.csv`
+- `experiments/EXP-020_PARENT_REPRESENTATION_TRANSFER/parameter_stability.csv`
+- `experiments/EXP-020_PARENT_REPRESENTATION_TRANSFER/counterexamples.csv`
+- `experiments/EXP-020_PARENT_REPRESENTATION_TRANSFER/experiment_020.py`
 
 Do not create or modify any other path. Do not create `__pycache__` or `.pyc` files.
 
 ## Python requirements
 
-`experiment_019.py` must regenerate all seven CSV files and `REPORT.md` deterministically; assert exact source reconstruction; implement each representation from completed bars rather than labels; assert causal origin times and maximum lookback; preserve invalidity and cap-hit flags; assert controls do not overlap detections; reproduce report values and verdict from CSV rows; and print a compact summary with representation validity, age variability, origin disagreement, strongest equal-support contrasts, direction/time/factor stability, verdict, and report path.
+`experiment_020.py` must regenerate all seven CSV files and `REPORT.md` deterministically; assert exact ADA reconstruction; implement all frozen representations from completed bars; preserve unavailable symbols and invalid rows explicitly; assert factor runs and non-overlapping controls; reproduce report values and verdict from generated CSV rows; and print a compact summary of symbol support, representation validity, age variability, redundancy, cross-symbol agreement, factor stability, verdict and report path.
 
 ## Hard protections
 
-Never modify, stage, delete, rename, chmod, or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, any EXP-009 or EXP-013 through EXP-018 file, `start.sh`, `.git` internals, or any path outside the eight EXP-019 outputs. Existing local dirty files must remain byte-identical, unstaged, and uncommitted.
+Never modify, stage, delete, rename, chmod, or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, any EXP-009 or EXP-013 through EXP-019 file, `start.sh`, `.git` internals, or any path outside the eight EXP-020 outputs. Existing local dirty files must remain byte-identical, unstaged and uncommitted.
 
 ## Required validation
 
 Before PASS:
 
-1. Run `experiment_019.py` twice and verify identical SHA-256 hashes for all eight outputs.
+1. Run `experiment_020.py` twice and verify identical SHA-256 hashes for all eight outputs.
 2. Parse all seven CSV files and verify documented columns.
-3. Verify exact reconstruction of the committed 425-row BASE and 369-row boundary subgroup.
-4. Verify every representation uses only completed bars before counter start and respects the 32-bar cap.
-5. Verify invalid, insufficient-history, zero-denominator, and cap-hit rows are explicit.
-6. Verify no outcome-derived representation or arbitrary threshold search occurred.
-7. Verify every control is non-overlapping and all mismatch fields are explicit.
-8. Verify chronological thirds are deterministic and exhaustive.
+3. Assert exact ADA factor-1.0 reconstruction and agreement with applicable EXP-019 fields.
+4. Verify every representation uses only completed bars before counter start and retains the frozen 32-bar cap.
+5. Verify unavailable symbols, invalid rows, minimum history, zero denominators and cap hits are explicit.
+6. Verify no representation or threshold was selected from outcome statistics.
+7. Verify controls are deterministic, source-excluded and non-overlapping.
+8. Verify chronological thirds are deterministic and exhaustive per symbol.
 9. Verify parameter rows come from actual factor runs `0.8`, `1.0`, and `1.2`.
-10. Verify row-paired and equal-support comparisons against `FIXED_8`.
-11. Verify REPORT values and verdict reproduce from generated CSV outputs.
-12. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-019_PARENT_REPRESENTATION/experiment_019.py`, then remove any generated cache artifact.
+10. Verify equal-support comparisons against `FIXED_8` and cross-symbol distribution comparisons.
+11. Verify REPORT values and verdict reproduce from generated outputs.
+12. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-020_PARENT_REPRESENTATION_TRANSFER/experiment_020.py`, then remove generated cache artifacts.
 13. Run `git diff --check` and baseline-relative allowlist validation.
 14. Verify protected and pre-existing dirty files remain byte-identical and no files are staged.
 
 ## Result contract
 
-Planner, implementer, auditor, and corrector use the required JSON role contract. The implementer leaves only the eight allowlisted EXP-019 outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message, and pushes to `main`.
+Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the eight allowlisted EXP-020 outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message and pushes to `main`.
