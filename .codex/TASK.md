@@ -1,167 +1,171 @@
 # Current Codex Task
 
-- task_id: `EXP-023-ADA-LOWER-TIMEFRAME-DATA`
+- task_id: `EXP-024-ADA-COHERENT-LOWER-TIMEFRAME-TRANSFER`
 - status: `READY`
 - published_at: `2026-07-18`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- source_experiment: `EXP-022-ADA-LOWER-TIMEFRAME-TRANSFER`
-- commit_message: `EXP-023 ADA lower timeframe data`
+- source_experiment: `EXP-023-ADA-LOWER-TIMEFRAME-DATA`
+- commit_message: `EXP-024 coherent Bybit lower timeframe transfer`
 
 ## Objective
 
-Obtain a content-verifiable official ADAUSDT linear kline archive at 3m, 5m and 15m, audit its integrity, and freeze a local-data manifest suitable for rerunning EXP-022.
+Rerun the lower-timeframe structural transfer test on one internally coherent official Bybit ADAUSDT linear hierarchy: native 3m, 5m and 15m bars, with 1H deterministically derived from native 15m. Do not mix the committed EXP-011 1H archive into the primary analysis.
 
-This is data acquisition and validation only. Do not run the parent/counter detector, representation comparison or any downstream structural analysis.
+EXP-023 established zero missing bars and exact 3m→15m and 5m→15m equality over the frozen range. Its `DATA_NOT_READY` verdict was caused only by material disagreement between official Bybit-derived 1H and the older committed 1H archive. Treat that mismatch as a provenance conflict, not as evidence against the internally coherent Bybit hierarchy.
 
-## Authorised external source
+This is a descriptive causal representation test, not a trading rule, entry/exit study or threshold search.
 
-Use the official Bybit V5 public REST endpoint only:
+## Data contract
 
-- `GET https://api.bybit.com/v5/market/kline`
-- `category=linear`
-- `symbol=ADAUSDT`
-- intervals exactly `3`, `5`, `15`
+Use only official Bybit V5 public linear ADAUSDT klines with the exact frozen range:
 
-Do not use mark-price, index-price, premium-index, spot or third-party candles. Do not use authenticated endpoints. Record the endpoint, request parameters, retrieval time and every response error/retry.
+- `2023-07-01T00:00:00Z` through `2024-12-31T23:00:00Z`;
+- native intervals `3`, `5`, `15`;
+- endpoint `https://api.bybit.com/v5/market/kline`;
+- `category=linear`, `symbol=ADAUSDT`.
 
-## Storage contract
+First look for the exact EXP-023 hashes:
 
-Raw candle archives are intentionally not committed to GitHub.
+- 3m: `ac96daf57a4e118565db3d12f729173a3fd59fddd0b9fbcbda0cc4fefd93d87d`;
+- 5m: `1caa68f3fa7ac3dd56b50e42173653fdd0a5d4c71223c0eef0811b5fb84049d6`;
+- 15m: `0ddfb8ad29eee1b279e39c79dbf94a019392b162dd2117a9137e01f5fcff7954`.
 
-Store them under exactly:
+Expected stable paths are `${HOME}/.local/share/msm-market-data/bybit/linear/ADAUSDT/ADAUSDT_{3m,5m,15m}.csv`. If files are absent or hashes differ, reacquire only from the same official endpoint using the EXP-023 acquisition conventions, validate fully and atomically replace the stable local files. Raw archives remain outside GitHub.
 
-- `${HOME}/.local/share/msm-market-data/bybit/linear/ADAUSDT/ADAUSDT_3m.csv`
-- `${HOME}/.local/share/msm-market-data/bybit/linear/ADAUSDT/ADAUSDT_5m.csv`
-- `${HOME}/.local/share/msm-market-data/bybit/linear/ADAUSDT/ADAUSDT_15m.csv`
+Derive 1H only from complete UTC-aligned native 15m components. Do not compare or merge primary measurements with the old committed 1H archive. Record the old-source conflict only in provenance notes.
 
-Write through temporary files and atomically replace the final file only after validation. Never modify committed ADA 1H/4H archives.
+## Frozen scale mappings
 
-CSV schema must be deterministic:
+Evaluate independently:
 
-`timestamp_utc,open,high,low,close,volume,turnover`
+1. child `15m` → parent `1H` derived from the same Bybit 15m source;
+2. child `5m` → parent `15m` native Bybit;
+3. child `3m` → parent `15m` native Bybit.
 
-Use UTC ISO-8601 timestamps, ascending order and canonical decimal text. Exclude the currently open terminal candle.
+All bars must be complete, UTC-aligned and closed. Parent inputs must end strictly before counter start.
 
-## Frozen acquisition range
+## Frozen detector
 
-Read the committed ADA 1H source selected by EXP-021 and use its exact first and last complete timestamps as the target comparison range.
+Transfer the committed causal detector without tuning:
 
-For each requested interval:
+- factors `0.8`, `1.0`, `1.2`;
+- normalized ATR displacement, extension and boundary geometry;
+- durations represented in bars first and clock time second;
+- no future pivots, repainting, future returns, outcome labels or chart-selected thresholds.
 
-1. retrieve all available closed bars covering that range;
-2. paginate deterministically with API limit 1000;
-3. deduplicate by start timestamp;
-4. sort ascending;
-5. preserve only bars whose full interval is closed;
-6. do not fabricate bars outside Bybit availability;
-7. record any unavailable prefix/suffix explicitly.
+Preserve the scale-independent constants:
 
-Use bounded retries with exponential backoff for transient HTTP, timeout and non-zero API return codes. Fail closed on malformed responses or non-monotonic pagination.
+- `FIXED_8`: 8 completed parent bars;
+- maximum origin lookback: 32 parent bars;
+- direction-change confirmation: 2 parent bars;
+- `ATR_ORIGIN` threshold: 1.0 causal parent ATR.
 
-## Required audit
+## Frozen parent representations
 
-For each 3m, 5m and 15m archive measure:
+Implement exactly:
 
-- first/last timestamp and row count;
-- expected versus observed timestamps;
-- missing-bar count and contiguous gap episodes;
-- duplicate and non-monotonic timestamps;
-- numeric parsing and finite values;
-- OHLC relationships and non-positive prices;
-- negative volume/turnover;
-- UTC alignment;
-- incomplete terminal bars;
-- SHA-256 and byte size.
+1. `FIXED_8`;
+2. `DIRECTION_RUN`;
+3. `ATR_ORIGIN`;
+4. `CONFIRMED_DIRECTION_CHANGE`;
+5. `HYBRID_ORIGIN`.
 
-No interpolation, forward fill or synthetic candles are allowed.
+Do not add or tune representations. Do not select one from downstream contrast.
 
-## Cross-interval validation
+## Required analysis
 
-Using only complete UTC-aligned components:
+For every mapping, factor, detection and representation report:
 
-- aggregate 3m → 15m and compare field-by-field against native 15m;
-- aggregate 5m → 15m and compare field-by-field against native 15m;
-- aggregate native 15m → 1H and compare OHLC field-by-field against the committed EXP-021 selected 1H archive over exact overlap;
-- volume and turnover are audited but not compared with committed 1H when those fields are absent there.
+- source hashes, native/derived intervals, bar coverage and exact overlap;
+- detection support, UP/DOWN support, chronological-thirds and rate per 1,000 parent bars;
+- factor overlap with factor 1.0 and collapse/concentration flags;
+- validity and invalid reasons;
+- age q25/q50/q75, unique ages and entropy;
+- cap-hit, minimum-history and zero-denominator rates;
+- origin disagreement from `FIXED_8` in parent bars and minutes;
+- displacement, extension, efficiency, close location, range, boundary and extreme distances in ATR;
+- recent and whole-window slopes;
+- rank correlations among age, displacement, efficiency, boundary distance and extreme distance;
+- direction, chronological-third and factor stability;
+- deterministic source-excluded non-overlapping matched controls and equal-support comparisons with `FIXED_8`;
+- repeated/overlapping detection concentration;
+- agreement and disagreement between 3m and 5m mappings sharing the same 15m parent.
 
-Report exact-match counts, mismatch counts, maximum absolute/relative differences and mismatch timestamp samples. Do not choose a source based on downstream results.
+Compare normalized geometry across mappings using frozen families:
 
-## Readiness rule
+- age bins `1-2`, `3-4`, `5-8`, `9+`;
+- efficiency bands `<0.25`, `[0.25,0.50)`, `[0.50,0.75)`, `>=0.75`;
+- per-mapping displacement quartiles;
+- per-mapping boundary-distance quartiles.
 
-Assign each interval exactly one status:
+The older committed 4H→1H result may be shown only as an external descriptive reference where definitions match. It must not be used as a shared-source equality requirement or to select a representation.
 
-- `READY` — adequate coverage, zero internal missing bars in the frozen usable range, valid OHLCV and no unresolved conflicts;
-- `PARTIAL` — valid data exist but coverage or gaps prevent full use;
-- `CONFLICTED` — native and independently aggregated values materially disagree without a documented precision-only explanation;
-- `UNAVAILABLE` — no usable official data were retrieved;
-- `FAILED` — acquisition or validation failed.
+## Counterexamples
 
-Set `EXP022_RERUN_READY=true` only when:
+Export causal examples of:
 
-1. native 3m, 5m and 15m archives are all `READY`;
-2. they share a frozen overlap of at least 180 consecutive days;
-3. there are zero missing component bars inside that overlap;
-4. 3m→15m and 5m→15m match native 15m after canonical decimal tolerance;
-5. 15m→1H matches the committed 1H OHLC archive over overlap;
-6. exact source paths, hashes, schemas, endpoint and overlap are frozen.
+- lower-scale detection with no analogous parent geometry;
+- variable origin collapsing to `FIXED_8`;
+- apparent consistency caused by invalid-row removal or cap hits;
+- reversal by scale, direction, time third or factor;
+- 3m/5m disagreement with the same 15m parent;
+- repeated overlapping high-frequency detections;
+- disagreement between `ATR_ORIGIN` and `CONFIRMED_DIRECTION_CHANGE`.
 
-Otherwise set false and list explicit blockers.
+## Decision
+
+Select exactly one verdict:
+
+- `COHERENT_LOWER_TIMEFRAME_TRANSFER_SUPPORTED` — the form and at least one non-fixed representation remain non-degenerate, causally valid and broadly stable on at least two mappings without support-selection, overlap or factor/direction/time artifacts;
+- `COHERENT_LOWER_TIMEFRAME_TRANSFER_PARTIAL` — useful structure exists, but redundancy, validity, overlap, scale consistency or stability remains limited;
+- `COHERENT_LOWER_TIMEFRAME_TRANSFER_REJECTED` — the form collapses, becomes mechanically redundant/noise-dominated, or reverses across mappings;
+- `COHERENT_LOWER_TIMEFRAME_DATA_FAILED` — exact official archives cannot be validated or reacquired.
+
+Do not force a positive verdict.
 
 ## Required outputs
 
-Create exactly these seven committed files:
+Create exactly these nine committed files:
 
-- `experiments/EXP-023_ADA_LOWER_TIMEFRAME_DATA/REPORT.md`
-- `experiments/EXP-023_ADA_LOWER_TIMEFRAME_DATA/acquisition_log.csv`
-- `experiments/EXP-023_ADA_LOWER_TIMEFRAME_DATA/integrity_summary.csv`
-- `experiments/EXP-023_ADA_LOWER_TIMEFRAME_DATA/gap_episodes.csv`
-- `experiments/EXP-023_ADA_LOWER_TIMEFRAME_DATA/cross_interval_validation.csv`
-- `experiments/EXP-023_ADA_LOWER_TIMEFRAME_DATA/data_manifest.json`
-- `experiments/EXP-023_ADA_LOWER_TIMEFRAME_DATA/experiment_023.py`
+- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/REPORT.md`
+- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/data_provenance.csv`
+- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/detections.csv`
+- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/representations.csv`
+- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/scale_comparison.csv`
+- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/matched_controls.csv`
+- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/parameter_stability.csv`
+- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/counterexamples.csv`
+- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/experiment_024.py`
 
-Do not commit raw candle archives or create any other repository path.
+Do not commit raw archives or create any other repository path. Do not create `__pycache__` or `.pyc` files.
 
-## Python requirements
+## Python and validation requirements
 
-`experiment_023.py` must:
-
-- use Python standard library plus already-installed dependencies only;
-- download and paginate the official Bybit public kline endpoint reproducibly;
-- support safe resume by validating existing local archives before requesting missing ranges;
-- write raw archives atomically outside the repository;
-- regenerate all six audit/report outputs deterministically from the frozen raw archives;
-- hash every raw archive;
-- perform all integrity and cross-interval checks;
-- derive verdict and `EXP022_RERUN_READY` from measured fields;
-- print a compact summary of interval status, coverage, gaps, equality checks, raw paths, hashes, readiness and report path.
-
-The report must distinguish API acquisition facts from local validation results and must not contain strategy language or predictive claims.
-
-## Hard protections
-
-Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, any EXP-009 or EXP-013 through EXP-022 file, or any committed source dataset.
-
-The only permitted non-repository writes are the three exact raw archive paths under `${HOME}/.local/share/msm-market-data/bybit/linear/ADAUSDT/` and temporary files beside them. Existing local dirty files must remain byte-identical, unstaged and uncommitted.
-
-## Required validation
+`experiment_024.py` must deterministically regenerate all eight report/data outputs, validate or reacquire the exact official archives, derive complete UTC 1H bars from 15m, implement the frozen detector and representations causally, preserve invalid rows explicitly, create deterministic non-overlapping controls, and derive the verdict entirely from generated fields.
 
 Before PASS:
 
-1. Verify the official endpoint response identifies `category=linear`, `symbol=ADAUSDT` and the requested interval.
-2. Verify pagination has no loops, overlaps after deduplication or skipped requested ranges.
-3. Verify all final rows are closed, ascending, unique and UTC-aligned.
-4. Verify all OHLCV/turnover values are finite and relationships are valid.
-5. Verify all gaps and unavailable prefixes/suffixes are explicit.
-6. Re-read the final raw CSVs and reproduce their hashes and audit metrics.
-7. Verify deterministic 3m→15m, 5m→15m and 15m→1H construction from complete components only.
-8. Verify mismatch summaries reproduce from source rows and tolerances are declared before results.
-9. Verify `data_manifest.json`, REPORT values, verdict and readiness reproduce from CSV outputs.
-10. Run the audit generation twice without redownloading and verify identical SHA-256 hashes for all seven committed outputs.
-11. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-023_ADA_LOWER_TIMEFRAME_DATA/experiment_023.py`, then remove generated cache artifacts.
-12. Run `git diff --check` and baseline-relative allowlist validation.
+1. Validate source hashes, schemas, ordering, uniqueness, gaps, OHLCV, UTC alignment and closed bars.
+2. Assert exact 3m→15m and 5m→15m equality over complete overlap.
+3. Assert every derived 1H bar has four complete 15m components.
+4. Run actual factors 0.8, 1.0 and 1.2.
+5. Assert origins end before counter start and all 8/32/two-bar/1.0-ATR definitions.
+6. Verify chronological thirds are deterministic and exhaustive.
+7. Verify controls are deterministic, source-excluded and non-overlapping.
+8. Quantify repeated detections and 3m/5m shared-parent dependence.
+9. Verify no representation, threshold or mapping was selected from outcomes.
+10. Run twice and verify identical SHA-256 hashes for all nine outputs.
+11. Parse every CSV and reproduce REPORT values and verdict.
+12. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/experiment_024.py`, remove cache artifacts, run `git diff --check`, and perform baseline-relative allowlist validation.
 13. Verify protected and pre-existing dirty files remain byte-identical and no files are staged.
+
+## Hard protections
+
+Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, any EXP-009 or EXP-013 through EXP-023 file, committed source datasets, or paths outside the nine EXP-024 outputs.
+
+The only permitted non-repository writes are the three stable raw archive paths under `${HOME}/.local/share/msm-market-data/bybit/linear/ADAUSDT/` and temporary files beside them. Existing dirty files must remain byte-identical, unstaged and uncommitted.
 
 ## Result contract
 
-Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the seven allowlisted EXP-023 outputs unstaged. Raw data remain outside the repository. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message and pushes to `main`.
+Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted EXP-024 outputs unstaged. Raw market data remain outside the repository. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message and pushes to `main`.
