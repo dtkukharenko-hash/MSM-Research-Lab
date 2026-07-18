@@ -13,7 +13,14 @@ chmod +x "$REPO/start.sh" 2>/dev/null || true
 
 field() {
     local name="$1"
-    sed -nE "s/^- ${name}: [`\"]?([^`\"]+)[`\"]?$/\1/p" "$TASK_FILE" | head -n1
+    awk -v key="$name" '
+        $0 ~ "^- " key ":" {
+            sub("^- " key ":[[:space:]]*", "")
+            gsub(/^[`"]|[`"]$/, "")
+            print
+            exit
+        }
+    ' "$TASK_FILE"
 }
 
 state_file() {
