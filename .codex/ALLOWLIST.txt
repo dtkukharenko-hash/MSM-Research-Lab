@@ -1,8 +1,8 @@
-experiments/EXP-016_BALANCE_QUALITY_GATE/REPORT.md
-experiments/EXP-016_BALANCE_QUALITY_GATE/qualified_detections.csv
-experiments/EXP-016_BALANCE_QUALITY_GATE/matched_controls.csv
-experiments/EXP-016_BALANCE_QUALITY_GATE/quality_comparison.csv
-experiments/EXP-016_BALANCE_QUALITY_GATE/threshold_stability.csv
-experiments/EXP-016_BALANCE_QUALITY_GATE/time_segment_summary.csv
-experiments/EXP-016_BALANCE_QUALITY_GATE/counterexamples.csv
-experiments/EXP-016_BALANCE_QUALITY_GATE/experiment_016.py
+experiments/EXP-017_PHASE_GEOMETRY/REPORT.md
+experiments/EXP-017_PHASE_GEOMETRY/phase_geometry.csv
+experiments/EXP-017_PHASE_GEOMETRY/matched_controls.csv
+experiments/EXP-017_PHASE_GEOMETRY/geometry_comparison.csv
+experiments/EXP-017_PHASE_GEOMETRY/parameter_stability.csv
+experiments/EXP-017_PHASE_GEOMETRY/time_segment_summary.csv
+experiments/EXP-017_PHASE_GEOMETRY/counterexamples.csv
+experiments/EXP-017_PHASE_GEOMETRY/experiment_017.py
