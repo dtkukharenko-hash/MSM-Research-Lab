@@ -1,8 +1,8 @@
-experiments/EXP-017_PHASE_GEOMETRY/REPORT.md
-experiments/EXP-017_PHASE_GEOMETRY/phase_geometry.csv
-experiments/EXP-017_PHASE_GEOMETRY/matched_controls.csv
-experiments/EXP-017_PHASE_GEOMETRY/geometry_comparison.csv
-experiments/EXP-017_PHASE_GEOMETRY/parameter_stability.csv
-experiments/EXP-017_PHASE_GEOMETRY/time_segment_summary.csv
-experiments/EXP-017_PHASE_GEOMETRY/counterexamples.csv
-experiments/EXP-017_PHASE_GEOMETRY/experiment_017.py
+experiments/EXP-018_PARENT_STATE/REPORT.md
+experiments/EXP-018_PARENT_STATE/parent_state.csv
+experiments/EXP-018_PARENT_STATE/matched_controls.csv
+experiments/EXP-018_PARENT_STATE/state_comparison.csv
+experiments/EXP-018_PARENT_STATE/parameter_stability.csv
+experiments/EXP-018_PARENT_STATE/time_segment_summary.csv
+experiments/EXP-018_PARENT_STATE/counterexamples.csv
+experiments/EXP-018_PARENT_STATE/experiment_018.py
