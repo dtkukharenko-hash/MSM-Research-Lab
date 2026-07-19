@@ -1,119 +1,139 @@
 # Current Codex Task
 
-- task_id: `EXP-026-ADA-DERIVATIVES-EVENT-EPISODES`
+- task_id: `EXP-027-MULTI-MARKET-DERIVATIVES-TRANSFER`
 - status: `READY`
 - published_at: `2026-07-19`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- source_experiment: `EXP-025-ADA-LOWER-TIMEFRAME-DEOVERLAP`
-- commit_message: `EXP-026 ADA derivatives event episodes`
+- source_experiment: `EXP-026-ADA-DERIVATIVES-EVENT-EPISODES`
+- commit_message: `EXP-027 multi-market derivatives transfer`
 
 ## Objective
 
-Test whether independently sampled ADAUSDT derivatives-market events define causal structural episodes that are not created by the OHLC parent/counter detector.
+Test whether the fully frozen EXP-026 derivatives-event protocol transfers from ADAUSDT to independent linear perpetual markets without changing thresholds, history windows, episode rules, controls, OHLC windows or parent representations.
 
-EXP-025 rejected episode-robust transfer of the lower-timeframe OHLC detector. Therefore event membership in EXP-026 must be determined only from funding-rate and open-interest histories. OHLC may describe the already selected event state, but may not create, remove, merge or rank events.
+This is a strict external-transfer experiment. Do not tune per symbol, choose favourable markets, optimise contrasts, or redefine events after observing results. It is descriptive causal research, not a trading-rule or outcome study.
 
-This is a descriptive causal research experiment. It is not a trading rule, entry/exit study, threshold search or outcome optimisation.
+## Frozen market panel and period
 
-## Authorised data sources
+Use exactly these Bybit linear perpetual symbols:
+
+- `BTCUSDT`
+- `ETHUSDT`
+- `SOLUSDT`
+- `XRPUSDT`
+
+Use the exact common target range `2023-07-01T00:00:00Z` through `2024-12-31T23:00:00Z`. A symbol may have an unavailable prefix or suffix, but observations must never be fabricated, interpolated or forward-filled. Preserve all availability limitations explicitly.
+
+## Authorised data
 
 Use official Bybit V5 public endpoints only:
 
 - funding history: `GET https://api.bybit.com/v5/market/funding/history`;
-- open interest: `GET https://api.bybit.com/v5/market/open-interest`;
-- instrument metadata: `GET https://api.bybit.com/v5/market/instruments-info` only to verify the funding interval;
-- `category=linear`, `symbol=ADAUSDT`.
+- open interest: `GET https://api.bybit.com/v5/market/open-interest`, `intervalTime=15min`;
+- instrument metadata: `GET https://api.bybit.com/v5/market/instruments-info` only to verify contract and funding interval;
+- kline: `GET https://api.bybit.com/v5/market/kline`, `interval=15`, only when no already validated exact-symbol local archive exists.
 
-For open interest use `intervalTime=15min`. Use the exact EXP-023/EXP-024 range `2023-07-01T00:00:00Z` through `2024-12-31T23:00:00Z`. Store raw funding and OI archives outside GitHub under `${HOME}/.local/share/msm-market-data/bybit/linear/ADAUSDT/`, using deterministic CSV schemas and atomic writes. Existing validated OHLC archives remain unchanged.
+Store raw archives outside GitHub under `${HOME}/.local/share/msm-market-data/bybit/linear/<SYMBOL>/` using deterministic schemas and atomic writes. Reuse validated archives when hashes and provenance pass. Record endpoint, parameters, retrieval time, pagination, retries, hashes, schema, coverage, gaps, duplicates, ordering, numeric validity and unavailable prefixes/suffixes.
 
-Record endpoint, parameters, retrieval time, pagination, retries, hashes, schema, coverage, gaps, duplicates, ordering, numeric validity and unavailable prefixes/suffixes. Do not fabricate, interpolate or forward-fill observations.
+## Frozen EXP-026 event definitions
 
-## Frozen independent event definitions
+Apply unchanged, independently for each symbol.
 
-All thresholds are fixed before measurement and use past data only.
+### Funding extremes
 
-### A. Funding extreme
-
-At each settled funding timestamp, compute its causal empirical percentile from the preceding 90 calendar days of settled ADAUSDT funding observations, excluding the current observation.
+At each settled funding timestamp, calculate the causal empirical percentile from settled observations in the preceding 90 calendar days, excluding the current observation.
 
 - `FUNDING_LOW`: percentile `<= 0.05`;
-- `FUNDING_HIGH`: percentile `>= 0.95`.
+- `FUNDING_HIGH`: percentile `>= 0.95`;
+- require at least 90 prior funding observations.
 
-Require at least 90 prior funding observations; otherwise mark `INSUFFICIENT_HISTORY`.
+### OI shocks
 
-### B. OI shock
+For each closed 15m OI observation calculate `delta_log_oi = log(OI_t / OI_{t-1})`. From only the preceding 30 calendar days calculate causal median and MAD.
 
-For each closed 15m OI observation compute `delta_log_oi = log(OI_t / OI_{t-1})`. Using only the preceding 30 calendar days, compute the causal median and MAD of `delta_log_oi`.
-
-Use robust score `z_mad = 0.67448975 * (x - median) / MAD`.
+`z_mad = 0.67448975 * (x - median) / MAD`
 
 - `OI_EXPANSION_SHOCK`: `z_mad >= 4.0`;
-- `OI_CONTRACTION_SHOCK`: `z_mad <= -4.0`.
+- `OI_CONTRACTION_SHOCK`: `z_mad <= -4.0`;
+- require at least 1,000 prior valid changes and positive MAD.
 
-Require at least 1,000 prior valid 15m changes and positive MAD; otherwise mark the reason explicitly.
+### Joint events
 
-### C. Joint event
-
-A `JOINT_EVENT` occurs when a funding extreme has an OI shock at the same timestamp or within the preceding 60 minutes. This is backward-looking only. Preserve the funding side and OI shock side as separate fields; do not invent directional equivalence.
+A `JOINT_EVENT` is a funding extreme with an OI shock at the same timestamp or within the preceding 60 minutes. Preserve funding side and OI side separately.
 
 ## Frozen episode construction
 
-Construct episodes independently within each event family and side:
+Within each symbol, event family and side:
 
-1. sort events by timestamp;
-2. merge events separated by less than 8 hours into one episode;
-3. opposite funding sides and opposite OI shock sides never merge;
-4. episode start is the first event timestamp and episode end is eight hours after the last member event;
-5. representative event is earliest timestamp, then deterministic event id.
+1. sort by timestamp;
+2. produce both 8-hour and 24-hour merge views;
+3. opposite funding sides and opposite OI sides never merge;
+4. episode start is first event; episode end is merge distance after last member;
+5. representative is earliest timestamp, then deterministic event id.
 
-Also create a strict sensitivity view using a 24-hour merge distance. Do not choose between 8h and 24h from downstream measurements.
+Do not select between merge views from measured contrasts.
 
-## OHLC state description
+## Frozen OHLC state description
 
-Use the exact validated Bybit ADAUSDT 15m archive from EXP-023 and derive complete UTC 1H bars as in EXP-024. At each independently selected representative event timestamp, describe only information closed by that timestamp:
+Use complete closed native 15m bars and deterministic complete UTC 1H bars. At each independently selected representative timestamp calculate exactly the EXP-026 state fields:
 
-- 15m and 1H ATR-normalised displacement and range over frozen windows 4, 8 and 32 parent bars;
+- ATR-normalised displacement and range for frozen 4, 8 and 32 parent-bar windows on 15m and 1H;
 - efficiency, close location and direction-aware slopes;
-- the five frozen parent representations from EXP-024 (`FIXED_8`, `DIRECTION_RUN`, `ATR_ORIGIN`, `CONFIRMED_DIRECTION_CHANGE`, `HYBRID_ORIGIN`) evaluated at the event timestamp, not used for event selection;
-- representation validity, age, origin disagreement, cap/history reasons and normalised geometry;
-- whether an EXP-024 or EXP-025 detection/episode is already active, as an overlap annotation only.
+- five frozen EXP-024 representations: `FIXED_8`, `DIRECTION_RUN`, `ATR_ORIGIN`, `CONFIRMED_DIRECTION_CHANGE`, `HYBRID_ORIGIN`;
+- validity, age, origin disagreement, cap/history reasons and normalised geometry.
 
-No future bars, future pivots, future returns or outcome labels are allowed.
+OHLC may describe already selected events only. It may not create, remove, merge, rank or weight events. No future bars, pivots, returns or outcome labels.
 
-## Controls and analysis
+## Frozen controls
 
-Create deterministic matched controls from timestamps with no funding extreme or OI shock in the surrounding 24 hours. Match exactly on:
+For every symbol and event family create deterministic matched controls with no funding extreme or OI shock in the surrounding 24 hours. Match exactly on:
 
+- symbol;
 - calendar month;
-- UTC hour bucket;
-- chronological third;
+- UTC hour;
+- chronological third within that symbol's available range;
 - available-history status.
 
-Controls must be source-excluded and non-overlapping with event episodes. Use equal support and deterministic hashing for tie-breaking.
+Controls must be source-excluded, outside all event episodes, equal-support where possible, and selected by deterministic SHA-256 tie-breaking. Preserve unmatched strata explicitly.
 
-Report:
+## Transfer analysis
 
-- raw event and independent episode support by family, side, month and chronological third;
-- 8h versus 24h compression and concentration;
-- funding/OI joint-event support;
-- representation validity, age variability and origin disagreement at independently sampled event times;
-- event-versus-control distribution distances and rank relationships for frozen OHLC geometry;
-- factor-free direction/time stability because event thresholds are fixed;
-- overlap with EXP-024 detections and EXP-025 episodes, clearly separated from independent support;
-- sensitivity to the 8h/24h episode rule;
-- counterexamples where an independent derivatives event has no distinctive OHLC state, or apparent distinction is caused by time concentration/history selection.
+Report without selecting a winner:
 
-No representation, event family or episode rule may be selected because it gives the largest contrast.
+- raw events and 8H/24H episode support by symbol, family, side, month and chronological third;
+- support concentration and compression by symbol;
+- event-versus-control distribution distances and rank relationships for every frozen state field and representation;
+- representation validity, age variability and origin disagreement;
+- sign consistency and rank consistency of event-control contrasts across the four symbols;
+- leave-one-symbol-out stability;
+- pooled results only after symbol-level results, using equal-symbol weighting rather than event-count weighting;
+- sensitivity to 8H versus 24H episodes;
+- counterexamples where a contrast is driven by one symbol, one time third, history availability or invalid representation support.
+
+No symbol, event family, representation, field or episode view may be selected because it gives the largest result.
+
+## Frozen transfer criteria
+
+For each event-family/side/representation/field cell, call a structural distinction transferable only when all are true:
+
+1. at least three of four symbols have sufficient matched support;
+2. at least three symbols have the same contrast sign;
+3. no single symbol contributes more than 50% of the equal-symbol pooled absolute contrast;
+4. the sign survives every feasible leave-one-symbol-out calculation;
+5. the sign is the same in both 8H and 24H views;
+6. validity and history exclusions do not remove more than 50% of independent episodes in the supporting symbols.
+
+These criteria are frozen and must not be relaxed.
 
 ## Decision
 
 Select exactly one verdict:
 
-- `DERIVATIVES_EVENT_STRUCTURE_SUPPORTED` — at least one independently sampled event family has non-concentrated episode support, stable event-versus-control structural distinction across time thirds, and non-degenerate valid representation geometry under both 8h and 24h episode views;
-- `DERIVATIVES_EVENT_STRUCTURE_PARTIAL` — independent events are measurable and some structural distinction exists, but support, concentration, history, representation validity or episode sensitivity limits transfer;
-- `DERIVATIVES_EVENT_STRUCTURE_REJECTED` — independent event episodes show no stable structural distinction from controls or any distinction collapses under episode/time/history checks;
-- `DERIVATIVES_EVENT_DATA_FAILED` — official funding or OI histories cannot support an honest test.
+- `MULTI_MARKET_DERIVATIVES_TRANSFER_SUPPORTED` — at least one predeclared event-family/side structural distinction satisfies every frozen transfer criterion, with non-concentrated support and no contradictory broad result;
+- `MULTI_MARKET_DERIVATIVES_TRANSFER_PARTIAL` — independent events transfer operationally and some cross-symbol consistency exists, but no distinction fully satisfies all criteria or material support/history/episode sensitivity remains;
+- `MULTI_MARKET_DERIVATIVES_TRANSFER_REJECTED` — distinctions are symbol-specific, unstable, contradictory or collapse under frozen controls and leave-one-symbol-out checks;
+- `MULTI_MARKET_DERIVATIVES_DATA_FAILED` — official histories cannot support an honest common-panel test.
 
 Do not force a positive verdict.
 
@@ -121,42 +141,43 @@ Do not force a positive verdict.
 
 Create exactly these nine files:
 
-- `experiments/EXP-026_ADA_DERIVATIVES_EVENT_EPISODES/REPORT.md`
-- `experiments/EXP-026_ADA_DERIVATIVES_EVENT_EPISODES/data_provenance.csv`
-- `experiments/EXP-026_ADA_DERIVATIVES_EVENT_EPISODES/events.csv`
-- `experiments/EXP-026_ADA_DERIVATIVES_EVENT_EPISODES/episodes.csv`
-- `experiments/EXP-026_ADA_DERIVATIVES_EVENT_EPISODES/event_state.csv`
-- `experiments/EXP-026_ADA_DERIVATIVES_EVENT_EPISODES/matched_controls.csv`
-- `experiments/EXP-026_ADA_DERIVATIVES_EVENT_EPISODES/robustness_summary.csv`
-- `experiments/EXP-026_ADA_DERIVATIVES_EVENT_EPISODES/counterexamples.csv`
-- `experiments/EXP-026_ADA_DERIVATIVES_EVENT_EPISODES/experiment_026.py`
+- `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/REPORT.md`
+- `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/data_provenance.csv`
+- `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/events.csv`
+- `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/episodes.csv`
+- `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/event_state.csv`
+- `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/matched_controls.csv`
+- `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/transfer_summary.csv`
+- `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/counterexamples.csv`
+- `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/experiment_027.py`
 
-Do not commit raw market archives or modify any other repository path. Do not create `__pycache__` or `.pyc` files.
+Do not commit raw market archives or create cache files.
 
 ## Validation
 
 Before PASS:
 
-1. Validate official endpoint identity, pagination and response schema.
-2. Verify all funding/OI observations are closed, UTC-aligned, unique, ordered and numeric.
-3. Reproduce source hashes and all gap/coverage metrics.
-4. Assert every percentile, median and MAD window excludes the current and future observations.
-5. Assert event grouping uses only event family/side/timestamps and never OHLC geometry.
-6. Assert OHLC state inputs end no later than the event timestamp.
-7. Verify 8h and 24h episode views preserve all raw event ids exactly once.
-8. Verify matched controls are source-excluded, non-overlapping and deterministic.
-9. Preserve insufficient-history and zero-MAD cases explicitly.
-10. Run twice and verify identical SHA-256 hashes for all nine committed outputs without redownloading validated raw archives.
-11. Parse all CSVs and reproduce REPORT values and verdict.
-12. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-026_ADA_DERIVATIVES_EVENT_EPISODES/experiment_026.py`, remove cache artifacts, run `git diff --check`, and perform baseline-relative allowlist validation.
-13. Verify protected and pre-existing dirty files remain byte-identical and no files are staged.
+1. Verify exact symbol panel, endpoint identity, parameters, pagination and schemas.
+2. Verify all observations are closed, UTC-aligned, ordered, unique and numeric.
+3. Reproduce hashes, coverage, gaps and unavailable intervals.
+4. Assert all rolling calculations exclude current and future observations.
+5. Assert event membership and grouping never use OHLC.
+6. Assert OHLC inputs end no later than event timestamp.
+7. Verify every raw event id belongs exactly once to each applicable 8H and 24H view.
+8. Verify controls are symbol-matched, source-excluded, non-overlapping and deterministic.
+9. Preserve insufficient-history, zero-MAD, missing-bar and unmatched-control cases explicitly.
+10. Verify transfer criteria directly from output rows, including leave-one-symbol-out and equal-symbol weighting.
+11. Run twice without redownloading validated archives and require identical SHA-256 hashes for all nine outputs.
+12. Parse every CSV and reproduce REPORT values and verdict.
+13. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/experiment_027.py`, remove cache artifacts, run `git diff --check`, and perform baseline-relative allowlist validation.
+14. Verify all protected and pre-existing dirty files remain byte-identical and unstaged.
 
 ## Hard protections
 
-Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, any EXP-009 or EXP-013 through EXP-025 file, committed source datasets, or paths outside the nine EXP-026 outputs.
+Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, any EXP-009 file, or any EXP-013 through EXP-026 file. The protected dirty file `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine` must remain byte-identical and unstaged.
 
-The only permitted non-repository writes are deterministic raw funding/OI archive files and temporary files under `${HOME}/.local/share/msm-market-data/bybit/linear/ADAUSDT/`. Existing dirty files must remain byte-identical, unstaged and uncommitted.
+Only the nine EXP-027 outputs may change inside the repository. The only permitted non-repository writes are deterministic raw archives and temporary files under `${HOME}/.local/share/msm-market-data/bybit/linear/<SYMBOL>/`.
 
 ## Result contract
 
-Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted EXP-026 outputs unstaged. Raw market data remain outside the repository. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message and pushes to `main`.
+Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted EXP-027 outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message and pushes to `main`.
