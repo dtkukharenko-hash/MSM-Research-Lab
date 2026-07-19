@@ -1,0 +1,5 @@
+interval,source,sha256,rows,first_utc,last_utc,utc_aligned,gaps,closed_bars,derivation,old_1h_archive
+3m,official Bybit V5 linear ADAUSDT,ac96daf57a4e118565db3d12f729173a3fd59fddd0b9fbcbda0cc4fefd93d87d,263981,2023-07-01T00:00:00Z,2024-12-31T23:00:00Z,1,0,1,native,EXCLUDED_PROVENANCE_CONFLICT
+5m,official Bybit V5 linear ADAUSDT,1caa68f3fa7ac3dd56b50e42173653fdd0a5d4c71223c0eef0811b5fb84049d6,158389,2023-07-01T00:00:00Z,2024-12-31T23:00:00Z,1,0,1,native,EXCLUDED_PROVENANCE_CONFLICT
+15m,official Bybit V5 linear ADAUSDT,0ddfb8ad29eee1b279e39c79dbf94a019392b162dd2117a9137e01f5fcff7954,52797,2023-07-01T00:00:00Z,2024-12-31T23:00:00Z,1,0,1,native,EXCLUDED_PROVENANCE_CONFLICT
+1H,deterministically derived from native Bybit 15m,DERIVED_FROM_15M,13199,2023-07-01T00:00:00Z,2024-12-31T22:00:00Z,1,0,1,four complete UTC-aligned 15m components,EXCLUDED_PROVENANCE_CONFLICT
