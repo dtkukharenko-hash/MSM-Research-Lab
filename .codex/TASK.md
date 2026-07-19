@@ -1,171 +1,189 @@
 # Current Codex Task
 
-- task_id: `EXP-024-ADA-COHERENT-LOWER-TIMEFRAME-TRANSFER`
+- task_id: `EXP-025-ADA-LOWER-TIMEFRAME-DEOVERLAP`
 - status: `READY`
-- published_at: `2026-07-18`
+- published_at: `2026-07-19`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- source_experiment: `EXP-023-ADA-LOWER-TIMEFRAME-DATA`
-- commit_message: `EXP-024 coherent Bybit lower timeframe transfer`
+- source_experiment: `EXP-024-ADA-COHERENT-LOWER-TIMEFRAME-TRANSFER`
+- commit_message: `EXP-025 ADA lower timeframe de-overlap`
 
 ## Objective
 
-Rerun the lower-timeframe structural transfer test on one internally coherent official Bybit ADAUSDT linear hierarchy: native 3m, 5m and 15m bars, with 1H deterministically derived from native 15m. Do not mix the committed EXP-011 1H archive into the primary analysis.
+Determine whether the lower-timeframe structural form observed in EXP-024 survives after repeated and overlapping detections are collapsed into independent causal episodes.
 
-EXP-023 established zero missing bars and exact 3m→15m and 5m→15m equality over the frozen range. Its `DATA_NOT_READY` verdict was caused only by material disagreement between official Bybit-derived 1H and the older committed 1H archive. Treat that mismatch as a provenance conflict, not as evidence against the internally coherent Bybit hierarchy.
+This is a robustness and dependence audit. Do not change the detector, thresholds, parent representations, source hierarchy or normalized geometry. Do not use future outcomes, returns, labels or downstream contrast to define episodes.
 
-This is a descriptive causal representation test, not a trading rule, entry/exit study or threshold search.
+## Fixed data and source hierarchy
 
-## Data contract
+Use the same official Bybit ADAUSDT linear hierarchy and frozen range as EXP-024:
 
-Use only official Bybit V5 public linear ADAUSDT klines with the exact frozen range:
-
-- `2023-07-01T00:00:00Z` through `2024-12-31T23:00:00Z`;
-- native intervals `3`, `5`, `15`;
-- endpoint `https://api.bybit.com/v5/market/kline`;
-- `category=linear`, `symbol=ADAUSDT`.
-
-First look for the exact EXP-023 hashes:
-
-- 3m: `ac96daf57a4e118565db3d12f729173a3fd59fddd0b9fbcbda0cc4fefd93d87d`;
-- 5m: `1caa68f3fa7ac3dd56b50e42173653fdd0a5d4c71223c0eef0811b5fb84049d6`;
-- 15m: `0ddfb8ad29eee1b279e39c79dbf94a019392b162dd2117a9137e01f5fcff7954`.
-
-Expected stable paths are `${HOME}/.local/share/msm-market-data/bybit/linear/ADAUSDT/ADAUSDT_{3m,5m,15m}.csv`. If files are absent or hashes differ, reacquire only from the same official endpoint using the EXP-023 acquisition conventions, validate fully and atomically replace the stable local files. Raw archives remain outside GitHub.
-
-Derive 1H only from complete UTC-aligned native 15m components. Do not compare or merge primary measurements with the old committed 1H archive. Record the old-source conflict only in provenance notes.
-
-## Frozen scale mappings
-
-Evaluate independently:
-
-1. child `15m` → parent `1H` derived from the same Bybit 15m source;
-2. child `5m` → parent `15m` native Bybit;
-3. child `3m` → parent `15m` native Bybit.
-
-All bars must be complete, UTC-aligned and closed. Parent inputs must end strictly before counter start.
-
-## Frozen detector
-
-Transfer the committed causal detector without tuning:
-
+- native 3m, 5m and 15m archives with the exact EXP-023 hashes;
+- derived 1H from complete UTC-aligned groups of four native 15m bars;
+- range `2023-07-01T00:00:00Z` through `2024-12-31T23:00:00Z`;
+- mappings `15m→1H`, `5m→15m`, `3m→15m`;
 - factors `0.8`, `1.0`, `1.2`;
-- normalized ATR displacement, extension and boundary geometry;
-- durations represented in bars first and clock time second;
-- no future pivots, repainting, future returns, outcome labels or chart-selected thresholds.
+- representations `FIXED_8`, `DIRECTION_RUN`, `ATR_ORIGIN`, `CONFIRMED_DIRECTION_CHANGE`, `HYBRID_ORIGIN`.
 
-Preserve the scale-independent constants:
+Read EXP-024 outputs as frozen source measurements. Recompute from the same raw archives only when necessary for validation. Do not modify EXP-024 files or raw data.
 
-- `FIXED_8`: 8 completed parent bars;
-- maximum origin lookback: 32 parent bars;
-- direction-change confirmation: 2 parent bars;
-- `ATR_ORIGIN` threshold: 1.0 causal parent ATR.
+## Frozen episode construction
 
-## Frozen parent representations
+Construct episodes independently for each mapping and factor from EXP-024 detections using only information available at detection time.
 
-Implement exactly:
+Represent every detection by its closed child-time interval `[counter_start, counter_end]` and direction.
 
-1. `FIXED_8`;
-2. `DIRECTION_RUN`;
-3. `ATR_ORIGIN`;
-4. `CONFIRMED_DIRECTION_CHANGE`;
-5. `HYBRID_ORIGIN`.
+Create three predeclared episode views:
 
-Do not add or tune representations. Do not select one from downstream contrast.
+1. `STRICT_NONOVERLAP`
+   - sort detections by `counter_start`, then `counter_end`, then deterministic source id;
+   - retain the first detection;
+   - reject every later detection whose interval overlaps any retained interval;
+   - touching intervals where the next start equals the retained end are non-overlapping.
 
-## Required analysis
+2. `CONNECTED_COMPONENT`
+   - build interval-overlap connected components within the same mapping, factor and direction;
+   - two detections are connected when their closed-open intervals `[start,end)` overlap directly or transitively;
+   - one component is one episode;
+   - episode start is the minimum start, episode end the maximum end;
+   - representative detection is the earliest start, then earliest end, then deterministic source id.
 
-For every mapping, factor, detection and representation report:
+3. `PARENT_WINDOW_COMPONENT`
+   - group detections within the same mapping, factor and direction when their source windows share at least one completed parent bar;
+   - use transitive connected components;
+   - representative selection is identical to `CONNECTED_COMPONENT`.
 
-- source hashes, native/derived intervals, bar coverage and exact overlap;
-- detection support, UP/DOWN support, chronological-thirds and rate per 1,000 parent bars;
-- factor overlap with factor 1.0 and collapse/concentration flags;
-- validity and invalid reasons;
+Do not merge opposite directions. Do not use price similarity, geometry, representation validity, contrast or later behaviour to merge or split episodes.
+
+## Shared-parent cross-mapping audit
+
+For `3m→15m` and `5m→15m`, construct a separate cross-mapping dependence table at each factor:
+
+- match episodes when they share direction and at least one 15m parent bar in their source windows;
+- report one-to-one, one-to-many and unmatched components;
+- preserve both mapping identities;
+- do not collapse them into a preferred scale.
+
+## Required measurements
+
+For each mapping, factor and episode view report:
+
+- raw detection count;
+- episode count and compression ratio;
+- retained/rejected counts;
+- episode duration in child bars and minutes;
+- detections per episode q25/q50/q75/max;
+- overlap depth and maximum simultaneous detections;
+- UP/DOWN and chronological-third support;
+- rate per 1,000 parent bars;
+- factor overlap with factor 1.0 using episode representatives;
+- concentration by calendar day and parent bar;
+- representation validity and invalid reasons on representative detections;
 - age q25/q50/q75, unique ages and entropy;
-- cap-hit, minimum-history and zero-denominator rates;
-- origin disagreement from `FIXED_8` in parent bars and minutes;
-- displacement, extension, efficiency, close location, range, boundary and extreme distances in ATR;
-- recent and whole-window slopes;
-- rank correlations among age, displacement, efficiency, boundary distance and extreme distance;
-- direction, chronological-third and factor stability;
-- deterministic source-excluded non-overlapping matched controls and equal-support comparisons with `FIXED_8`;
-- repeated/overlapping detection concentration;
-- agreement and disagreement between 3m and 5m mappings sharing the same 15m parent.
+- cap-hit and minimum-history rates;
+- origin disagreement from `FIXED_8`;
+- normalized displacement, efficiency, boundary distance and extreme distance;
+- direction and chronological-third stability;
+- paired comparison between raw detections and episode representatives.
 
-Compare normalized geometry across mappings using frozen families:
+For every representation, preserve the representative detection’s original causal measurements. Do not average origins across detections in an episode.
 
-- age bins `1-2`, `3-4`, `5-8`, `9+`;
-- efficiency bands `<0.25`, `[0.25,0.50)`, `[0.50,0.75)`, `>=0.75`;
-- per-mapping displacement quartiles;
-- per-mapping boundary-distance quartiles.
+## Primary robustness questions
 
-The older committed 4H→1H result may be shown only as an external descriptive reference where definitions match. It must not be used as a shared-source equality requirement or to select a representation.
+Answer explicitly:
 
-## Counterexamples
+1. Does at least one non-fixed representation remain non-degenerate after de-overlap on at least two mappings?
+2. Does `CONFIRMED_DIRECTION_CHANGE` retain broad age support and high validity after compression?
+3. Are EXP-024 similarities driven mainly by repeated detections from the same episode?
+4. Do 3m and 5m remain descriptively consistent after accounting for their shared 15m parent dependence?
+5. Do conclusions reverse across factors, directions, chronological thirds or episode views?
+6. Is any apparent robustness caused by selecting only valid origins or by a few dense calendar periods?
 
-Export causal examples of:
+## Frozen stability criteria
 
-- lower-scale detection with no analogous parent geometry;
-- variable origin collapsing to `FIXED_8`;
-- apparent consistency caused by invalid-row removal or cap hits;
-- reversal by scale, direction, time third or factor;
-- 3m/5m disagreement with the same 15m parent;
-- repeated overlapping high-frequency detections;
-- disagreement between `ATR_ORIGIN` and `CONFIRMED_DIRECTION_CHANGE`.
+A representation is episode-robust on a mapping only when all are true in both `STRICT_NONOVERLAP` and `CONNECTED_COMPONENT` views at factor 1.0:
+
+- at least 300 valid representative episodes;
+- at least 5 unique parent ages;
+- age entropy at least 1.0 bit;
+- invalid rate no greater than 5%;
+- no single chronological third contains more than 45% of support;
+- both directions contain at least 25% of support;
+- median age-bin ordering and the signs of the principal rank relationships do not reverse between the two views.
+
+Factor stability requires the same representation to satisfy the support, entropy and invalidity rules at factors 0.8 and 1.2, with no systematic direction or time-third reversal.
+
+Do not lower these thresholds after observing results.
+
+## Controls and counterexamples
+
+Use deterministic source-excluded, non-overlapping controls inherited from EXP-024 where compatible. Rebuild controls against episode representatives only if needed, preserving the same causal rules.
+
+Export examples of:
+
+- a dense raw cluster collapsing to one episode;
+- a representation that appears variable in raw detections but collapses after de-overlap;
+- factor-specific episode fragmentation;
+- opposite conclusions between strict and connected-component views;
+- 3m/5m shared-parent duplication;
+- validity-selected apparent robustness;
+- direction or chronological-third reversal;
+- a stable independent episode with clearly distinct non-fixed origins.
 
 ## Decision
 
 Select exactly one verdict:
 
-- `COHERENT_LOWER_TIMEFRAME_TRANSFER_SUPPORTED` — the form and at least one non-fixed representation remain non-degenerate, causally valid and broadly stable on at least two mappings without support-selection, overlap or factor/direction/time artifacts;
-- `COHERENT_LOWER_TIMEFRAME_TRANSFER_PARTIAL` — useful structure exists, but redundancy, validity, overlap, scale consistency or stability remains limited;
-- `COHERENT_LOWER_TIMEFRAME_TRANSFER_REJECTED` — the form collapses, becomes mechanically redundant/noise-dominated, or reverses across mappings;
-- `COHERENT_LOWER_TIMEFRAME_DATA_FAILED` — exact official archives cannot be validated or reacquired.
+- `EPISODE_ROBUST_TRANSFER_SUPPORTED` — at least one non-fixed representation is episode-robust and factor-stable on at least two mappings, including one of `3m→15m` or `5m→15m`, without shared-parent duplication, validity selection or temporal concentration explaining the result.
+- `EPISODE_ROBUST_TRANSFER_PARTIAL` — non-degenerate independent structure remains, but only one mapping or one episode view is robust, or shared-parent/factor/time dependence remains material.
+- `EPISODE_ROBUST_TRANSFER_REJECTED` — the lower-timeframe form largely disappears, becomes redundant, reverses or fails frozen support/stability criteria after de-overlap.
+- `EPISODE_AUDIT_FAILED` — frozen EXP-024 measurements or exact raw sources cannot be validated reproducibly.
 
-Do not force a positive verdict.
+Do not force a positive verdict and do not select a preferred representation from downstream contrast.
 
 ## Required outputs
 
-Create exactly these nine committed files:
+Create exactly these nine files:
 
-- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/REPORT.md`
-- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/data_provenance.csv`
-- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/detections.csv`
-- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/representations.csv`
-- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/scale_comparison.csv`
-- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/matched_controls.csv`
-- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/parameter_stability.csv`
-- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/counterexamples.csv`
-- `experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/experiment_024.py`
+- `experiments/EXP-025_ADA_LOWER_TIMEFRAME_DEOVERLAP/REPORT.md`
+- `experiments/EXP-025_ADA_LOWER_TIMEFRAME_DEOVERLAP/episode_membership.csv`
+- `experiments/EXP-025_ADA_LOWER_TIMEFRAME_DEOVERLAP/episode_summary.csv`
+- `experiments/EXP-025_ADA_LOWER_TIMEFRAME_DEOVERLAP/representation_robustness.csv`
+- `experiments/EXP-025_ADA_LOWER_TIMEFRAME_DEOVERLAP/factor_stability.csv`
+- `experiments/EXP-025_ADA_LOWER_TIMEFRAME_DEOVERLAP/shared_parent_dependence.csv`
+- `experiments/EXP-025_ADA_LOWER_TIMEFRAME_DEOVERLAP/raw_vs_episode.csv`
+- `experiments/EXP-025_ADA_LOWER_TIMEFRAME_DEOVERLAP/counterexamples.csv`
+- `experiments/EXP-025_ADA_LOWER_TIMEFRAME_DEOVERLAP/experiment_025.py`
 
-Do not commit raw archives or create any other repository path. Do not create `__pycache__` or `.pyc` files.
+Do not create or modify any other repository path. Do not commit raw archives, temporary extracts, `__pycache__` or `.pyc` files.
 
 ## Python and validation requirements
 
-`experiment_024.py` must deterministically regenerate all eight report/data outputs, validate or reacquire the exact official archives, derive complete UTC 1H bars from 15m, implement the frozen detector and representations causally, preserve invalid rows explicitly, create deterministic non-overlapping controls, and derive the verdict entirely from generated fields.
+`experiment_025.py` must deterministically regenerate all eight data/report outputs from frozen EXP-024 outputs and validated source data; implement all three episode views exactly; preserve membership of every raw detection; reproduce representative selection and all report values; and derive the verdict entirely from generated fields.
 
 Before PASS:
 
-1. Validate source hashes, schemas, ordering, uniqueness, gaps, OHLCV, UTC alignment and closed bars.
-2. Assert exact 3m→15m and 5m→15m equality over complete overlap.
-3. Assert every derived 1H bar has four complete 15m components.
-4. Run actual factors 0.8, 1.0 and 1.2.
-5. Assert origins end before counter start and all 8/32/two-bar/1.0-ATR definitions.
-6. Verify chronological thirds are deterministic and exhaustive.
-7. Verify controls are deterministic, source-excluded and non-overlapping.
-8. Quantify repeated detections and 3m/5m shared-parent dependence.
-9. Verify no representation, threshold or mapping was selected from outcomes.
-10. Run twice and verify identical SHA-256 hashes for all nine outputs.
-11. Parse every CSV and reproduce REPORT values and verdict.
-12. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-024_ADA_COHERENT_LOWER_TIMEFRAME_TRANSFER/experiment_024.py`, remove cache artifacts, run `git diff --check`, and perform baseline-relative allowlist validation.
-13. Verify protected and pre-existing dirty files remain byte-identical and no files are staged.
+1. Validate all required EXP-024 input files, schemas and hashes or document reproducible source validation.
+2. Verify every raw detection belongs to exactly one component in component views and is retained or rejected explicitly in strict view.
+3. Verify opposite directions are never merged.
+4. Verify connected components are invariant to input row order.
+5. Verify representative selection is deterministic.
+6. Verify touching intervals follow the declared closed-open rule.
+7. Verify parent-window components use completed parent-bar identities only.
+8. Verify 3m/5m shared-parent matching is independent of downstream geometry.
+9. Verify all frozen support, entropy, invalidity, direction and time thresholds.
+10. Verify raw-versus-episode comparisons use identical fields and bins.
+11. Verify controls are causal, source-excluded and non-overlapping.
+12. Verify no representation, factor, mapping or episode view is selected from outcomes.
+13. Run twice and verify identical SHA-256 hashes for all nine outputs.
+14. Parse every CSV and reproduce REPORT values and verdict.
+15. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-025_ADA_LOWER_TIMEFRAME_DEOVERLAP/experiment_025.py`, remove cache artifacts, run `git diff --check`, and perform baseline-relative allowlist validation.
+16. Verify protected and pre-existing dirty files remain byte-identical and no files are staged.
 
 ## Hard protections
 
-Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, any EXP-009 or EXP-013 through EXP-023 file, committed source datasets, or paths outside the nine EXP-024 outputs.
-
-The only permitted non-repository writes are the three stable raw archive paths under `${HOME}/.local/share/msm-market-data/bybit/linear/ADAUSDT/` and temporary files beside them. Existing dirty files must remain byte-identical, unstaged and uncommitted.
+Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, any EXP-009 or EXP-013 through EXP-024 file, committed source datasets, raw market data or any path outside the nine EXP-025 outputs. Existing dirty files must remain byte-identical, unstaged and uncommitted.
 
 ## Result contract
 
-Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted EXP-024 outputs unstaged. Raw market data remain outside the repository. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message and pushes to `main`.
+Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted EXP-025 outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message and pushes to `main`.
