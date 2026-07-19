@@ -1,0 +1,48 @@
+section,episode_view,event_family,side,metric,value,note
+episode_support,8H,FUNDING,ALL,representatives,540,grouping family+side+timestamp only
+time_third,8H,FUNDING,ALL,third_1,224,factor-free fixed thresholds
+time_third,8H,FUNDING,ALL,third_2,51,factor-free fixed thresholds
+time_third,8H,FUNDING,ALL,third_3,265,factor-free fixed thresholds
+episode_support,8H,OI,ALL,representatives,898,grouping family+side+timestamp only
+time_third,8H,OI,ALL,third_1,307,factor-free fixed thresholds
+time_third,8H,OI,ALL,third_2,316,factor-free fixed thresholds
+time_third,8H,OI,ALL,third_3,275,factor-free fixed thresholds
+episode_support,8H,JOINT,ALL,representatives,145,grouping family+side+timestamp only
+time_third,8H,JOINT,ALL,third_1,63,factor-free fixed thresholds
+time_third,8H,JOINT,ALL,third_2,12,factor-free fixed thresholds
+time_third,8H,JOINT,ALL,third_3,70,factor-free fixed thresholds
+episode_support,24H,FUNDING,ALL,representatives,133,grouping family+side+timestamp only
+time_third,24H,FUNDING,ALL,third_1,42,factor-free fixed thresholds
+time_third,24H,FUNDING,ALL,third_2,26,factor-free fixed thresholds
+time_third,24H,FUNDING,ALL,third_3,65,factor-free fixed thresholds
+episode_support,24H,OI,ALL,representatives,293,grouping family+side+timestamp only
+time_third,24H,OI,ALL,third_1,82,factor-free fixed thresholds
+time_third,24H,OI,ALL,third_2,109,factor-free fixed thresholds
+time_third,24H,OI,ALL,third_3,102,factor-free fixed thresholds
+episode_support,24H,JOINT,ALL,representatives,105,grouping family+side+timestamp only
+time_third,24H,JOINT,ALL,third_1,46,factor-free fixed thresholds
+time_third,24H,JOINT,ALL,third_2,12,factor-free fixed thresholds
+time_third,24H,JOINT,ALL,third_3,47,factor-free fixed thresholds
+raw_support,NA,FUNDING,ALL,qualified_events,540,insufficient history retained separately
+raw_support,NA,OI,ALL,qualified_events,2490,insufficient history retained separately
+raw_support,NA,JOINT,ALL,qualified_events,176,insufficient history retained separately
+event_control,8H,ALL,ALL,15m:FIXED_8:displacement_ks,,"event_n=0 control_n=0; descriptive, no selection"
+representation,8H,ALL,ALL,15m:FIXED_8:valid_support,0,age/origin geometry retained
+event_control,8H,ALL,ALL,15m:DIRECTION_RUN:displacement_ks,,"event_n=0 control_n=0; descriptive, no selection"
+representation,8H,ALL,ALL,15m:DIRECTION_RUN:valid_support,0,age/origin geometry retained
+event_control,8H,ALL,ALL,15m:ATR_ORIGIN:displacement_ks,,"event_n=0 control_n=0; descriptive, no selection"
+representation,8H,ALL,ALL,15m:ATR_ORIGIN:valid_support,0,age/origin geometry retained
+event_control,8H,ALL,ALL,15m:CONFIRMED_DIRECTION_CHANGE:displacement_ks,,"event_n=0 control_n=0; descriptive, no selection"
+representation,8H,ALL,ALL,15m:CONFIRMED_DIRECTION_CHANGE:valid_support,0,age/origin geometry retained
+event_control,8H,ALL,ALL,15m:HYBRID_ORIGIN:displacement_ks,,"event_n=0 control_n=0; descriptive, no selection"
+representation,8H,ALL,ALL,15m:HYBRID_ORIGIN:valid_support,0,age/origin geometry retained
+event_control,8H,ALL,ALL,1H:FIXED_8:displacement_ks,,"event_n=0 control_n=0; descriptive, no selection"
+representation,8H,ALL,ALL,1H:FIXED_8:valid_support,0,age/origin geometry retained
+event_control,8H,ALL,ALL,1H:DIRECTION_RUN:displacement_ks,,"event_n=0 control_n=0; descriptive, no selection"
+representation,8H,ALL,ALL,1H:DIRECTION_RUN:valid_support,0,age/origin geometry retained
+event_control,8H,ALL,ALL,1H:ATR_ORIGIN:displacement_ks,,"event_n=0 control_n=0; descriptive, no selection"
+representation,8H,ALL,ALL,1H:ATR_ORIGIN:valid_support,0,age/origin geometry retained
+event_control,8H,ALL,ALL,1H:CONFIRMED_DIRECTION_CHANGE:displacement_ks,,"event_n=0 control_n=0; descriptive, no selection"
+representation,8H,ALL,ALL,1H:CONFIRMED_DIRECTION_CHANGE:valid_support,0,age/origin geometry retained
+event_control,8H,ALL,ALL,1H:HYBRID_ORIGIN:displacement_ks,,"event_n=0 control_n=0; descriptive, no selection"
+representation,8H,ALL,ALL,1H:HYBRID_ORIGIN:valid_support,0,age/origin geometry retained
