@@ -18,6 +18,7 @@ ALLOWLIST_PATH = ".codex/ALLOWLIST.txt"
 TERMINAL_DIRS = ("queue", "running", "completed", "blocked", "failed")
 TASK_ID_RE = re.compile(r"^[A-Z0-9][A-Z0-9-]{1,127}$")
 FIELD_RE = re.compile(r"^- ([a-z_]+): `([^`\r\n]+)`$")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 FORBIDDEN_EXACT = {
     "docs/DEFINITIONS.md",
     "experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine",
@@ -93,7 +94,10 @@ def parse_metadata(task_bytes: bytes) -> dict[str, str]:
             if key in fields:
                 raise FeedError("duplicate metadata field: " + key)
             fields[key] = value
-    required = {"task_id", "status", "target_branch", "infrastructure_maintenance"}
+    required = {
+        "task_id", "status", "target_branch", "infrastructure_maintenance",
+        "task_kind", "data_ready",
+    }
     if not required <= set(fields):
         raise FeedError("missing required metadata")
     if not TASK_ID_RE.fullmatch(fields["task_id"]):
@@ -104,6 +108,10 @@ def parse_metadata(task_bytes: bytes) -> dict[str, str]:
         raise FeedError("target branch must be main")
     if fields["infrastructure_maintenance"] not in {"true", "false"}:
         raise FeedError("invalid infrastructure_maintenance")
+    if fields["task_kind"] not in {"DATA", "RESEARCH", "INFRASTRUCTURE"}:
+        raise FeedError("invalid task_kind")
+    if fields["data_ready"] not in {"true", "false"}:
+        raise FeedError("invalid data_ready")
     return fields
 
 
@@ -115,6 +123,24 @@ def is_protected(path: str) -> bool:
         or path.startswith("/usr/") or path.startswith("/etc/") or path.startswith("/home/")
         or any(token in lower for token in ("secret", "credential", "private_key", ".pem", ".key", ".env"))
     )
+
+
+def normalized_repo_file(repo: Path, value: str, label: str) -> Path:
+    candidate = Path(value)
+    if (
+        value != candidate.as_posix()
+        or value.endswith("/")
+        or candidate.is_absolute()
+        or "\\" in value
+        or "." in candidate.parts
+        or ".." in candidate.parts
+        or is_protected(value)
+    ):
+        raise FeedError(label + " path is not normalized or permitted")
+    resolved = (repo / candidate).resolve()
+    if repo.resolve() not in resolved.parents or not resolved.is_file():
+        raise FeedError(label + " file is missing")
+    return resolved
 
 
 def read_allowlist(repo: Path) -> list[str]:
@@ -139,6 +165,30 @@ def read_allowlist(repo: Path) -> list[str]:
             raise FeedError("duplicate allowlist entry: " + value)
         entries.append(value)
     return entries
+
+
+def data_gate_reason(repo: Path, fields: dict[str, str]) -> str | None:
+    if fields["task_kind"] != "RESEARCH":
+        return None
+    if fields["data_ready"] != "true":
+        return "research task requires data_ready=true"
+    manifest_value = fields.get("data_manifest")
+    expected_hash = fields.get("data_manifest_sha256")
+    if not manifest_value or not expected_hash:
+        return "research task requires data_manifest and data_manifest_sha256"
+    if not SHA256_RE.fullmatch(expected_hash):
+        raise FeedError("invalid data_manifest_sha256")
+    manifest = normalized_repo_file(repo, manifest_value, "data manifest")
+    actual_hash = hashlib.sha256(manifest.read_bytes()).hexdigest()
+    if actual_hash != expected_hash:
+        return "data manifest hash mismatch"
+    try:
+        text = manifest.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise FeedError("data manifest is not UTF-8") from exc
+    if "DATA_READY=YES" not in text:
+        return "data manifest does not declare DATA_READY=YES"
+    return None
 
 
 def block_reason(task_bytes: bytes, fields: dict[str, str]) -> str | None:
@@ -209,7 +259,7 @@ def ingest(repo: Path, state: Path, *, dry_run: bool = False, owner: str = "nnv"
         if any(item.get("task_hash") == task_hash for item in matches):
             return "NOOP", "identical task already recorded"
         conflict = bool(matches)
-        reason = block_reason(task_bytes, fields)
+        reason = data_gate_reason(repo, fields) or block_reason(task_bytes, fields)
         if conflict:
             reason = "duplicate task ID with different hash"
         destination = "blocked" if reason else "queue"
