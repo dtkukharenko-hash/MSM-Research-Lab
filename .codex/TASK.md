@@ -1,168 +1,125 @@
 # Current Codex Task
 
-- task_id: `EXP-028-TRANSFER-FAILURE-LOCALIZATION`
+- task_id: `EXP-028R-TRANSFER-FAILURE-LOCALIZATION`
 - status: `READY`
-- published_at: `2026-07-19`
+- published_at: `2026-07-20`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
 - source_experiment: `EXP-027-MULTI-MARKET-DERIVATIVES-TRANSFER`
-- commit_message: `EXP-028 transfer failure localization`
+- commit_message: `EXP-028R transfer failure localization`
 
 ## Objective
 
-Localise why EXP-027 reached `MULTI_MARKET_DERIVATIVES_TRANSFER_PARTIAL` without changing any event threshold, history window, episode rule, control rule, OHLC window, parent representation, market panel or target period.
+Correctly localise why EXP-027 produced only partial multi-market transfer. Reuse the frozen EXP-027 panel, period, events, episodes, controls, state fields, representations and transfer criteria. Do not tune thresholds, select favourable cells, redefine events, or introduce outcome labels.
 
-Test three predeclared explanations separately:
-
-1. mixing distinct derivatives-event families hides otherwise stable structure;
-2. mixing event sides hides otherwise stable structure;
-3. event-state distinctions depend on a causally known volatility regime.
-
-This is a diagnostic causal decomposition, not a search for a favourable cell. Do not tune thresholds, rank outcomes, select markets, or introduce trading language.
+The previous EXP-028 attempt is invalid because it evaluated combined `family × side × volatility` cells and duplicated those results across factor labels. This retry must evaluate three independent predeclared partitions.
 
 ## Frozen inputs
 
-Use exactly the validated EXP-027 panel and period:
+Use exactly the committed EXP-027 outputs and validated external archives for `BTCUSDT`, `ETHUSDT`, `SOLUSDT`, and `XRPUSDT`, over `2023-07-01T00:00:00Z` through `2024-12-31T23:00:00Z`.
 
-- `BTCUSDT`
-- `ETHUSDT`
-- `SOLUSDT`
-- `XRPUSDT`
-- `2023-07-01T00:00:00Z` through `2024-12-31T23:00:00Z`
+Do not modify EXP-027. Recompute only when necessary to verify provenance or derive the causal volatility label.
 
-Reuse validated local funding, OI and 15m OHLC archives from EXP-027. Do not redownload unless an archive fails its recorded hash/schema validation. Do not modify EXP-026 or EXP-027 outputs.
+## Three independent localisation tests
 
-Reuse unchanged:
+### Test A — event-family localisation
 
-- funding extremes at causal 5th/95th percentiles using preceding 90 calendar days and at least 90 prior settlements;
-- OI robust score using preceding 30 calendar days, at least 1,000 prior changes and positive MAD;
-- OI thresholds `z_mad >= 4.0` and `z_mad <= -4.0`;
-- backward 60-minute joint-event rule;
-- both 8H and 24H episode views;
-- matched-control rules from EXP-027;
-- 15m and deterministic UTC 1H state descriptions;
-- windows 4, 8 and 32;
-- representations `FIXED_8`, `DIRECTION_RUN`, `ATR_ORIGIN`, `CONFIRMED_DIRECTION_CHANGE`, `HYBRID_ORIGIN`.
+Evaluate event families independently while pooling across their legitimate frozen sides:
 
-No future bars, pivots, outcomes or labels are allowed.
+- `FUNDING_EXTREME`;
+- `OI_SHOCK`;
+- `JOINT_EVENT`.
 
-## Frozen diagnostic partitions
+Do not condition this test on volatility regime. Do not split or duplicate results by volatility. Preserve side composition and report side concentration as a diagnostic.
 
-Every diagnostic must be reported without selecting a winner.
+### Test B — side localisation
 
-### A. Event-family partition
-
-Evaluate separately:
-
-- `FUNDING_EXTREME`
-- `OI_SHOCK`
-- `JOINT_EVENT`
-
-Do not pool these families in the primary family analysis.
-
-### B. Side partition
-
-Preserve exact independent sides:
+Evaluate frozen sides independently within their applicable event family:
 
 - funding: `LOW`, `HIGH`;
 - OI: `EXPANSION`, `CONTRACTION`;
-- joint events: the full ordered pair of funding side and OI side.
+- joint: every frozen funding-side × OI-side combination.
 
-Do not map sides into bullish/bearish or otherwise force directional equivalence.
+Do not condition this test on volatility regime. Do not collapse opposite sides. Do not copy family-level rows into side rows.
 
-### C. Causal volatility regimes
+### Test C — causal volatility-regime localisation
 
-At each event and control timestamp, classify volatility using only complete 1H bars ending no later than that timestamp.
+Assign each representative timestamp exactly one causal regime using only complete closed 1H bars available at or before that timestamp:
 
-Compute trailing 1H ATR(14) divided by close. Compare the current value with the empirical distribution of the preceding 90 calendar days, excluding the current bar.
+1. compute `ATR14 / close` on closed 1H bars;
+2. form the empirical percentile using only the preceding 90 calendar days, excluding the current bar;
+3. require at least 1,000 prior valid 1H observations;
+4. classify `LOW_VOL` at percentile `<= 0.25`, `MID_VOL` at `>0.25 and <0.75`, and `HIGH_VOL` at `>=0.75`;
+5. unavailable history remains `UNKNOWN` and is never imputed.
 
-Use frozen regimes:
+Evaluate volatility regimes while pooling across event families and sides with equal-family safeguards. Do not condition this test on a specific family or side. Report family and side concentration separately.
 
-- `LOW_VOL`: percentile `<= 0.25`;
-- `MID_VOL`: percentile `> 0.25` and `< 0.75`;
-- `HIGH_VOL`: percentile `>= 0.75`.
+## Independence requirement
 
-Require at least 1,000 prior valid 1H observations; otherwise mark `INSUFFICIENT_VOL_HISTORY`. No alternate volatility measure or threshold is permitted.
+Each localisation test must have its own grouping key, support table, contrast calculation, leave-one-symbol-out calculation, concentration test, time-third stability test, 8H/24H comparison and verdict field.
 
-Controls must match the event volatility regime exactly in addition to every EXP-027 matching field. Preserve unmatched strata explicitly.
+Rows from one test must not be duplicated or relabelled as results of another test. Add machine-checkable assertions proving that the three test result key spaces differ and that no result row is reused across tests.
 
-## Diagnostic analysis
+## Frozen structural evaluation
 
-For every event-family/side/volatility-regime/representation/state-field cell, and separately for 8H and 24H episodes, report:
+For every applicable partition, representation and state field, retain the EXP-027 event-versus-control contrast definition and frozen transfer requirements:
 
-- support by symbol, month and chronological third;
-- matched-control support and unmatched rate;
-- representation validity and history exclusions;
-- symbol-level event-control contrast sign and magnitude;
-- equal-symbol pooled contrast;
-- sign consistency across symbols;
-- leave-one-symbol-out stability;
-- concentration by symbol and time third;
-- whether conditioning on family, side or volatility reduces contradiction relative to the corresponding unconditioned EXP-027 cell;
-- whether any apparent improvement is caused by support loss, unmatched controls or invalid representation filtering.
+1. sufficient matched support in at least three symbols;
+2. same contrast sign in at least three symbols;
+3. no symbol contributes more than 50% of equal-symbol pooled absolute contrast;
+4. sign survives every feasible leave-one-symbol-out calculation;
+5. sign agrees in both 8H and 24H views;
+6. validity/history exclusions remove no more than 50% of independent episodes in supporting symbols.
 
-Use deterministic distribution-distance and rank metrics already used in EXP-027. Do not add new metrics because they produce larger separation.
+A localisation factor is explanatory only if at least one predeclared cell passes all six requirements and also preserves the sign in at least two of three chronological thirds in at least three symbols.
 
-## Predeclared localisation criteria
-
-A factor may be called an explanatory source of partial transfer only when all are true:
-
-1. the conditioned cell has sufficient matched support on at least three symbols;
-2. at least three symbols share the same contrast sign;
-3. the sign survives every feasible leave-one-symbol-out calculation;
-4. the sign agrees in both 8H and 24H views;
-5. no symbol contributes more than 50% of equal-symbol pooled absolute contrast;
-6. history, validity and unmatched-control exclusions together remove no more than 50% of independent episodes in supporting symbols;
-7. the corresponding unconditioned EXP-027 cell fails at least one of criteria 2–5;
-8. the improvement is present in at least two chronological thirds, not only one concentrated interval.
-
-Do not relax these criteria and do not combine weak factors post hoc.
+Do not select the strongest cell after inspection. Report every frozen cell and all failures.
 
 ## Decision
 
 Select exactly one verdict:
 
-- `TRANSFER_FAILURE_LOCALIZED_FAMILY` — event-family separation explains the partial transfer under all frozen localisation criteria;
-- `TRANSFER_FAILURE_LOCALIZED_SIDE` — side separation explains it;
-- `TRANSFER_FAILURE_LOCALIZED_VOLATILITY` — causal volatility conditioning explains it;
-- `TRANSFER_FAILURE_LOCALIZED_MULTIPLE` — at least two factors independently satisfy all criteria, without requiring a post-hoc combined filter;
-- `TRANSFER_FAILURE_NOT_LOCALIZED` — none of the three factors satisfies the frozen criteria;
-- `TRANSFER_FAILURE_DATA_FAILED` — validated inputs cannot support an honest diagnostic.
+- `TRANSFER_FAILURE_LOCALIZED_FAMILY`;
+- `TRANSFER_FAILURE_LOCALIZED_SIDE`;
+- `TRANSFER_FAILURE_LOCALIZED_VOLATILITY`;
+- `TRANSFER_FAILURE_LOCALIZED_MULTIPLE`;
+- `TRANSFER_FAILURE_NOT_LOCALIZED`;
+- `TRANSFER_FAILURE_LOCALIZATION_DATA_FAILED`.
 
-Do not force localisation.
+Use `MULTIPLE` only when two or more independently evaluated tests each contain at least one fully qualifying predeclared cell. Do not force a positive verdict.
 
 ## Required outputs
 
 Create exactly these nine files:
 
-- `experiments/EXP-028_TRANSFER_FAILURE_LOCALIZATION/REPORT.md`
-- `experiments/EXP-028_TRANSFER_FAILURE_LOCALIZATION/input_validation.csv`
-- `experiments/EXP-028_TRANSFER_FAILURE_LOCALIZATION/diagnostic_membership.csv`
-- `experiments/EXP-028_TRANSFER_FAILURE_LOCALIZATION/volatility_regimes.csv`
-- `experiments/EXP-028_TRANSFER_FAILURE_LOCALIZATION/matched_controls.csv`
-- `experiments/EXP-028_TRANSFER_FAILURE_LOCALIZATION/diagnostic_summary.csv`
-- `experiments/EXP-028_TRANSFER_FAILURE_LOCALIZATION/localization_tests.csv`
-- `experiments/EXP-028_TRANSFER_FAILURE_LOCALIZATION/counterexamples.csv`
-- `experiments/EXP-028_TRANSFER_FAILURE_LOCALIZATION/experiment_028.py`
+- `experiments/EXP-028R_TRANSFER_FAILURE_LOCALIZATION/REPORT.md`
+- `experiments/EXP-028R_TRANSFER_FAILURE_LOCALIZATION/data_provenance.csv`
+- `experiments/EXP-028R_TRANSFER_FAILURE_LOCALIZATION/volatility_state.csv`
+- `experiments/EXP-028R_TRANSFER_FAILURE_LOCALIZATION/family_localization.csv`
+- `experiments/EXP-028R_TRANSFER_FAILURE_LOCALIZATION/side_localization.csv`
+- `experiments/EXP-028R_TRANSFER_FAILURE_LOCALIZATION/volatility_localization.csv`
+- `experiments/EXP-028R_TRANSFER_FAILURE_LOCALIZATION/localization_summary.csv`
+- `experiments/EXP-028R_TRANSFER_FAILURE_LOCALIZATION/counterexamples.csv`
+- `experiments/EXP-028R_TRANSFER_FAILURE_LOCALIZATION/experiment_028r.py`
 
-Do not commit raw archives or create cache files.
+Do not create or retain the old `EXP-028_TRANSFER_FAILURE_LOCALIZATION` directory.
 
-## Validation
+## Deterministic validation
 
 Before PASS:
 
-1. Reproduce and verify EXP-027 archive hashes, schemas, coverage and exact symbol panel.
-2. Verify event ids and 8H/24H episode memberships correspond exactly to frozen EXP-027 definitions.
-3. Assert volatility regimes use only prior complete 1H observations and exclude the current bar.
-4. Assert no event threshold, history window, representation or state field differs from EXP-027.
-5. Verify every diagnostic partition is exhaustive and mutually exclusive where applicable.
-6. Verify controls preserve all EXP-027 matches plus exact volatility regime, remain source-excluded and deterministic.
-7. Verify localisation criteria directly from `localization_tests.csv`.
-8. Preserve insufficient history, invalid representation and unmatched-control cases explicitly.
-9. Run twice and require identical SHA-256 hashes for all nine outputs.
-10. Parse every CSV and reproduce REPORT values and verdict.
-11. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-028_TRANSFER_FAILURE_LOCALIZATION/experiment_028.py`, remove cache artifacts and run `git diff --check`.
-12. Perform baseline-relative allowlist validation and verify protected/pre-existing dirty files remain byte-identical and unstaged.
+1. Parse and validate all EXP-027 source CSVs and provenance.
+2. Verify volatility labels use only closed prior 1H bars and exclude the current bar.
+3. Verify Test A has no volatility conditioning, Test B has no volatility conditioning, and Test C has no family/side conditioning in its primary result keys.
+4. Verify all three tests calculate their own support, contrasts, LOSO, concentration, time-third and 8H/24H checks.
+5. Verify no result row or result identifier is duplicated across factor outputs.
+6. Reproduce all summary rows and the report verdict directly from CSV outputs.
+7. Run the experiment once, record SHA-256 for all nine outputs, run it a second time without changing inputs or redownloading archives, and require all nine hashes to be identical. The script file itself may not rewrite itself; hash comparison must cover its stable content as well.
+8. Save the two-run hash evidence in `localization_summary.csv` or REPORT.md in machine-readable form.
+9. Run `PYTHONDONTWRITEBYTECODE=1 python3 -m py_compile experiments/EXP-028R_TRANSFER_FAILURE_LOCALIZATION/experiment_028r.py`, remove cache files, run `git diff --check`, and perform baseline-relative allowlist validation.
+10. Verify protected and pre-existing dirty files remain byte-identical and unstaged.
+
+A corrector must return `TECHNICAL_CORRECTION_REQUIRED` unless the independent-partition assertions and two-run identical-hash validation both pass.
 
 ## Hard protections
 
@@ -170,8 +127,8 @@ Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/
 
 The protected dirty file `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine` must remain byte-identical and unstaged.
 
-Only the nine EXP-028 outputs may change inside the repository. Non-repository writes are limited to temporary deterministic files under `${HOME}/.local/share/msm-market-data/`.
+Only the nine EXP-028R outputs may change inside the repository. External validated archives may only be read from `${HOME}/.local/share/msm-market-data/bybit/linear/`.
 
 ## Result contract
 
-Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted EXP-028 outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message and pushes to `main`.
+Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted EXP-028R outputs unstaged. The orchestrator performs the final baseline-relative allowlist check, commits once with the declared commit message and pushes to `main`.
