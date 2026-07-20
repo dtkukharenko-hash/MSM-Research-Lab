@@ -5,7 +5,7 @@
 - published_at: `2026-07-20`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- source_experiments: `EXP-027-MULTI-MARKET-DERIVATIVES-TRANSFER`, `EXP-029R-DERIVATIVES-DIAGNOSTIC-DATASET`, `EXP-030R-TRANSFER-FAILURE-LOCALIZATION`
+- source_experiment: `EXP-030R-TRANSFER-FAILURE-LOCALIZATION`
 - commit_message: `EXP-031 temporal holdout diagnostic dataset`
 
 ## Objective
