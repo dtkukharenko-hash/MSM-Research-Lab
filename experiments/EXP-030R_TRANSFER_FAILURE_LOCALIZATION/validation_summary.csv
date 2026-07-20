@@ -1,0 +1,9 @@
+check,value,status
+exp029r_all_committed_input_hashes,1,PASS
+exp029r_schema_status_and_zero_reconciliation_mismatches,1,PASS
+streaming_dictreader_bounded_grouped_accumulators,1,PASS
+four_volatility_regimes_present,1,PASS
+unknown_diagnostic_nonqualifying,1,PASS
+report_counts_and_decision_from_csv,1,PASS
+external_evidence_write_delete_probe,/home/nnv/.local/state/msm-orchestrator/runtime/eb71c82e1c35223d23641163945b453d21ea0974a719f47663a1d3333a4f6995/corrector/state/msm-exp-evidence/EXP-030R-TRANSFER-FAILURE-LOCALIZATION,PASS
+two_independent_runs_manifest_path_by_path_equality,1,PASS
