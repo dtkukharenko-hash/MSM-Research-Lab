@@ -1,88 +1,127 @@
 # Current Codex Task
 
-- task_id: `EXP-028S-TRANSFER-FAILURE-LOCALIZATION`
+- task_id: `EXP-029-DERIVATIVES-DIAGNOSTIC-DATASET`
 - status: `READY`
 - published_at: `2026-07-20`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
 - source_experiment: `EXP-027-MULTI-MARKET-DERIVATIVES-TRANSFER`
-- commit_message: `EXP-028S transfer failure localization`
+- commit_message: `EXP-029 derivatives diagnostic dataset`
 
 ## Objective
 
-Complete the frozen transfer-failure localisation correctly. Treat the committed EXP-027 CSV outputs as authoritative for events, episodes, controls, representations, validity and structural state fields. Do not recompute EXP-027 structural states from OHLC and do not call EXP-027 state-building functions.
+Create the missing observation-level diagnostic dataset required to localise the partial transfer found in EXP-027. Keep the EXP-027 event definitions, panel, period, episodes, controls, representations, state fields and validity rules frozen. This experiment prepares auditable data; it does not search for a favourable factor and does not produce a trading rule.
 
-Only the causal volatility-regime label may be newly calculated. No threshold tuning, favourable-cell selection, event redefinition or outcome labels.
+## Frozen panel and period
 
-## Frozen inputs
+Use exactly BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT over `2023-07-01T00:00:00Z` through `2024-12-31T23:00:00Z`.
 
-Read and validate the committed outputs under `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/`, especially `events.csv`, `episodes.csv`, `event_state.csv`, `matched_controls.csv`, `transfer_summary.csv`, `counterexamples.csv` and `data_provenance.csv`.
+Use committed EXP-027 outputs as authoritative for event identities, episode membership, matched-control identities and frozen parameters. Validated exact-symbol archives under `${HOME}/.local/share/msm-market-data/bybit/linear/` may be read only to calculate missing observation-level structural fields and the causal volatility label. Do not change event selection, controls, merge views, thresholds or source periods.
 
-Use exactly BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT over the frozen EXP-027 period. Do not modify EXP-027.
+## Required observation-level dataset
 
-## Independent tests
+Create one deterministic row for every valid or invalid observation in both roles:
 
-### Test A — family
+- `EVENT`: every EXP-027 episode representative in both 8H and 24H views;
+- `CONTROL`: every EXP-027 matched control attached to its event/episode stratum.
 
-Evaluate `FUNDING_EXTREME`, `OI_SHOCK` and `JOINT_EVENT` independently, pooling only legitimate frozen sides. Do not condition on volatility.
+Each row must retain at minimum:
 
-### Test B — side
+- stable `observation_id`, role, symbol, timestamp and source event/control identifiers;
+- event family, funding side, OI side and joint-side combination;
+- 8H/24H view, episode id and representative id;
+- calendar month, UTC hour and frozen chronological third;
+- representation and state-field name;
+- structural value, validity flag, age, history status, origin disagreement and all invalid/cap/history reasons;
+- control-match stratum and matched event identifier;
+- causal volatility regime and percentile.
 
-Evaluate each frozen side independently within its family: funding LOW/HIGH, OI EXPANSION/CONTRACTION, and every frozen joint side combination. Do not condition on volatility and do not copy family rows.
+Do not aggregate away individual controls. Preserve missing and invalid values explicitly as `UNKNOWN` or reason-coded rows.
 
-### Test C — causal volatility
+## Frozen structural reconstruction
 
-For each frozen representative timestamp, use only complete closed 1H bars available no later than that timestamp. Calculate ATR14/close, then its empirical percentile from the preceding 90 calendar days excluding the current bar, requiring at least 1,000 prior observations. Classify LOW_VOL at percentile <=0.25, MID_VOL at >0.25 and <0.75, HIGH_VOL at >=0.75, otherwise UNKNOWN. Evaluate regimes while pooling families and sides with equal-family safeguards. Primary Test C keys must not contain family or side.
+Observation-level state values must reproduce the EXP-027 state definition exactly:
 
-## Frozen criteria
+- complete closed native 15m bars and deterministic complete UTC 1H bars;
+- frozen 4, 8 and 32 parent-bar windows;
+- ATR-normalised displacement and range, efficiency, close location and direction-aware slopes;
+- representations `FIXED_8`, `DIRECTION_RUN`, `ATR_ORIGIN`, `CONFIRMED_DIRECTION_CHANGE`, `HYBRID_ORIGIN`;
+- only bars closed no later than the observation timestamp;
+- no future pivots, returns, outcome labels, interpolation or forward filling.
 
-For each partition, representation and state field require: support in at least three symbols; same sign in at least three symbols; no symbol above 50% concentration; every feasible leave-one-symbol-out sign survives; 8H and 24H signs agree; exclusions remove no more than 50% of episodes; sign persists in at least two chronological thirds in at least three symbols.
+Reconstruction is permitted only because EXP-027 did not persist observation-level control states. It must be verified against every comparable committed EXP-027 event-state and aggregate transfer row. Any mismatch must be recorded and must block `DATASET_READY`.
 
-Each test must independently calculate support, contrast, LOSO, concentration, time-third stability, view agreement and verdict. No result row or identifier may be reused between tests. Report all cells and failures.
+## Causal volatility label
+
+At each observation timestamp:
+
+1. use the latest complete closed 1H bar no later than the timestamp;
+2. calculate `ATR14 / close`;
+3. calculate its empirical percentile from only the preceding 90 calendar days, excluding the current bar;
+4. require at least 1,000 prior valid 1H observations;
+5. classify `LOW_VOL` at `<=0.25`, `MID_VOL` at `>0.25 and <0.75`, `HIGH_VOL` at `>=0.75`, otherwise `UNKNOWN`.
+
+## Verification tables
+
+Report:
+
+- exact reconciliation of event, episode and control identifiers against EXP-027;
+- row counts by symbol, role, family, side, view, representation, field, chronological third, volatility regime and validity;
+- comparison of reconstructed event-state values with EXP-027 committed event_state.csv;
+- reproduction of EXP-027 aggregate transfer contrasts wherever the committed outputs permit direct comparison;
+- all mismatches, unavailable histories and invalid joins.
+
+No localisation verdict is allowed in this experiment.
 
 ## Decision
 
-Select exactly one: `TRANSFER_FAILURE_LOCALIZED_FAMILY`, `TRANSFER_FAILURE_LOCALIZED_SIDE`, `TRANSFER_FAILURE_LOCALIZED_VOLATILITY`, `TRANSFER_FAILURE_LOCALIZED_MULTIPLE`, `TRANSFER_FAILURE_NOT_LOCALIZED`, or `TRANSFER_FAILURE_LOCALIZATION_DATA_FAILED`.
+Select exactly one:
+
+- `DERIVATIVES_DIAGNOSTIC_DATASET_READY` — identifiers reconcile, reconstruction matches frozen EXP-027 values within declared exact/numeric tolerances, observation-level controls are retained, and deterministic validation passes;
+- `DERIVATIVES_DIAGNOSTIC_DATASET_PARTIAL` — dataset is honest and useful but material unavailable history or non-critical reconciliation limitations remain;
+- `DERIVATIVES_DIAGNOSTIC_DATASET_FAILED` — identifiers, frozen reconstruction or required coverage cannot be validated honestly.
 
 ## Required outputs
 
-Create exactly:
+Create exactly these nine files:
 
-- `experiments/EXP-028S_TRANSFER_FAILURE_LOCALIZATION/REPORT.md`
-- `experiments/EXP-028S_TRANSFER_FAILURE_LOCALIZATION/data_provenance.csv`
-- `experiments/EXP-028S_TRANSFER_FAILURE_LOCALIZATION/volatility_state.csv`
-- `experiments/EXP-028S_TRANSFER_FAILURE_LOCALIZATION/family_localization.csv`
-- `experiments/EXP-028S_TRANSFER_FAILURE_LOCALIZATION/side_localization.csv`
-- `experiments/EXP-028S_TRANSFER_FAILURE_LOCALIZATION/volatility_localization.csv`
-- `experiments/EXP-028S_TRANSFER_FAILURE_LOCALIZATION/localization_summary.csv`
-- `experiments/EXP-028S_TRANSFER_FAILURE_LOCALIZATION/counterexamples.csv`
-- `experiments/EXP-028S_TRANSFER_FAILURE_LOCALIZATION/experiment_028s.py`
+- `experiments/EXP-029_DERIVATIVES_DIAGNOSTIC_DATASET/REPORT.md`
+- `experiments/EXP-029_DERIVATIVES_DIAGNOSTIC_DATASET/data_provenance.csv`
+- `experiments/EXP-029_DERIVATIVES_DIAGNOSTIC_DATASET/observations.csv`
+- `experiments/EXP-029_DERIVATIVES_DIAGNOSTIC_DATASET/volatility_state.csv`
+- `experiments/EXP-029_DERIVATIVES_DIAGNOSTIC_DATASET/reconciliation.csv`
+- `experiments/EXP-029_DERIVATIVES_DIAGNOSTIC_DATASET/coverage_summary.csv`
+- `experiments/EXP-029_DERIVATIVES_DIAGNOSTIC_DATASET/counterexamples.csv`
+- `experiments/EXP-029_DERIVATIVES_DIAGNOSTIC_DATASET/validation_summary.csv`
+- `experiments/EXP-029_DERIVATIVES_DIAGNOSTIC_DATASET/experiment_029.py`
 
-Do not create or retain EXP-028 or EXP-028R directories.
+Do not create or retain EXP-028, EXP-028R or EXP-028S directories.
 
 ## Deterministic validation
 
-The previous retry is invalid because it used normalised hashes and rebuilt EXP-027 states.
+Before PASS:
 
-1. Generate the eight report/data files from stable `experiment_028s.py`.
-2. Compute ordinary SHA-256 over the actual bytes of all eight generated files and the unchanged script.
-3. Save the first run manifest outside the repository.
-4. Run the experiment again from identical inputs.
-5. Compute actual SHA-256 again and require exact path-by-path equality for all nine files.
-6. Never include a file's own hash inside that file and never rewrite an output after its final compared hash is captured.
-7. Record only a non-self-referential machine-checkable assertion such as `two_run_actual_sha256_equal=1` and compared path count.
-8. The auditor must independently verify the actual files and both manifests.
-
-Also validate EXP-027 joins without rebuilding state, assert the three key spaces are independent, reproduce the report verdict from CSVs, compile the script without retaining cache files, run `git diff --check`, and perform baseline-relative allowlist validation.
-
-A corrector or auditor must return `TECHNICAL_CORRECTION_REQUIRED` unless authoritative EXP-027 reuse and actual two-run SHA-256 equality are directly demonstrated.
+1. Validate all EXP-027 source hashes and schemas.
+2. Assert exact event, episode, control and view membership reconciliation.
+3. Assert every observation uses only closed bars at or before its timestamp.
+4. Compare reconstructed event states against committed EXP-027 event states and preserve every mismatch.
+5. Reproduce directly comparable EXP-027 aggregate rows from observation-level data.
+6. Parse every CSV and reproduce REPORT counts and verdict.
+7. Run twice from identical inputs without redownloading archives.
+8. Compute ordinary byte SHA-256 for all nine actual files after each run and require exact path-by-path equality.
+9. Persist both manifests outside the repository under `${HOME}/.local/state/msm-orchestrator/evidence/EXP-029-DERIVATIVES-DIAGNOSTIC-DATASET/` as `run1.sha256` and `run2.sha256`; do not delete them before auditing.
+10. The manifests must contain exactly the nine repository-relative output paths, sorted identically. They are external evidence and must not be committed.
+11. Compile with `PYTHONDONTWRITEBYTECODE=1`, remove cache artifacts, run `git diff --check`, and perform baseline-relative allowlist validation.
+12. Verify all protected and pre-existing dirty files remain byte-identical and unstaged.
 
 ## Hard protections
 
-Never modify or stage protected project files or any EXP-009 and EXP-013 through EXP-027 file. The existing dirty `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine` must remain byte-identical and unstaged.
+Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, any EXP-009 file, or any EXP-013 through EXP-028 file.
 
-Only the nine EXP-028S outputs may change inside the repository. External validated market archives may only be read. Temporary hash manifests must remain outside the repository and must not be committed.
+The protected dirty file `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine` must remain byte-identical and unstaged.
+
+Only the nine EXP-029 outputs may change inside the repository. External validated archives may only be read. The only permitted external writes are temporary atomic files and the two persistent SHA-256 manifests under the stated evidence directory.
 
 ## Result contract
 
-Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted outputs unstaged. The orchestrator performs final validation, commits once with the declared message and pushes to `main`.
+Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted EXP-029 outputs unstaged. The orchestrator performs final validation, commits once with the declared message and pushes to `main`.
