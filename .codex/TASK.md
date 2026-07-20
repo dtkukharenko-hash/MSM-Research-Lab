@@ -4,6 +4,8 @@
 - status: `READY`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
+- task_kind: `DATA`
+- data_ready: `false`
 
 ## Objective
 
