@@ -6,8 +6,8 @@
 - infrastructure_maintenance: `false`
 - task_kind: `RESEARCH`
 - data_ready: `true`
-- data_manifest: `data/readiness/DATA-001_BYBIT_2025/readiness_manifest.csv`
-- data_manifest_sha256: `14a43c01de55d3cb82349553ec3abf700a9e49137fba6eea9669d2c2cceba4b2`
+- data_manifest: `data/readiness/DATA-001_BYBIT_2025/REPORT.md`
+- data_manifest_sha256: `fd894efc57bbd91c792db92afa31f15e091a7f7128055ff2c57cf471e580f4ba`
 
 ## Objective
 
@@ -17,10 +17,10 @@ Create an independent calendar-2025 temporal validation diagnostic dataset using
 
 Before any computation:
 
-1. verify the committed readiness-manifest SHA-256 against the metadata above;
-2. verify that the associated DATA-001 report contains `DATA_READY=YES`;
-3. require exactly twelve manifest rows and require every row to have `source_status=READY`;
-4. independently hash each canonical CSV and require equality with `canonical_sha256` in the manifest;
+1. verify the committed DATA-001 report SHA-256 against the metadata above and require `DATA_READY=YES`;
+2. verify `data/readiness/DATA-001_BYBIT_2025/readiness_manifest.csv` has SHA-256 `14a43c01de55d3cb82349553ec3abf700a9e49137fba6eea9669d2c2cceba4b2`;
+3. require exactly twelve readiness-manifest rows and require every row to have `source_status=READY`;
+4. independently hash each canonical CSV and require equality with `canonical_sha256` in the readiness manifest;
 5. require the frozen interval `2025-01-01T00:00:00Z <= timestamp < 2026-01-01T00:00:00Z` for BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT;
 6. stop with a failed dataset status before protocol work if any gate fails.
 
@@ -117,7 +117,7 @@ No other repository path may be created or changed.
 
 ## Output contracts
 
-`data_provenance.csv` must contain the manifest path/hash and all twelve canonical paths, hashes, schemas, row counts and 2025 coverage bounds.
+`data_provenance.csv` must contain the DATA-001 report path/hash, readiness-manifest path/hash and all twelve canonical paths, hashes, schemas, row counts and 2025 coverage bounds.
 
 `episodes.csv` and `matched_controls.csv` must preserve the frozen EXP-027 schemas and expose enough identity fields to audit every event/control observation join.
 
@@ -127,7 +127,7 @@ No other repository path may be created or changed.
 
 `validation_summary.csv` must independently record PASS/FAIL for:
 
-- readiness manifest and report;
+- DATA-001 report and readiness manifest;
 - twelve canonical source hashes;
 - exact 2025 coverage;
 - episode identity uniqueness;
