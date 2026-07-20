@@ -1,6 +1,7 @@
 [Unit]
 Description=MSM local task orchestrator
 After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
@@ -8,14 +9,16 @@ User=nnv
 Group=nnv
 WorkingDirectory=/home/nnv/MSM-Research-Lab
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/bin/python3 /usr/local/lib/msm-orchestrator/msm_orchestrator.py
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=MSM_MARKET_DATA_ROOT=/home/nnv/.local/share/msm-market-data
+ExecStart=/usr/bin/python3 -B /usr/local/lib/msm-orchestrator/msm_orchestrator.py
 Restart=on-failure
 RestartSec=15
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
-ReadWritePaths=/home/nnv/MSM-Research-Lab /home/nnv/.local/state/msm-orchestrator
+ReadWritePaths=/home/nnv/MSM-Research-Lab /home/nnv/.local/state/msm-orchestrator /home/nnv/.local/share/msm-market-data
 
 [Install]
 WantedBy=multi-user.target
