@@ -1,10 +1,6 @@
-experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/REPORT.md
-experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/data_provenance.csv
-experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/validation_observations.csv.gz
-experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/validation_volatility_state.csv
-experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/protocol_reconciliation.csv
-experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/coverage_summary.csv
-experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/validation_summary.csv
-experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/counterexamples.csv
-experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/run_hashes.csv
-experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/experiment_031.py
+data/readiness/DATA-001_BYBIT_2025/REPORT.md
+data/readiness/DATA-001_BYBIT_2025/readiness_manifest.csv
+data/readiness/DATA-001_BYBIT_2025/gaps.csv
+data/readiness/DATA-001_BYBIT_2025/request_summary.csv
+data/readiness/DATA-001_BYBIT_2025/run_hashes.csv
+data/readiness/DATA-001_BYBIT_2025/data_001.py
