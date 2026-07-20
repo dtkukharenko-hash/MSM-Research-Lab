@@ -115,6 +115,14 @@ def validate_task_delta(repo: Path, e: dict):
     if not changed <= allowed_paths(repo,e): raise RuntimeError("changed path outside allowlist")
     return changed
 
+def task_metadata(repo: Path, e: dict) -> dict[str, str]:
+    fields={}
+    for line in (repo/e["task_path"]).read_text(encoding="utf-8").splitlines():
+        if line.startswith("## "): break
+        if line.startswith("- ") and ": `" in line and line.endswith("`"):
+            key, value=line[2:-1].split(": `",1); fields[key]=value
+    return fields
+
 def empty_required_output_result(role: str):
     return {
         "role": role,
@@ -134,7 +142,7 @@ def commit_once(repo, e):
     changed=validate_task_delta(repo,e)
     if not changed: raise RuntimeError("no task-created changes to commit")
     git_run(repo,"diff","--check","--",*sorted(changed))
-    if not subprocess.run(["git","-C",str(repo),"diff","--cached","--quiet"],check=False).returncode: raise RuntimeError("model left staged changes")
+    if subprocess.run(["git","-C",str(repo),"diff","--cached","--quiet"],check=False).returncode != 0: raise RuntimeError("model left staged changes")
     git_run(repo,"add","--",*sorted(changed)); git_run(repo,"commit","-m",e["task_id"]); git_run(repo,"push","origin","main")
 def worker(repo, root, e, role, mock=None):
     out=root/"logs"/(e["task_id"]+"-"+role+".result.json")
@@ -163,10 +171,20 @@ def process(repo: Path, root: Path, e: dict, mock=None):
     except Exception as ex: return fail(e,str(ex))
     if mock is None and role == "auditor" and not changed:
         result=empty_required_output_result(role)
-    # Research stop gates always dominate a role verdict.
-    gates=("definition change","hypothesis change","holdout","tradingview","ambiguous","conflict")
-    if any(any(g in f.lower() for g in gates) for f in result["findings"]): verdict="USER_DECISION_REQUIRED"
-    else: verdict=result["verdict"]
+    # Only explicit research decision markers may override a role verdict.
+    metadata=task_metadata(repo,e)
+    markers=(
+        "definition change requires user decision",
+        "hypothesis change requires user decision",
+        "holdout access requires user decision",
+        "visual or tradingview review requires user decision",
+        "ambiguous research judgment requires user decision",
+        "task explicitly requires user decision",
+    )
+    if metadata.get("task_kind","RESEARCH") == "RESEARCH" and any(any(m in f.lower() for m in markers) for f in result["findings"]):
+        verdict="USER_DECISION_REQUIRED"
+    else:
+        verdict=result["verdict"]
     try: target=next_state(e,verdict)
     except ValueError as ex: return fail(e,str(ex))
     e["last_result"]=result; e["status"]=target
