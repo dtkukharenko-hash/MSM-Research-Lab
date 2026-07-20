@@ -1,105 +1,89 @@
 # Current Codex Task
 
-- task_id: `EXP-030-TRANSFER-FAILURE-LOCALIZATION`
+- task_id: `EXP-030R-TRANSFER-FAILURE-LOCALIZATION`
 - status: `READY`
 - published_at: `2026-07-20`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- source_experiment: `EXP-029R-DERIVATIVES-DIAGNOSTIC-DATASET`
-- commit_message: `EXP-030 transfer failure localization`
+- source_experiment: `EXP-030-TRANSFER-FAILURE-LOCALIZATION`
+- commit_message: `EXP-030R transfer failure localization`
 
 ## Objective
 
-Localise why EXP-027 achieved only partial multi-market transfer, using committed EXP-029R as the authoritative observation-level source. Do not rebuild structural states, redefine events or controls, tune thresholds, select favourable cells, or introduce outcome labels.
+Correct EXP-030 without changing its frozen analytical protocol. Reuse only the committed EXP-029R diagnostic dataset and EXP-027 frozen criteria. Do not rebuild structural states, volatility labels, events, controls, representations, thresholds, or outcome labels.
 
-Read `experiments/EXP-029R_DERIVATIVES_DIAGNOSTIC_DATASET/observations.csv.gz` directly. Verify EXP-029R provenance, validation status, reconciliation totals and schemas before analysis.
+The prior EXP-030 attempt is invalid because it loaded the complete gzip dataset into memory, omitted `UNKNOWN` volatility support from the volatility output, and required manifests in a read-only temporary location.
 
-## Frozen scope
+## Frozen input
 
-Use exactly BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT over the frozen EXP-027 period, event representatives, matched controls, 8H/24H views, representations, state fields, validity rules and chronological thirds.
+Read `experiments/EXP-029R_DERIVATIVES_DIAGNOSTIC_DATASET/observations.csv.gz` and the remaining committed EXP-029R validation/provenance outputs. Verify their committed hashes and require EXP-029R status `DIAGNOSTIC_DATASET_READY` with zero reconciliation mismatches.
 
-For each tested cell require all frozen gates:
+## Mandatory implementation corrections
 
-1. matched support in at least three symbols;
-2. same contrast sign in at least three symbols;
-3. no symbol above 50% equal-symbol pooled absolute-contrast concentration;
-4. sign survives every feasible leave-one-symbol-out calculation;
-5. sign agrees in 8H and 24H views;
-6. exclusions remove no more than 50% of independent episodes in supporting symbols;
-7. sign persists in at least two chronological thirds in at least three symbols.
+1. Read `observations.csv.gz` by streaming iteration. `list(csv.DictReader(...))`, full-file DataFrame loading, or any equivalent whole-file materialisation is forbidden.
+2. Aggregation may retain only bounded grouped accumulators needed for the declared cells and diagnostics.
+3. Preserve three independent tests exactly as EXP-030: event family, side within family, and causal volatility regime.
+4. Volatility output must include `LOW_VOL`, `MID_VOL`, `HIGH_VOL`, and `UNKNOWN`. `UNKNOWN` is diagnostic only and can never qualify as an explanatory passing cell.
+5. For `UNKNOWN`, preserve row count, event/control support, symbol support, family/side concentration, validity exclusions, and explicit reason counts.
+6. Tests A and B must not condition on volatility. Test C primary result keys must not contain family or side and must use equal-family safeguards.
+7. Each test independently calculates support, contrast, sign consistency, concentration, leave-one-symbol-out survival, 8H/24H agreement, exclusion rate, chronological-third stability, and verdict.
+8. Preserve every cell and every failed gate. Do not select the strongest cell after inspection.
 
-Preserve every predeclared cell and every failure.
+## Frozen gates
 
-## Test A — family
-
-Evaluate `FUNDING_EXTREME`, `OI_SHOCK`, and `JOINT_EVENT` independently. Pool only legitimate frozen sides within each family. Do not condition on volatility.
-
-## Test B — side
-
-Evaluate each frozen side independently within its family: funding `LOW` and `HIGH`; OI `EXPANSION` and `CONTRACTION`; and every frozen joint side combination. Do not condition on volatility, collapse opposite sides, or copy family rows.
-
-## Test C — volatility
-
-Use the causal volatility regime already persisted by EXP-029R. Do not recalculate it and do not read market archives. Evaluate `LOW_VOL`, `MID_VOL`, and `HIGH_VOL`; retain `UNKNOWN` as excluded diagnostic support.
-
-Pool families and sides with equal-family safeguards. Primary Test C keys must not contain family or side. Report family and side concentration separately.
-
-## Independence
-
-Each test must independently compute grouping keys, support, symbol contrasts, equal-symbol pooled contrast, concentration, LOSO, time-third stability, 8H/24H agreement, exclusion fraction and verdict.
-
-Rows or identifiers from one factor output must not be duplicated or relabelled in another. Add machine-checkable key-space and identifier assertions. Preserve UNKNOWN and invalid reasons; never impute values.
+A non-UNKNOWN cell passes only when all EXP-027 gates pass: sufficient support in at least three symbols; same sign in at least three symbols; no symbol above 50% pooled absolute-contrast concentration; every feasible LOSO sign survives; 8H and 24H signs agree; exclusions are at most 50%; and sign persists in at least two chronological thirds in at least three symbols.
 
 ## Decision
 
 Select exactly one:
 
-- `TRANSFER_FAILURE_LOCALIZED_FAMILY`;
-- `TRANSFER_FAILURE_LOCALIZED_SIDE`;
-- `TRANSFER_FAILURE_LOCALIZED_VOLATILITY`;
-- `TRANSFER_FAILURE_LOCALIZED_MULTIPLE`;
-- `TRANSFER_FAILURE_NOT_LOCALIZED`;
-- `TRANSFER_FAILURE_LOCALIZATION_DATA_FAILED`.
+- `TRANSFER_FAILURE_LOCALIZED_FAMILY`
+- `TRANSFER_FAILURE_LOCALIZED_SIDE`
+- `TRANSFER_FAILURE_LOCALIZED_VOLATILITY`
+- `TRANSFER_FAILURE_LOCALIZED_MULTIPLE`
+- `TRANSFER_FAILURE_NOT_LOCALIZED`
+- `TRANSFER_FAILURE_LOCALIZATION_DATA_FAILED`
 
-A factor qualifies only when at least one predeclared cell passes all seven gates. Use `MULTIPLE` only when at least two independent tests qualify.
+`UNKNOWN` support cannot create a positive localization verdict.
 
 ## Required outputs
 
-Create exactly:
+Create exactly these nine files:
 
-- `experiments/EXP-030_TRANSFER_FAILURE_LOCALIZATION/REPORT.md`
-- `experiments/EXP-030_TRANSFER_FAILURE_LOCALIZATION/data_provenance.csv`
-- `experiments/EXP-030_TRANSFER_FAILURE_LOCALIZATION/family_localization.csv`
-- `experiments/EXP-030_TRANSFER_FAILURE_LOCALIZATION/side_localization.csv`
-- `experiments/EXP-030_TRANSFER_FAILURE_LOCALIZATION/volatility_localization.csv`
-- `experiments/EXP-030_TRANSFER_FAILURE_LOCALIZATION/localization_summary.csv`
-- `experiments/EXP-030_TRANSFER_FAILURE_LOCALIZATION/counterexamples.csv`
-- `experiments/EXP-030_TRANSFER_FAILURE_LOCALIZATION/validation_summary.csv`
-- `experiments/EXP-030_TRANSFER_FAILURE_LOCALIZATION/experiment_030.py`
+- `experiments/EXP-030R_TRANSFER_FAILURE_LOCALIZATION/REPORT.md`
+- `experiments/EXP-030R_TRANSFER_FAILURE_LOCALIZATION/data_provenance.csv`
+- `experiments/EXP-030R_TRANSFER_FAILURE_LOCALIZATION/family_localization.csv`
+- `experiments/EXP-030R_TRANSFER_FAILURE_LOCALIZATION/side_localization.csv`
+- `experiments/EXP-030R_TRANSFER_FAILURE_LOCALIZATION/volatility_localization.csv`
+- `experiments/EXP-030R_TRANSFER_FAILURE_LOCALIZATION/localization_summary.csv`
+- `experiments/EXP-030R_TRANSFER_FAILURE_LOCALIZATION/validation_summary.csv`
+- `experiments/EXP-030R_TRANSFER_FAILURE_LOCALIZATION/counterexamples.csv`
+- `experiments/EXP-030R_TRANSFER_FAILURE_LOCALIZATION/experiment_030r.py`
 
-## Validation
+Do not create or retain an EXP-030 task directory.
 
-1. Verify hashes, schemas and READY status of committed EXP-029R inputs.
-2. Stream-decompress `observations.csv.gz`; do not create an uncompressed repository copy.
-3. Reproduce the frozen unpartitioned aggregate comparator before localisation; zero unexplained mismatches are required.
-4. Verify independent factor key spaces and unique result identifiers.
-5. Derive summary counts and REPORT verdict directly from localisation CSVs.
-6. Verify all predeclared cells and failures are retained.
-7. Run twice from identical inputs. Save ordinary SHA-256 manifests for all nine outputs at `/tmp/EXP030_run1.sha256` and `/tmp/EXP030_run2.sha256`; retain them through audit and require exact equality.
-8. Compile without retained cache files, run `git diff --check`, and perform baseline-relative allowlist validation.
-9. No output may exceed 90 MB. Use deterministic gzip for a large tabular output only if necessary and keep the allowlist consistent.
-10. Protected and pre-existing dirty files must remain byte-identical and unstaged.
+## Deterministic validation
 
-Return `TECHNICAL_CORRECTION_REQUIRED` unless all validation gates pass.
+1. Validate EXP-029R provenance, schema, reconciliation status and compressed input hash.
+2. Prove streaming use by code inspection and a machine-checkable validation row; whole-file materialisation is a hard failure.
+3. Verify all four volatility regimes are present in `volatility_localization.csv`, with `UNKNOWN` marked diagnostic/non-qualifying.
+4. Reproduce report counts and verdict directly from output CSVs.
+5. Run twice from identical inputs.
+6. Store ordinary byte SHA-256 manifests outside the repository in the first writable location selected in this order: `${XDG_STATE_HOME:-$HOME/.local/state}/msm-exp-evidence/EXP-030R-TRANSFER-FAILURE-LOCALIZATION/`, `$HOME/msm-exp-evidence/EXP-030R-TRANSFER-FAILURE-LOCALIZATION/`, then `/dev/shm/EXP-030R-TRANSFER-FAILURE-LOCALIZATION/`.
+7. Before use, create the directory and perform an actual write/delete probe. Do not use `/tmp` or the orchestrator-owned read-only evidence directory.
+8. Keep both manifests through audit and require exact path-by-path equality for all nine outputs.
+9. Compile without retained cache files, run `git diff --check`, and perform baseline-relative allowlist validation.
+
+If no writable external evidence location exists, return `TECHNICAL_CORRECTION_REQUIRED` with the probed paths and errors.
 
 ## Hard protections
 
-Never modify or stage `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, any EXP-009 file, or any EXP-013 through EXP-029R file.
+Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, any EXP-009 file, or any EXP-013 through EXP-030 file.
 
-The protected dirty Pine file under EXP-009 must remain byte-identical and unstaged.
+The protected dirty file `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine` must remain byte-identical and unstaged.
 
-Only the nine EXP-030 outputs may change inside the repository.
+Only the nine EXP-030R outputs may change inside the repository. The external manifests must not be committed.
 
 ## Result contract
 
-Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted EXP-030 outputs unstaged. The orchestrator performs final validation, commits once with the declared commit message and pushes to `main`.
+Planner, implementer, auditor and corrector use the required JSON role contract. The implementer leaves only the nine allowlisted EXP-030R outputs unstaged. The orchestrator performs final baseline-relative validation, commits once with the declared message and pushes to `main`.
