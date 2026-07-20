@@ -1,0 +1,7 @@
+check,value,status
+expected_committed_aggregate_rows,17752,PASS
+reconciliation_rows,17752,PASS
+match_rows,17752,PASS
+mismatch_rows,0,PASS
+not_comparable_rows,0,PASS
+observation_identifier_uniqueness,1,PASS

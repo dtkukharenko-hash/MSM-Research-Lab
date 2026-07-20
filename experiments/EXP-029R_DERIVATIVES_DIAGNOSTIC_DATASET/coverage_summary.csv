@@ -1,0 +1,7 @@
+dimension,value,count
+observation_role_validity,CONTROL|INVALID,6240
+observation_role_validity,CONTROL|UNKNOWN,887120
+observation_role_validity,CONTROL|VALID,169910
+observation_role_validity,EVENT|INVALID,18967
+observation_role_validity,EVENT|VALID,1044303
+reconciliation_status,MATCH,17752
