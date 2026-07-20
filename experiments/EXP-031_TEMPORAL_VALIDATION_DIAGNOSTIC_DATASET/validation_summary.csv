@@ -1,0 +1,11 @@
+check,value,status
+frozen_observation_schema_and_unique_identities,1,PASS
+source_hashes_and_provenance_recorded,1,PASS
+no_future_leakage,1,PASS
+event_control_join_consistency,0,FAIL
+chronological_thirds_declared_2025,1,PASS
+volatility_unknown_not_imputed,1,PASS
+overlap_probe_all_symbols,1,PASS
+required_2025_source_coverage,0,FAIL
+no_exp030r_cell_filtering,1,PASS
+outputs_below_95_mib,1,PASS

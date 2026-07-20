@@ -1,0 +1,13 @@
+counterexample_type,symbol,episode_id,detail
+MISSING_REQUIRED_2025_SOURCE,BTCUSDT,,"15m|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,BTCUSDT,,"funding|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,BTCUSDT,,"oi|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,ETHUSDT,,"15m|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,ETHUSDT,,"funding|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,ETHUSDT,,"oi|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,SOLUSDT,,"15m|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,SOLUSDT,,"funding|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,SOLUSDT,,"oi|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,XRPUSDT,,"15m|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,XRPUSDT,,"funding|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
+MISSING_REQUIRED_2025_SOURCE,XRPUSDT,,"oi|DOES_NOT_COVER_2025; no synthetic, imputed, or substituted data used"
