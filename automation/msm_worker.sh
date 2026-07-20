@@ -8,6 +8,7 @@ mkdir -p "$(dirname "$OUTPUT")"; umask 077
 if [[ -n $MOCK ]]; then printf '%s\n' "$MOCK" >"$OUTPUT"; exit 0; fi
 CODEX=${MSM_CODEX:-/home/nnv/.local/bin/codex}; REPO=${MSM_REPO:-/home/nnv/MSM-Research-Lab}; TIMEOUT=${MSM_ROLE_TIMEOUT:-3600}; JSONL="${OUTPUT%.json}.jsonl"
 STATE_ROOT=${MSM_STATE_DIR:-/home/nnv/.local/state/msm-orchestrator}
+DATA_ROOT=${MSM_MARKET_DATA_ROOT:-/home/nnv/.local/share/msm-market-data}
 SOURCE_CODEX_HOME=${MSM_CODEX_HOME:-${CODEX_HOME:-$HOME/.codex}}
 task_key=$(printf '%s' "$TASK" | sha256sum | awk '{print $1}')
 RUNTIME="$STATE_ROOT/runtime/$task_key/$ROLE"
@@ -17,8 +18,8 @@ RUNTIME_CODEX_HOME="$RUNTIME/codex"
 RUNTIME_OUTPUT="$RUNTIME/output/result.json"
 AUTH_SOURCE="$SOURCE_CODEX_HOME/auth.json"
 [[ -f $AUTH_SOURCE && -r $AUTH_SOURCE ]] || { echo 'Codex credentials are unavailable' >&2; exit 1; }
-mkdir -p "$RUNTIME_HOME" "$RUNTIME_CACHE" "$RUNTIME_CONFIG" "$RUNTIME_DATA" "$RUNTIME_STATE" "$RUNTIME_TMP" "$RUNTIME_CODEX_HOME" "$(dirname "$RUNTIME_OUTPUT")"
-chmod 700 "$RUNTIME" "$RUNTIME_HOME" "$RUNTIME_CACHE" "$RUNTIME_CONFIG" "$RUNTIME_DATA" "$RUNTIME_STATE" "$RUNTIME_TMP" "$RUNTIME_CODEX_HOME" "$(dirname "$RUNTIME_OUTPUT")"
+mkdir -p "$RUNTIME_HOME" "$RUNTIME_CACHE" "$RUNTIME_CONFIG" "$RUNTIME_DATA" "$RUNTIME_STATE" "$RUNTIME_TMP" "$RUNTIME_CODEX_HOME" "$(dirname "$RUNTIME_OUTPUT")" "$DATA_ROOT"
+chmod 700 "$RUNTIME" "$RUNTIME_HOME" "$RUNTIME_CACHE" "$RUNTIME_CONFIG" "$RUNTIME_DATA" "$RUNTIME_STATE" "$RUNTIME_TMP" "$RUNTIME_CODEX_HOME" "$(dirname "$RUNTIME_OUTPUT")" "$DATA_ROOT"
 cp -- "$AUTH_SOURCE" "$RUNTIME_CODEX_HOME/auth.json"
 chmod 600 "$RUNTIME_CODEX_HOME/auth.json"
 if [[ -f $SOURCE_CODEX_HOME/config.toml && -r $SOURCE_CODEX_HOME/config.toml ]]; then
@@ -28,14 +29,23 @@ fi
 rm -f "$RUNTIME_OUTPUT"
 baseline_context='No captured baseline was supplied.'
 if [[ -n $BASELINE ]]; then baseline_context=$(<"$BASELINE"); fi
-role_instruction="Evaluate only the task delta relative to that baseline."
-if [[ $ROLE == auditor ]]; then
-  role_instruction="Evaluate only the task delta relative to that baseline. If no task-created allowlisted paths exist for a task with required outputs, return TECHNICAL_CORRECTION_REQUIRED, not PASS."
-elif [[ $ROLE == corrector ]]; then
-  role_instruction="Correct the task delta relative to that baseline. If no task-created allowlisted paths exist, create every required allowlisted output from the task package. Outputs must be substantive task implementations, not placeholders or scaffolds. If prior correction created incomplete files, replace them with complete allowlisted outputs that satisfy the task validation. Leave the files unstaged."
-fi
+case "$ROLE" in
+  planner)
+    role_instruction="Plan the work and inspect feasibility only. The absence of task outputs is expected at this stage and must not trigger correction. Do not modify files. Return PASS when the task is technically actionable; report only genuine blockers or contradictions."
+    ;;
+  implementer)
+    role_instruction="Implement the task now. Create every required allowlisted output as substantive work, not placeholders. Use the persistent market-data root when the task requires external datasets. Leave repository changes unstaged and remove cache files."
+    ;;
+  auditor)
+    role_instruction="Audit only the completed task delta relative to the baseline. Verify every required output, deterministic evidence, persistent-data claims, allowlist boundary, and protected paths. If required outputs are absent or invalid, return TECHNICAL_CORRECTION_REQUIRED."
+    ;;
+  corrector)
+    role_instruction="Correct the completed task delta relative to the baseline. Create missing required outputs or replace incomplete files with complete allowlisted outputs. Use the persistent market-data root when required. Remove cache files and leave repository changes unstaged."
+    ;;
+esac
 prompt="You are the MSM $ROLE role. Captured non-secret worktree baseline: $baseline_context. $role_instruction Listed pre-existing paths, including the protected Pine when its SHA256 matches the baseline, are preserved user state and are not task violations. Report any change to a baseline path, protected-Pine staging, or task-created path outside the allowlist. Read task package $TASK and allowlist $ALLOWLIST first; then read task-required evidence, local data, and allowlisted outputs needed to complete or audit the task. Return ONLY JSON: {\"role\":\"$ROLE\",\"verdict\":\"PASS|TECHNICAL_CORRECTION_REQUIRED|USER_DECISION_REQUIRED|FAILED\",\"findings\":[strings],\"summary\":string}. You do not control state transitions. Do not run git mutation/synchronization commands. Implementer/corrector may modify only allowlisted files and leave changes unstaged."
 timeout "$TIMEOUT" bwrap --die-with-parent --ro-bind / / --bind "$REPO" "$REPO" --ro-bind "$REPO/.git" "$REPO/.git" \
+  --bind "$DATA_ROOT" "$DATA_ROOT" \
   --bind "$RUNTIME_HOME" "$RUNTIME_HOME" --bind "$RUNTIME_CACHE" "$RUNTIME_CACHE" \
   --bind "$RUNTIME_CONFIG" "$RUNTIME_CONFIG" --bind "$RUNTIME_DATA" "$RUNTIME_DATA" \
   --bind "$RUNTIME_STATE" "$RUNTIME_STATE" --bind "$RUNTIME_TMP" "$RUNTIME_TMP" \
@@ -44,7 +54,7 @@ timeout "$TIMEOUT" bwrap --die-with-parent --ro-bind / / --bind "$REPO" "$REPO" 
   --setenv HOME "$RUNTIME_HOME" --setenv XDG_CACHE_HOME "$RUNTIME_CACHE" \
   --setenv XDG_CONFIG_HOME "$RUNTIME_CONFIG" --setenv XDG_DATA_HOME "$RUNTIME_DATA" \
   --setenv XDG_STATE_HOME "$RUNTIME_STATE" --setenv TMPDIR "$RUNTIME_TMP" --setenv CODEX_HOME "$RUNTIME_CODEX_HOME" \
-  --setenv PYTHONDONTWRITEBYTECODE 1 \
+  --setenv MSM_MARKET_DATA_ROOT "$DATA_ROOT" --setenv PYTHONDONTWRITEBYTECODE 1 --setenv PYTHONPYCACHEPREFIX "$RUNTIME_CACHE/pycache" \
   --proc /proc --dev /dev "$CODEX" exec --json -o "$RUNTIME_OUTPUT" --dangerously-bypass-approvals-and-sandbox -C "$REPO" "$prompt" >"$JSONL"
 [[ -s $RUNTIME_OUTPUT ]] || { echo 'Codex did not produce a runtime result' >&2; exit 1; }
 mv -f "$RUNTIME_OUTPUT" "$OUTPUT"
