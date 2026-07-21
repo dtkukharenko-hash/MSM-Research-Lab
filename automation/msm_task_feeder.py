@@ -17,7 +17,7 @@ TASK_PATH = ".codex/TASK.md"
 ALLOWLIST_PATH = ".codex/ALLOWLIST.txt"
 TERMINAL_DIRS = ("queue", "running", "completed", "blocked", "failed")
 TASK_ID_RE = re.compile(r"^[A-Z0-9][A-Z0-9-]{1,127}$")
-FIELD_RE = re.compile(r"^- ([a-z_]+): `([^`\r\n]+)`$")
+FIELD_RE = re.compile(r"^- ([a-z_][a-z0-9_]*): `([^`\r\n]+)`$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 FORBIDDEN_EXACT = {
     "docs/DEFINITIONS.md",
