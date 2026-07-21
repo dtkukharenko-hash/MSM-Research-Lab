@@ -1,0 +1,10 @@
+[Unit]
+Description=MSM dashboard safe Git synchronization
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/lib/msm-orchestrator/msm_dashboard_sync.sh
