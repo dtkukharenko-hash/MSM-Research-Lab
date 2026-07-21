@@ -4,6 +4,7 @@ set -Eeuo pipefail
 REPO="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 STATE_ROOT="${HOME}/.local/state/msm-orchestrator"
 TASK_FILE="$REPO/.codex/TASK.md"
+REPORTER=/usr/local/lib/msm-orchestrator/msm_reporter.py
 LOG_FILE=""
 POLL_SECONDS=5
 TIMEOUT_SECONDS=$((12 * 60 * 60))
@@ -25,11 +26,10 @@ field() {
 
 state_file() {
     local task_id="$1"
-    local state
-    for state in completed blocked failed running queued; do
-        local dir="$STATE_ROOT/$state"
+    local state dir found
+    for state in completed blocked failed running queue; do
+        dir="$STATE_ROOT/$state"
         [[ -d "$dir" ]] || continue
-        local found
         found="$(find "$dir" -maxdepth 1 -type f -name "${task_id}-*.json" -print -quit 2>/dev/null || true)"
         if [[ -n "$found" ]]; then
             printf '%s|%s\n' "$state" "$found"
@@ -49,7 +49,29 @@ print_new_log_lines() {
     fi
 }
 
-echo "[1/5] Git sync"
+show_report() {
+    local task_id="$1" fallback="${2:-}" report="$STATE_ROOT/reports/${task_id}.md"
+    if [[ -f "$REPORTER" ]]; then
+        sudo -u nnv /usr/bin/python3 -B "$REPORTER" \
+            --repo "$REPO" --state-dir "$STATE_ROOT" --task-id "$task_id" >/dev/null 2>&1 || true
+    fi
+    local i
+    for i in {1..20}; do
+        [[ -s "$report" ]] && break
+        sleep 1
+    done
+    if [[ -s "$report" ]]; then
+        echo "REPORT=$report"
+        cat "$report"
+    elif [[ -n "$fallback" && -f "$fallback" ]]; then
+        echo "REPORT_NOT_AVAILABLE; raw envelope follows:"
+        cat "$fallback"
+    else
+        echo "REPORT_NOT_AVAILABLE"
+    fi
+}
+
+echo "[1/6] Git sync"
 git pull --ff-only origin main
 
 [[ -f "$TASK_FILE" ]] || {
@@ -59,6 +81,7 @@ git pull --ff-only origin main
 
 TASK_ID="$(field task_id)"
 TASK_STATUS="$(field status)"
+TASK_INFRA="$(field infrastructure_maintenance)"
 
 [[ -n "$TASK_ID" ]] || {
     echo "ERROR: task_id not found"
@@ -67,10 +90,24 @@ TASK_STATUS="$(field status)"
 
 echo "TASK_ID=$TASK_ID"
 echo "TASK_STATUS=$TASK_STATUS"
+echo "INFRASTRUCTURE_MAINTENANCE=$TASK_INFRA"
 
 LOG_FILE="$STATE_ROOT/logs/${TASK_ID}.jsonl"
 LOG_LINES=0
 [[ -f "$LOG_FILE" ]] && LOG_LINES="$(wc -l < "$LOG_FILE")"
+
+echo "[2/6] Install current runtime and reporter"
+sudo bash automation/install_orchestrator.sh --activate-production
+sudo systemctl daemon-reload
+sudo systemctl enable --now msm-reporter.service
+sudo systemctl restart msm-reporter.service
+
+if [[ "$TASK_INFRA" == "true" ]]; then
+    echo "[3/6] Infrastructure bootstrap completed"
+    echo "REPORTS=$STATE_ROOT/reports"
+    echo "LATEST_REPORT=$STATE_ROOT/reports/latest.md"
+    exit 0
+fi
 
 existing="$(state_file "$TASK_ID")"
 existing_state="${existing%%|*}"
@@ -79,43 +116,38 @@ existing_path="${existing#*|}"
 case "$existing_state" in
     completed)
         echo "STATUS=COMPLETED"
+        show_report "$TASK_ID" "$existing_path"
         git pull --ff-only origin main
         git log -3 --oneline
         exit 0
         ;;
     blocked|failed)
         echo "STATUS=${existing_state^^}"
-        cat "$existing_path"
+        show_report "$TASK_ID" "$existing_path"
         exit 1
         ;;
-    running|queued)
-        echo "[2/5] Existing run detected: $existing_state"
+    running|queue)
+        echo "[3/6] Existing run detected: $existing_state"
         ;;
     waiting)
         if [[ "$TASK_STATUS" != "READY" ]]; then
             echo "NO_READY_TASK"
             exit 0
         fi
-
-        echo "[2/5] Install current orchestrator"
-        sudo bash automation/install_orchestrator.sh --activate-production
-        sudo systemctl daemon-reload
-
-        echo "[3/5] Start production services"
+        echo "[3/6] Start production services"
         sudo systemctl disable --now msm-codex-runner.timer >/dev/null 2>&1 || true
-        sudo systemctl enable --now msm-orchestrator.service msm-task-feeder.service
-        sudo systemctl restart msm-task-feeder.service msm-orchestrator.service
+        sudo systemctl enable --now msm-orchestrator.service msm-task-feeder.service msm-reporter.service
+        sudo systemctl restart msm-task-feeder.service msm-orchestrator.service msm-reporter.service
         ;;
 esac
 
-echo "[4/5] Run task"
+echo "[4/6] Run task"
 echo "The process continues in systemd; Ctrl+C only stops this screen, not the task."
 
 started=$SECONDS
 last_state=""
 while (( SECONDS - started < TIMEOUT_SECONDS )); do
     print_new_log_lines
-
     current="$(state_file "$TASK_ID")"
     current_state="${current%%|*}"
     current_path="${current#*|}"
@@ -128,7 +160,9 @@ while (( SECONDS - started < TIMEOUT_SECONDS )); do
     case "$current_state" in
         completed)
             print_new_log_lines
-            echo "[5/5] COMPLETED"
+            echo "[5/6] COMPLETED"
+            show_report "$TASK_ID" "$current_path"
+            echo "[6/6] Git status"
             git pull --ff-only origin main
             git status --short
             git log -5 --oneline
@@ -136,8 +170,8 @@ while (( SECONDS - started < TIMEOUT_SECONDS )); do
             ;;
         blocked|failed)
             print_new_log_lines
-            echo "[5/5] ${current_state^^}"
-            cat "$current_path"
+            echo "[5/6] ${current_state^^}"
+            show_report "$TASK_ID" "$current_path"
             echo "LOG=$LOG_FILE"
             exit 1
             ;;
@@ -148,4 +182,5 @@ done
 
 echo "TIMEOUT: task continues or is stuck"
 echo "LOG=$LOG_FILE"
+echo "LATEST_REPORT=$STATE_ROOT/reports/latest.md"
 exit 2
