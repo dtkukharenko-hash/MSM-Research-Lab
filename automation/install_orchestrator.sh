@@ -46,8 +46,16 @@ run_fixture() {
     echo 'fixture failed dashboard launcher mode' >&2
     return 1
   }
+  [[ -x "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_launch_task.sh" ]] || {
+    echo 'fixture failed isolated dashboard launch task mode' >&2
+    return 1
+  }
   [[ -f "$tmp/install/etc/systemd/system/msm-dashboard.service" ]] || {
     echo 'fixture failed dashboard service install' >&2
+    return 1
+  }
+  [[ -f "$tmp/install/etc/systemd/system/msm-dashboard-launch.service" ]] || {
+    echo 'fixture failed isolated launch service install' >&2
     return 1
   }
   [[ $(stat -c '%a' "$tmp/install/etc/sudoers.d/msm-dashboard") == 440 ]] || {
@@ -99,7 +107,7 @@ fi
 PYCACHE_ROOT=$(mktemp -d)
 trap 'rm -rf "$PYCACHE_ROOT"' EXIT
 
-for f in msm_orchestrator.py msm_task_feeder.py msm_reporter.py msm_dashboard.py msm_worker.sh msm_dashboard_start.sh install_orchestrator.sh verify_orchestrator.sh msm-orchestrator.service msm-task-feeder.service msm-reporter.service msm-dashboard.service msm-dashboard.sudoers; do
+for f in msm_orchestrator.py msm_task_feeder.py msm_reporter.py msm_dashboard.py msm_worker.sh msm_dashboard_start.sh msm_dashboard_launch_task.sh install_orchestrator.sh verify_orchestrator.sh msm-orchestrator.service msm-task-feeder.service msm-reporter.service msm-dashboard.service msm-dashboard-launch.service msm-dashboard.sudoers; do
   [[ -f "$REPO/automation/$f" ]] || { echo "missing $f" >&2; exit 1; }
 done
 PYTHONPYCACHEPREFIX="$PYCACHE_ROOT" python3 -m py_compile \
@@ -110,6 +118,7 @@ PYTHONPYCACHEPREFIX="$PYCACHE_ROOT" python3 -m py_compile \
 PYTHONDONTWRITEBYTECODE=1 python3 -B "$REPO/automation/msm_reporter.py" --self-test
 bash -n "$REPO/automation/msm_worker.sh"
 bash -n "$REPO/automation/msm_dashboard_start.sh"
+bash -n "$REPO/automation/msm_dashboard_launch_task.sh"
 bash -n "$REPO/automation/verify_orchestrator.sh"
 if command -v visudo >/dev/null 2>&1; then
   visudo -cf "$REPO/automation/msm-dashboard.sudoers" >/dev/null
@@ -127,12 +136,16 @@ install -m 644 \
   "$REPO/automation/msm_dashboard.py" \
   "$REPO/automation/msm_worker.sh" \
   "$DEST/"
-install -m 755 "$REPO/automation/msm_dashboard_start.sh" "$DEST/"
+install -m 755 \
+  "$REPO/automation/msm_dashboard_start.sh" \
+  "$REPO/automation/msm_dashboard_launch_task.sh" \
+  "$DEST/"
 install -m 644 \
   "$REPO/automation/msm-orchestrator.service" \
   "$REPO/automation/msm-task-feeder.service" \
   "$REPO/automation/msm-reporter.service" \
   "$REPO/automation/msm-dashboard.service" \
+  "$REPO/automation/msm-dashboard-launch.service" \
   "$UNIT/"
 install -m 440 "$REPO/automation/msm-dashboard.sudoers" "$SUDOERS/msm-dashboard"
 for d in "$STATE" "$STATE"/{queue,running,completed,blocked,failed,logs,locks,reports}; do
