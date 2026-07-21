@@ -1,6 +1,6 @@
 # Current Codex Task
 
-- task_id: `EXP-031R-TEMPORAL-VALIDATION-2025`
+- task_id: `EXP-031R2-TEMPORAL-VALIDATION-2025`
 - status: `READY`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
@@ -11,24 +11,24 @@
 
 ## Objective
 
-Create an independent calendar-2025 temporal validation diagnostic dataset using the frozen EXP-027 and EXP-029R protocol. Preserve the committed failed EXP-031 package unchanged. This task prepares evidence only; it must not test, rank, filter, confirm, or reject any of the 226 EXP-030R volatility cells and must not make a predictive claim.
+Build the calendar-2025 temporal validation diagnostic dataset with the frozen EXP-027 and EXP-029R protocol. Preserve all committed prior experiments. Do not inspect, rank, filter, confirm or reject EXP-030R cells and do not make a predictive claim.
 
 ## Mandatory data gate
 
-Before any computation:
+Before computation:
 
-1. verify the committed DATA-001 report SHA-256 against the metadata above and require `DATA_READY=YES`;
-2. verify `data/readiness/DATA-001_BYBIT_2025/readiness_manifest.csv` has SHA-256 `14a43c01de55d3cb82349553ec3abf700a9e49137fba6eea9669d2c2cceba4b2`;
-3. require exactly twelve readiness-manifest rows and require every row to have `source_status=READY`;
-4. independently hash each canonical CSV and require equality with `canonical_sha256` in the readiness manifest;
-5. require the frozen interval `2025-01-01T00:00:00Z <= timestamp < 2026-01-01T00:00:00Z` for BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT;
-6. stop with a failed dataset status before protocol work if any gate fails.
+1. verify the DATA-001 report hash above and require `DATA_READY=YES`;
+2. verify `data/readiness/DATA-001_BYBIT_2025/readiness_manifest.csv` SHA-256 is `14a43c01de55d3cb82349553ec3abf700a9e49137fba6eea9669d2c2cceba4b2`;
+3. require exactly twelve rows and `source_status=READY` for every row;
+4. hash every canonical CSV and require equality with its manifest hash;
+5. independently verify the complete 2025 grids for BTCUSDT, ETHUSDT, SOLUSDT and XRPUSDT;
+6. treat the canonical files as combined archives: the manifest reports the validated 2025 slice but does not imply that earlier rows are absent.
 
-The research task is read-only with respect to the persistent market-data root. Do not download, rewrite, repair, merge, or update canonical archives or metadata.
+The persistent market-data root is read-only for this task.
 
 ## Frozen protocol
 
-Use the exact definitions and deterministic rules committed in:
+Use the definitions and deterministic helpers committed in:
 
 - `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/experiment_027.py`;
 - `experiments/EXP-029R_DERIVATIVES_DIAGNOSTIC_DATASET/experiment_029r.py`;
@@ -36,146 +36,90 @@ Use the exact definitions and deterministic rules committed in:
 
 Reproduce without tuning:
 
-- symbols, event families, sides and 8H/24H episode views;
-- funding, OI and JOINT event construction;
-- representative-event selection and episode identities;
-- exact matched-control strata, candidate eligibility, tie-breaking and unavailable-control handling;
-- calendar-month and chronological-third fields for the declared 2025 interval;
+- symbols, FUNDING/OI/JOINT families, sides and 8H/24H episode views;
+- representative selection, identities and matched-control rules;
+- calendar month and chronological third;
 - scales `15m` and `1H`;
-- the five frozen representations from EXP-027;
-- the thirteen frozen scalar fields from EXP-029R;
-- explicit `UNKNOWN` states and reasons;
-- equal-symbol conventions where protocol-level summaries are needed only for integrity validation.
+- all five representations and thirteen scalar fields;
+- explicit `UNKNOWN` values and reasons;
+- volatility state from current ATR versus the preceding 96 closed bars.
 
-Do not invoke a source experiment main function if it can write into an existing experiment directory. Import read-only helpers or reproduce the frozen logic inside the new script. No existing experiment file may change.
+Use only fully closed bars. No future information, synthetic substitution, interpolation, forward fill, gap fill or cross-symbol replacement.
 
-## Causal rules
+## Required implementation corrections
 
-- Use only bars fully closed at or before each observation timestamp.
-- Use no future pivots, future bars or later episode information in a past state.
-- Use no synthetic substitution, interpolation, forward fill, gap fill or cross-symbol replacement.
-- The volatility regime must compare current ATR only with the preceding 96 closed bars, exactly as in EXP-029R/EXP-031.
-- Missing history, missing controls or unavailable state must remain `UNKNOWN` with an explicit reason.
-- Do not read EXP-030R outcome tables, qualifying-cell lists or cell pass/fail fields.
+Create `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/experiment_031r2.py`.
 
-## 2025 dataset construction
+The implementation must:
 
-Create a new isolated implementation at:
+1. set `sys.dont_write_bytecode = True` before loading any source module and leave no `__pycache__` or `.pyc` anywhere in the repository;
+2. read exact canonical paths from the readiness manifest;
+3. verify all input hashes before and after both deterministic runs;
+4. never parse an empty timestamp; unmatched controls must retain an empty timestamp and explicit `UNKNOWN` state;
+5. include `representation` in both observation and volatility schemas, identities and sort keys;
+6. use indexed timestamps or bisect-based lookup rather than rescanning all bars for every observation;
+7. support an explicit output directory so the same computation can run twice in clean temporary directories;
+8. produce deterministic gzip with empty filename and `mtime=0`;
+9. copy only a byte-verified final run into the repository output directory.
 
-`experiments/EXP-031R_TEMPORAL_VALIDATION_2025/experiment_031r.py`
+Required row invariants:
 
-It must:
+- observations: `representative_episode_count * 2 roles * 2 scales * 5 representations * 13 fields`;
+- volatility: `representative_episode_count * 2 roles * 2 scales * 5 representations`.
 
-1. read the exact canonical paths from the readiness manifest, not discover arbitrary substitutes;
-2. verify the twelve source hashes before use;
-3. construct the complete 2025 episode and matched-control populations with frozen identities;
-4. retain representative and non-representative episode rows as required by the EXP-027 schema;
-5. emit one event and one control observation identity per representative episode, including unavailable controls as explicit UNKNOWN rows;
-6. compute both scales, all five representations and all thirteen scalar fields;
-7. emit volatility-state rows for the same event/control identities and scales;
-8. preserve deterministic ascending ordering and unique compound identities;
-9. use deterministic gzip for `validation_observations.csv.gz` with an empty filename and `mtime=0`.
+Unmatched controls remain included in both invariants as `UNKNOWN`.
 
-Required observation-row invariant:
+## Required overlap reconciliation
 
-`representative_episode_count * 2 roles * 2 scales * 5 representations * 13 fields`
+Use the 2024 rows already present in the combined canonical 15-minute files. Do not infer absence from the 2025 bounds recorded in the readiness manifest.
 
-Required volatility-row invariant:
+For `2024-10-01T00:00:00Z <= timestamp < 2024-11-01T00:00:00Z`:
 
-`representative_episode_count * 2 roles * 2 scales * 5 representations`
+1. select the committed EXP-029R observation and volatility identities in that interval;
+2. recompute their state through the same code path used for 2025 using only canonical bars closed by each observation timestamp;
+3. compare canonical identities, validity fields, reasons, string fields and numeric values at tolerance `1e-09`;
+4. record expected/reconstructed counts, missing identities, extra identities, numeric mismatches and canonical hashes for each symbol and both datasets;
+5. require PASS for all four symbols and both datasets.
 
-Unmatched controls remain part of both invariants and carry UNKNOWN values.
-
-## Frozen overlap reconciliation
-
-Before accepting the 2025 dataset, rerun the identical state path on:
-
-`2024-10-01T00:00:00Z <= timestamp < 2024-11-01T00:00:00Z`
-
-For every symbol, compare reconstructed rows directly with the committed EXP-029R `observations.csv` and `volatility_state.csv` slices. Use canonical sorting and tolerance `1e-09` for numeric values. Record expected/reconstructed row counts, missing identities, extra identities, numeric mismatches and canonical hashes in `protocol_reconciliation.csv`.
-
-Every symbol must pass both observation and volatility reconciliation. Do not weaken this requirement based on the 2025 result.
+Empty committed control timestamps are excluded from timestamp interval selection only because they have no time coordinate; they remain represented and audited in their parent dataset.
 
 ## Required outputs
 
-Create exactly these twelve new repository files:
+Create exactly these twelve files:
 
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/REPORT.md`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/data_provenance.csv`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/episodes.csv`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/matched_controls.csv`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/validation_observations.csv.gz`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/validation_volatility_state.csv`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/protocol_reconciliation.csv`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/coverage_summary.csv`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/validation_summary.csv`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/counterexamples.csv`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/run_hashes.csv`
-- `experiments/EXP-031R_TEMPORAL_VALIDATION_2025/experiment_031r.py`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/REPORT.md`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/data_provenance.csv`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/episodes.csv`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/matched_controls.csv`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/validation_observations.csv.gz`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/validation_volatility_state.csv`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/protocol_reconciliation.csv`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/coverage_summary.csv`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/validation_summary.csv`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/counterexamples.csv`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/run_hashes.csv`
+- `experiments/EXP-031R2_TEMPORAL_VALIDATION_2025/experiment_031r2.py`
 
 No other repository path may be created or changed.
 
-## Output contracts
+## Validation contract
 
-`data_provenance.csv` must contain the DATA-001 report path/hash, readiness-manifest path/hash and all twelve canonical paths, hashes, schemas, row counts and 2025 coverage bounds.
+`validation_summary.csv` must independently report PASS/FAIL for the data gate, source hashes, exact coverage, identity uniqueness, joins, both row invariants, both compound-identity invariants, closed-bar causality, UNKNOWN preservation, all-symbol overlap reconciliation, absence of EXP-030R access, deterministic two-run equality, output sizes and allowlist boundaries.
 
-`episodes.csv` and `matched_controls.csv` must preserve the frozen EXP-027 schemas and expose enough identity fields to audit every event/control observation join.
+`run_hashes.csv` must contain run-1 and run-2 SHA-256 values for the other eleven outputs and exclude itself. Every pair must match. Hashed files must not be rewritten afterward.
 
-`coverage_summary.csv` must include at least symbol, source kind, event family, side, episode view, representative status, control status, observation role, scale, representation, validity and volatility regime counts.
-
-`counterexamples.csv` must retain every unavailable control, UNKNOWN state, protocol mismatch and failed invariant with explicit reason. When none exist for a category, do not invent rows.
-
-`validation_summary.csv` must independently record PASS/FAIL for:
-
-- DATA-001 report and readiness manifest;
-- twelve canonical source hashes;
-- exact 2025 coverage;
-- episode identity uniqueness;
-- representative identity uniqueness;
-- event/control join completeness;
-- observation-row invariant;
-- observation compound-identity uniqueness;
-- volatility-row invariant;
-- volatility compound-identity uniqueness;
-- closed-bar causality;
-- UNKNOWN preservation;
-- all-symbol overlap reconciliation;
-- absence of EXP-030R cell access;
-- deterministic two-run equality;
-- output-size and allowlist boundaries.
-
-`run_hashes.csv` must contain run-1 and run-2 SHA-256 values for the other eleven outputs and must not hash itself. All eleven pairs must match. Compute hashes after final writes and do not rewrite hashed files afterward.
-
-## Status
-
-`REPORT.md` must use exactly one overall status:
+`REPORT.md` must use exactly one status:
 
 - `TEMPORAL_VALIDATION_DATASET_READY` when every required validation passes;
-- `TEMPORAL_VALIDATION_DATASET_PARTIAL` when valid 2025 rows exist but a required integrity condition fails;
-- `TEMPORAL_VALIDATION_DATASET_FAILED` when the dataset cannot be constructed honestly.
+- `TEMPORAL_VALIDATION_DATASET_PARTIAL` when honest 2025 rows exist but an integrity requirement fails;
+- `TEMPORAL_VALIDATION_DATASET_FAILED` when construction cannot complete honestly.
 
-This task does not produce ACCEPT/REJECT and does not authorize EXP-032 unless the status is `TEMPORAL_VALIDATION_DATASET_READY`.
+This task does not authorize EXP-032 unless the status is `TEMPORAL_VALIDATION_DATASET_READY`.
 
-## Validation before PASS
+## Final checks
 
-1. Run the script twice from clean temporary output locations with bytecode redirected outside the repository.
-2. Confirm byte-identical hashes for all eleven substantive outputs.
-3. Reopen the final gzip and CSV outputs and independently recompute row counts, unique identities and invariants.
-4. Confirm every canonical input hash still matches DATA-001 after both runs.
-5. Run `git diff --check` on task-created files.
-6. Confirm exactly the twelve allowlisted paths are task-created and unstaged.
-7. Confirm every output is below 95 MiB.
-8. Confirm no `__pycache__`, `.pyc`, temporary or partial file exists in the repository.
-9. Confirm the protected Pine remains byte-identical and unstaged.
+Run twice from clean temporary output directories. Reopen every final CSV and gzip and recompute counts and identities. Confirm all outputs are below 95 MiB, `git diff --check` passes, exactly the twelve allowlisted paths are task-created and unstaged, and no cache or temporary file exists in the repository.
 
-## Hard protections
+Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `PROJECT_INSTRUCTIONS.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, persistent market data, any existing experiment directory or any EXP-009 file.
 
-Never modify, stage, delete, rename, chmod or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `PROJECT_INSTRUCTIONS.md`, `docs/DEFINITIONS.md`, `start.sh`, `.git` internals, persistent market-data files, any existing DATA package, any existing experiment directory, or any EXP-009 file.
-
-The protected dirty file:
-
-`experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
-
-must remain byte-identical with SHA-256 `0889efa1f8fa8420962160cbc602b5f6f0836763aab6d34534245ea3dad0223f`, dirty and unstaged.
-
-Planner must treat absent outputs as normal. Implementer creates the twelve outputs. Auditor verifies them independently. Corrector changes only the twelve allowlisted files and leaves them unstaged.
+The protected dirty file `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine` must remain byte-identical with SHA-256 `0889efa1f8fa8420962160cbc602b5f6f0836763aab6d34534245ea3dad0223f`, dirty and unstaged.
