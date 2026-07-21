@@ -1,6 +1,6 @@
 # Current Codex Task
 
-- task_id: `EXP-031R6A3P-PUBLICATION-RECOVERY`
+- task_id: `EXP-031R6A3P2-PUBLICATION-RECOVERY`
 - status: `READY`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
@@ -8,7 +8,7 @@
 - data_ready: `true`
 - data_manifest: `data/readiness/DATA-001_BYBIT_2025/REPORT.md`
 - data_manifest_sha256: `fd894efc57bbd91c792db92afa31f15e091a7f7128055ff2c57cf471e580f4ba`
-- commit_message: `EXP-031R6A3P publish recovered bounded-worker outputs`
+- commit_message: `EXP-031R6A3P2 publish recovered bounded-worker outputs`
 
 ## Objective
 
@@ -38,6 +38,7 @@ These decisions are fixed and require no user judgment:
 5. The orchestrator is authorized to stage, commit, and push exactly the fifteen allowlisted recovered paths after final auditor PASS.
 6. Any missing, ambiguous, or invalid recovery commit is `TECHNICAL_CORRECTION_REQUIRED` or `FAILED`, not `USER_DECISION_REQUIRED`.
 7. `.codex/RESULT.md` must not be created or modified.
+8. The predecessor task `EXP-031R6A3P-PUBLICATION-RECOVERY` has a terminal envelope and must not be rerun. This task uses a new unique ID solely to permit one fresh recovery attempt.
 
 ## Immutable baselines
 
