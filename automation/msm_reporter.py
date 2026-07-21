@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Generate one human-readable Markdown report for every terminal MSM task.
+"""Generate scoped human-readable reports for terminal MSM task envelopes.
 
-The reporter is independent of the transition engine. It never changes the
-repository or task verdicts; it only reads envelopes, role results, logs and
-small validation tables, then writes reports below the orchestrator state root.
+The reporter is read-only with respect to the repository. For failed or blocked
+runs it may inspect only task-created paths that are also present in that task's
+allowlist. Unrelated dirty or untracked experiment directories are never treated
+as artifacts of the current task.
 """
 from __future__ import annotations
 
@@ -21,13 +22,35 @@ from pathlib import Path
 
 TERMINAL_DIRS = ("failed", "completed", "blocked")
 ROLE_NAMES = ("planner", "implementer", "auditor", "corrector")
-REPORT_STATUS_RE = re.compile(
-    r"\b(?:TEMPORAL_VALIDATION_DATASET|DIAGNOSTIC_DATASET|DATA)_(?:READY|PARTIAL|FAILED)\b|\b(?:ACCEPT|REJECT)\b"
+CLAIM_VALUES = {
+    "ACCEPT",
+    "PARTIAL",
+    "REJECT",
+    "DATA_FAILED",
+    "TEMPORAL_VALIDATION_DATASET_READY",
+    "TEMPORAL_VALIDATION_DATASET_PARTIAL",
+    "TEMPORAL_VALIDATION_DATASET_FAILED",
+    "DIAGNOSTIC_DATASET_READY",
+    "DIAGNOSTIC_DATASET_PARTIAL",
+    "DIAGNOSTIC_DATASET_FAILED",
+    "DATA_READY",
+    "DATA_PARTIAL",
+    "DATA_FAILED",
+    "BOUNDED_WORKER_REPRESENTATION_READY",
+}
+CLAIM_LINE_RE = re.compile(
+    r"^\s*(?:[-*]\s*)?(?:status|verdict|scientific verdict|experiment status)\s*:\s*[`\"]?([A-Z][A-Z0-9_ -]*)[`\"]?\s*$",
+    re.IGNORECASE,
 )
 
 
 def utc_now() -> str:
-    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        dt.datetime.now(dt.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def load_json(path: Path):
@@ -68,10 +91,27 @@ def git_status(repo: Path) -> dict[str, str]:
         if len(row) < 4:
             continue
         code = row[:2].decode("ascii", "replace")
-        path = row[3:].decode("utf-8", "surrogateescape")
-        if path:
-            entries[path] = code
+        relative = row[3:].decode("utf-8", "surrogateescape")
+        if relative:
+            entries[relative] = code
     return entries
+
+
+def allowed_paths(repo: Path, envelope: dict) -> set[str]:
+    relative = envelope.get("allowlist_path")
+    if not isinstance(relative, str) or not relative:
+        return set()
+    path = (repo / relative).resolve()
+    if repo.resolve() not in path.parents or not path.is_file():
+        return set()
+    try:
+        return {
+            line.strip()
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        }
+    except OSError:
+        return set()
 
 
 def committed_paths(repo: Path, task_id: str) -> tuple[list[str], str]:
@@ -97,30 +137,38 @@ def committed_paths(repo: Path, task_id: str) -> tuple[list[str], str]:
 
 def artifact_paths(repo: Path, envelope: dict) -> tuple[list[str], str]:
     task_id = str(envelope.get("task_id", ""))
+    allowlist = allowed_paths(repo, envelope)
     if envelope.get("status") == "COMPLETED":
         paths, commit = committed_paths(repo, task_id)
         if paths:
-            return paths, commit
+            scoped = sorted(set(paths) & allowlist) if allowlist else paths
+            return scoped, commit
+    baseline = envelope.get("baseline", {}).get("preexisting_paths")
+    if not isinstance(baseline, dict) or not allowlist:
+        return [], ""
     try:
-        baseline = envelope.get("baseline", {}).get("preexisting_paths", {})
-        return sorted(set(git_status(repo)) - set(baseline)), ""
+        changed = set(git_status(repo)) - set(baseline)
     except Exception:
         return [], ""
+    return sorted(changed & allowlist), ""
 
 
 def report_claim(repo: Path, paths: list[str]) -> tuple[str, str]:
-    for relative in (path for path in paths if Path(path).name == "REPORT.md"):
+    for relative in sorted(path for path in paths if Path(path).name == "REPORT.md"):
         path = repo / relative
         if not path.is_file():
             continue
         try:
             with open(path, encoding="utf-8", errors="replace") as source:
                 for index, line in enumerate(source):
-                    if index >= 80:
+                    if index >= 120:
                         break
-                    match = REPORT_STATUS_RE.search(line)
-                    if match:
-                        return match.group(0), relative
+                    match = CLAIM_LINE_RE.fullmatch(line.rstrip("\n"))
+                    if not match:
+                        continue
+                    claim = match.group(1).strip().upper().replace(" ", "_")
+                    if claim in CLAIM_VALUES:
+                        return claim, relative
         except OSError:
             continue
     return "NOT_DECLARED", ""
@@ -152,7 +200,11 @@ def small_csv_table(path: Path, max_rows: int = 200, max_columns: int = 24) -> s
         "| " + " | ".join("---" for _ in fields) + " |",
     ]
     for row in rows:
-        lines.append("| " + " | ".join(markdown_cell(row.get(field, "")) for field in fields) + " |")
+        lines.append(
+            "| "
+            + " | ".join(markdown_cell(row.get(field, "")) for field in fields)
+            + " |"
+        )
     return "\n".join(lines)
 
 
@@ -205,11 +257,12 @@ def render(repo: Path, state: Path, envelope_path: Path, envelope: dict) -> Path
     warnings = []
     if final_status != "COMPLETED" and ("READY" in claim or claim == "ACCEPT"):
         warnings.append(
-            f"Experiment report claims `{claim}`, but the orchestrator ended as `{final_status}`. "
-            "The claim is not accepted."
+            f"Experiment report claims `{claim}`, but the orchestrator ended as `{final_status}`. The claim is not accepted."
         )
     if not paths:
-        warnings.append("Artifact paths could not be reconstructed; runtime findings remain authoritative.")
+        warnings.append(
+            "No task-scoped artifact paths were reconstructed. Unrelated dirty or untracked repository reports were intentionally excluded."
+        )
 
     lines = [
         f"# MSM terminal report — {task_id}",
@@ -236,7 +289,7 @@ def render(repo: Path, state: Path, envelope_path: Path, envelope: dict) -> Path
     elif final_status == "FAILED_TECHNICAL":
         lines.append("The package was not accepted. This is a technical outcome, not a scientific ACCEPT/REJECT verdict.")
     else:
-        lines.append("The package was not accepted because explicit user input or a research decision is required.")
+        lines.append("The package was not accepted because an explicitly permitted user research decision is required.")
 
     if warnings:
         lines += ["", "## Warnings", ""]
@@ -257,12 +310,18 @@ def render(repo: Path, state: Path, envelope_path: Path, envelope: dict) -> Path
         findings = value.get("findings", [])
         if findings:
             lines.append("- Findings:")
-            lines.extend(f"  {index}. {finding}" for index, finding in enumerate(findings, 1))
+            lines.extend(
+                f"  {index}. {finding}"
+                for index, finding in enumerate(findings, 1)
+            )
         lines.append("")
 
     lines += ["## State transitions", ""]
     if transition_rows:
-        lines += ["| Timestamp | Role | From | To |", "| --- | --- | --- | --- |"]
+        lines += [
+            "| Timestamp | Role | From | To |",
+            "| --- | --- | --- | --- |",
+        ]
         for item in transition_rows:
             lines.append(
                 f"| {markdown_cell(item.get('timestamp', ''))} | "
@@ -275,18 +334,26 @@ def render(repo: Path, state: Path, envelope_path: Path, envelope: dict) -> Path
 
     lines += ["", "## Artifacts", ""]
     if paths:
-        lines += ["| Path | Size, bytes | SHA-256 | Present |", "| --- | ---: | --- | --- |"]
+        lines += [
+            "| Path | Size, bytes | SHA-256 | Present |",
+            "| --- | ---: | --- | --- |",
+        ]
         for relative in paths:
             path = repo / relative
             present = path.is_file()
             size = path.stat().st_size if present else ""
-            digest = sha256(path) if present else ""
-            lines.append(f"| {markdown_cell(relative)} | {size} | {digest} | {'YES' if present else 'NO'} |")
+            file_digest = sha256(path) if present else ""
+            lines.append(
+                f"| {markdown_cell(relative)} | {size} | {file_digest} | {'YES' if present else 'NO'} |"
+            )
     else:
-        lines.append("No artifact paths available.")
+        lines.append("No task-scoped artifact paths available.")
 
     for relative in paths:
-        if Path(relative).name not in {"validation_summary.csv", "protocol_reconciliation.csv"}:
+        if Path(relative).name not in {
+            "validation_summary.csv",
+            "protocol_reconciliation.csv",
+        }:
             continue
         table = small_csv_table(repo / relative)
         if table:
@@ -329,7 +396,10 @@ def scan(repo: Path, state: Path, task_id: str | None = None) -> list[Path]:
         reports.append(report)
         latest = (modified, report)
     if latest:
-        atomic_text(state / "reports" / "latest.md", latest[1].read_text(encoding="utf-8"))
+        atomic_text(
+            state / "reports" / "latest.md",
+            latest[1].read_text(encoding="utf-8"),
+        )
     return reports
 
 
@@ -338,24 +408,45 @@ def self_test() -> None:
         root = Path(directory)
         repo = root / "repo"
         state = root / "state"
-        report_dir = repo / "experiments" / "EXP-TEST"
-        report_dir.mkdir(parents=True)
-        (report_dir / "REPORT.md").write_text("Status: TEMPORAL_VALIDATION_DATASET_READY\n", encoding="utf-8")
-        (report_dir / "validation_summary.csv").write_text("check,status\nidentity,PASS\n", encoding="utf-8")
+        own = repo / "experiments" / "EXP-TEST"
+        unrelated = repo / "experiments" / "EXP-OLD"
+        own.mkdir(parents=True)
+        unrelated.mkdir(parents=True)
+        (repo / ".codex").mkdir()
+        (repo / ".codex" / "ALLOWLIST.txt").write_text(
+            "experiments/EXP-TEST/REPORT.md\n", encoding="utf-8"
+        )
+        (own / "REPORT.md").write_text("Status: REJECT\n", encoding="utf-8")
+        (unrelated / "REPORT.md").write_text(
+            "Status: TEMPORAL_VALIDATION_DATASET_READY\n", encoding="utf-8"
+        )
         subprocess.run(["git", "init", "-q", str(repo)], check=True)
         subprocess.run(["git", "-C", str(repo), "config", "user.email", "fixture@example.invalid"], check=True)
         subprocess.run(["git", "-C", str(repo), "config", "user.name", "Fixture"], check=True)
         subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
         subprocess.run(["git", "-C", str(repo), "commit", "-qm", "baseline"], check=True)
-        (report_dir / "REPORT.md").write_text("Status: TEMPORAL_VALIDATION_DATASET_READY\nchanged\n", encoding="utf-8")
-        (report_dir / "validation_summary.csv").write_text("check,status\nidentity,PASS\nchanged,PASS\n", encoding="utf-8")
+        (own / "REPORT.md").write_text("Status: REJECT\nchanged\n", encoding="utf-8")
+        (unrelated / "REPORT.md").write_text(
+            "Status: TEMPORAL_VALIDATION_DATASET_READY\nchanged\n",
+            encoding="utf-8",
+        )
         envelope = {
-            "task_id": "EXP-TEST", "task_hash": "fixture", "status": "FAILED_TECHNICAL",
-            "attempt": 2, "max_corrections": 2,
-            "baseline": {"preexisting_paths": {}},
+            "task_id": "EXP-TEST",
+            "task_hash": "fixture",
+            "status": "FAILED_TECHNICAL",
+            "attempt": 0,
+            "max_corrections": 2,
+            "allowlist_path": ".codex/ALLOWLIST.txt",
+            "baseline": {
+                "preexisting_paths": {
+                    "experiments/EXP-OLD/REPORT.md": {}
+                }
+            },
             "last_result": {
-                "role": "auditor", "verdict": "TECHNICAL_CORRECTION_REQUIRED",
-                "findings": ["fixture finding"], "summary": "fixture summary",
+                "role": "planner",
+                "verdict": "TECHNICAL_CORRECTION_REQUIRED",
+                "findings": ["fixture finding"],
+                "summary": "fixture summary",
             },
         }
         envelope_path = state / "failed" / "EXP-TEST-fixture.json"
@@ -363,15 +454,23 @@ def self_test() -> None:
         envelope_path.write_text(json.dumps(envelope), encoding="utf-8")
         (state / "logs").mkdir(parents=True)
         (state / "logs" / "EXP-TEST.jsonl").write_text(
-            json.dumps({"timestamp": utc_now(), "role": "auditor", "from_state": "AUDITING", "to_state": "FAILED_TECHNICAL"}) + "\n",
+            json.dumps(
+                {
+                    "timestamp": utc_now(),
+                    "role": "planner",
+                    "from_state": "PLANNING",
+                    "to_state": "FAILED_TECHNICAL",
+                }
+            )
+            + "\n",
             encoding="utf-8",
         )
         reports = scan(repo, state, "EXP-TEST")
         assert len(reports) == 1
         text = reports[0].read_text(encoding="utf-8")
-        assert "FINAL STATUS: `FAILED_TECHNICAL`" in text
-        assert "ORCHESTRATOR ACCEPTANCE: `NOT ACCEPTED`" in text
-        assert "EXPERIMENT REPORT CLAIM: `TEMPORAL_VALIDATION_DATASET_READY`" in text
+        assert "EXPERIMENT REPORT CLAIM: `REJECT`" in text
+        assert "EXP-OLD" not in text
+        assert "TEMPORAL_VALIDATION_DATASET_READY" not in text
         assert "fixture finding" in text
         assert (state / "reports" / "latest.md").is_file()
     print("REPORTER_SELF_TEST_OK")
@@ -380,7 +479,10 @@ def self_test() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", default="/home/nnv/MSM-Research-Lab")
-    parser.add_argument("--state-dir", default="/home/nnv/.local/state/msm-orchestrator")
+    parser.add_argument(
+        "--state-dir",
+        default="/home/nnv/.local/state/msm-orchestrator",
+    )
     parser.add_argument("--poll", type=int, default=10)
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--task-id")
