@@ -1,1 +1,1 @@
-nnv ALL=(root) NOPASSWD: /usr/local/lib/msm-orchestrator/msm_dashboard_start.sh
+nnv ALL=(root) NOPASSWD: /usr/bin/systemctl start msm-dashboard-launch.service, /usr/bin/systemctl start msm-dashboard-sync.service
