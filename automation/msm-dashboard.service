@@ -15,7 +15,7 @@ ProtectSystem=full
 ProtectHome=read-only
 ReadOnlyPaths=/home/nnv/MSM-Research-Lab
 ReadOnlyPaths=/home/nnv/.local/state/msm-orchestrator
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+NoNewPrivileges=false
 
 [Install]
 WantedBy=multi-user.target
