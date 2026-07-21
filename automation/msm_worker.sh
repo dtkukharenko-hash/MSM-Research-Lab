@@ -10,6 +10,16 @@ CODEX=${MSM_CODEX:-/home/nnv/.local/bin/codex}; REPO=${MSM_REPO:-/home/nnv/MSM-R
 STATE_ROOT=${MSM_STATE_DIR:-/home/nnv/.local/state/msm-orchestrator}
 DATA_ROOT=${MSM_MARKET_DATA_ROOT:-/home/nnv/.local/share/msm-market-data}
 SOURCE_CODEX_HOME=${MSM_CODEX_HOME:-${CODEX_HOME:-$HOME/.codex}}
+TASK_KIND=$(awk '
+  /^## / { exit }
+  /^- task_kind:/ {
+    sub(/^- task_kind:[[:space:]]*/, "")
+    gsub(/^[`\"]|[`\"]$/, "")
+    print toupper($0)
+    exit
+  }
+' "$TASK")
+TASK_KIND=${TASK_KIND:-RESEARCH}
 task_key=$(printf '%s' "$TASK" | sha256sum | awk '{print $1}')
 RUNTIME="$STATE_ROOT/runtime/$task_key/$ROLE"
 RUNTIME_HOME="$RUNTIME/home"; RUNTIME_CACHE="$RUNTIME/cache"; RUNTIME_CONFIG="$RUNTIME/config"
@@ -43,7 +53,14 @@ case "$ROLE" in
     role_instruction="Correct the completed task delta relative to the baseline. Create missing required outputs or replace incomplete files with complete allowlisted outputs. Use the persistent market-data root when required. Remove cache files and leave repository changes unstaged."
     ;;
 esac
-prompt="You are the MSM $ROLE role. Captured non-secret worktree baseline: $baseline_context. $role_instruction Listed pre-existing paths, including the protected Pine when its SHA256 matches the baseline, are preserved user state and are not task violations. Report any change to a baseline path, protected-Pine staging, or task-created path outside the allowlist. Read task package $TASK and allowlist $ALLOWLIST first; then read task-required evidence, local data, and allowlisted outputs needed to complete or audit the task. Return ONLY JSON: {\"role\":\"$ROLE\",\"verdict\":\"PASS|TECHNICAL_CORRECTION_REQUIRED|USER_DECISION_REQUIRED|FAILED\",\"findings\":[strings],\"summary\":string}. You do not control state transitions. Do not run git mutation/synchronization commands. Implementer/corrector may modify only allowlisted files and leave changes unstaged."
+if [[ $TASK_KIND == RESEARCH ]]; then
+  verdict_contract='PASS|TECHNICAL_CORRECTION_REQUIRED|USER_DECISION_REQUIRED|FAILED'
+  decision_instruction='USER_DECISION_REQUIRED is allowed only for an explicit definition, hypothesis, holdout-access, visual-review, or ambiguous research judgment named by the task.'
+else
+  verdict_contract='PASS|TECHNICAL_CORRECTION_REQUIRED|FAILED'
+  decision_instruction='This is not a RESEARCH task. Never return USER_DECISION_REQUIRED. Missing, ambiguous, conflicting, unavailable, or invalid technical evidence must be TECHNICAL_CORRECTION_REQUIRED or FAILED.'
+fi
+prompt="You are the MSM $ROLE role. Task kind: $TASK_KIND. Captured non-secret worktree baseline: $baseline_context. $role_instruction $decision_instruction Listed pre-existing paths, including the protected Pine when its SHA256 matches the baseline, are preserved user state and are not task violations. Report any change to a baseline path, protected-Pine staging, or task-created path outside the allowlist. Read task package $TASK and allowlist $ALLOWLIST first; then read task-required evidence, local data, and allowlisted outputs needed to complete or audit the task. Return ONLY JSON: {\"role\":\"$ROLE\",\"verdict\":\"$verdict_contract\",\"findings\":[strings],\"summary\":string}. You do not control state transitions. Do not run git mutation/synchronization commands. Implementer/corrector may modify only allowlisted files and leave changes unstaged."
 timeout "$TIMEOUT" bwrap --die-with-parent --ro-bind / / --bind "$REPO" "$REPO" --ro-bind "$REPO/.git" "$REPO/.git" \
   --bind "$DATA_ROOT" "$DATA_ROOT" \
   --bind "$RUNTIME_HOME" "$RUNTIME_HOME" --bind "$RUNTIME_CACHE" "$RUNTIME_CACHE" \
@@ -57,4 +74,33 @@ timeout "$TIMEOUT" bwrap --die-with-parent --ro-bind / / --bind "$REPO" "$REPO" 
   --setenv MSM_MARKET_DATA_ROOT "$DATA_ROOT" --setenv PYTHONDONTWRITEBYTECODE 1 --setenv PYTHONPYCACHEPREFIX "$RUNTIME_CACHE/pycache" \
   --proc /proc --dev /dev "$CODEX" exec --json -o "$RUNTIME_OUTPUT" --dangerously-bypass-approvals-and-sandbox -C "$REPO" "$prompt" >"$JSONL"
 [[ -s $RUNTIME_OUTPUT ]] || { echo 'Codex did not produce a runtime result' >&2; exit 1; }
+python3 - "$RUNTIME_OUTPUT" "$ROLE" "$TASK_KIND" <<'PY'
+import json
+import os
+import sys
+
+path, expected_role, task_kind = sys.argv[1:]
+with open(path, encoding="utf-8") as source:
+    value = json.load(source)
+if not isinstance(value, dict) or value.get("role") != expected_role:
+    raise SystemExit("invalid worker result")
+if task_kind != "RESEARCH" and value.get("verdict") == "USER_DECISION_REQUIRED":
+    findings = value.get("findings")
+    if not isinstance(findings, list):
+        findings = []
+    findings.append(
+        "runtime normalized USER_DECISION_REQUIRED to TECHNICAL_CORRECTION_REQUIRED because task_kind is not RESEARCH"
+    )
+    value["findings"] = findings
+    value["verdict"] = "TECHNICAL_CORRECTION_REQUIRED"
+    value["summary"] = (
+        str(value.get("summary", ""))
+        + " Non-research tasks cannot enter BLOCKED_USER_DECISION."
+    ).strip()
+temporary = path + ".normalized"
+with open(temporary, "w", encoding="utf-8") as target:
+    json.dump(value, target, ensure_ascii=False, sort_keys=True)
+    target.write("\n")
+os.replace(temporary, path)
+PY
 mv -f "$RUNTIME_OUTPUT" "$OUTPUT"
