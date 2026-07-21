@@ -17,7 +17,7 @@ field() {
     awk -v key="$name" '
         $0 ~ "^- " key ":" {
             sub("^- " key ":[[:space:]]*", "")
-            gsub(/^[`"]|[`"]$/, "")
+            gsub(/^[`\"]|[`\"]$/, "")
             print
             exit
         }
@@ -96,11 +96,13 @@ LOG_FILE="$STATE_ROOT/logs/${TASK_ID}.jsonl"
 LOG_LINES=0
 [[ -f "$LOG_FILE" ]] && LOG_LINES="$(wc -l < "$LOG_FILE")"
 
-echo "[2/6] Install current runtime and reporter"
+echo "[2/6] Install current runtime, reporter and dashboard"
 sudo bash automation/install_orchestrator.sh --activate-production
 sudo systemctl daemon-reload
-sudo systemctl enable --now msm-reporter.service
-sudo systemctl restart msm-reporter.service
+sudo systemctl enable --now msm-reporter.service msm-dashboard.service
+sudo systemctl restart msm-reporter.service msm-dashboard.service
+
+echo "DASHBOARD=http://10.43.44.254:8765/"
 
 if [[ "$TASK_INFRA" == "true" ]]; then
     echo "[3/6] Infrastructure bootstrap completed"
@@ -136,8 +138,8 @@ case "$existing_state" in
         fi
         echo "[3/6] Start production services"
         sudo systemctl disable --now msm-codex-runner.timer >/dev/null 2>&1 || true
-        sudo systemctl enable --now msm-orchestrator.service msm-task-feeder.service msm-reporter.service
-        sudo systemctl restart msm-task-feeder.service msm-orchestrator.service msm-reporter.service
+        sudo systemctl enable --now msm-orchestrator.service msm-task-feeder.service msm-reporter.service msm-dashboard.service
+        sudo systemctl restart msm-task-feeder.service msm-orchestrator.service msm-reporter.service msm-dashboard.service
         ;;
 esac
 
