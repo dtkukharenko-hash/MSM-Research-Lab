@@ -1,0 +1,10 @@
+check,result
+market_root_writable,True
+bounded_interval_only,True
+no_2026_access,True
+atomic_csv_json_writes,True
+canonical_metadata_reopened,True
+two_validation_passes_identical,True
+peak_rss_limit_kib,1048576
+repository_archives,NONE
+mode,validate_existing

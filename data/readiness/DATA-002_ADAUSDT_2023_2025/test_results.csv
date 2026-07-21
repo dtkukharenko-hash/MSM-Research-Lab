@@ -1,0 +1,13 @@
+test,result
+descending_api_order,PASS
+exact_utc_grid,PASS
+duplicate_detection,PASS
+conflicting_duplicate_detection,PASS
+missing_child_rejected,PASS
+ohlcv_decimal_aggregation,PASS
+out_of_range_rejected,PASS
+deterministic_csv_json,PASS
+atomic_replacement,PASS
+partial_candidate_refusal,PASS
+end_to_end_ready,PASS
+validation_pass_identity,PASS

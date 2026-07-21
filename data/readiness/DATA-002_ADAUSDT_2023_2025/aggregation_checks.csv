@@ -1,0 +1,4 @@
+interval,required_children,rebuilt_rows,persisted_rows,missing_aggregate_rows,unexpected_aggregate_rows,status
+1h,4,26304,26304,0,0,PASS
+4h,16,6576,6576,0,0,PASS
+1d,96,1096,1096,0,0,PASS
