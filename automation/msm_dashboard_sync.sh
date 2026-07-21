@@ -16,6 +16,10 @@ for dir in queue running; do
   fi
 done
 
+# No task is active. Freeze the role pipeline before changing TASK/runtime so a
+# newly synchronized READY task cannot be consumed by an older worker.
+systemctl stop msm-task-feeder.service msm-orchestrator.service >/dev/null 2>&1 || true
+
 GIT=(runuser -u nnv -- git -C "$REPO")
 branch=$("${GIT[@]}" branch --show-current)
 [[ "$branch" == main ]] || { echo "SYNC_REFUSED_BRANCH branch=$branch"; exit 1; }
@@ -71,9 +75,24 @@ if [[ "$before" != "$after" ]]; then
 fi
 
 if [[ -n "$runtime_changed" ]]; then
+  # The production installer also performs the constrained held R6A3R
+  # publication when TASK.md carries the dedicated HOLD marker.
   bash "$REPO/automation/install_orchestrator.sh" --activate-production
   systemctl daemon-reload
   systemctl enable --now msm-dashboard-sync.timer msm-reporter.service >/dev/null
+
+  # Publication may have advanced origin/main. Pull that collision-free commit
+  # into the local main branch before returning control to the dashboard.
+  "${GIT[@]}" fetch origin main
+  read -r local_after remote_after < <("${GIT[@]}" rev-list --left-right --count HEAD...origin/main)
+  if (( local_after == 0 && remote_after > 0 )); then
+    "${GIT[@]}" merge --ff-only origin/main
+  elif (( local_after > 0 || remote_after > 0 )); then
+    echo "SYNC_POST_DEPLOY_DIVERGENCE local=$local_after remote=$remote_after"
+    exit 1
+  fi
+  after=$("${GIT[@]}" rev-parse HEAD)
+
   systemd-run \
     --unit=msm-dashboard-restart \
     --on-active=2s \
@@ -84,4 +103,10 @@ else
   deploy='not-needed'
 fi
 
-echo "SYNC_OK before=$before after=$after local_only=$local_only remote_only=$remote_only backup=${backup:-none} runtime_deploy=$deploy"
+pine_hash_final=$(sha256sum "$pine_path" | awk '{print $1}')
+pine_status_final=$("${GIT[@]}" status --porcelain=v1 -- "$PINE")
+[[ "$pine_hash_final" == "$pine_hash_before" ]] || { echo 'SYNC_FINAL_PROTECTED_PINE_HASH_CHANGED'; exit 1; }
+[[ "$pine_status_final" == "$pine_status_before" ]] || { echo 'SYNC_FINAL_PROTECTED_PINE_STATUS_CHANGED'; exit 1; }
+"${GIT[@]}" diff --cached --quiet || { echo 'SYNC_FINAL_STAGED_CHANGES'; exit 1; }
+
+echo "SYNC_OK before=$before after=$after local_only=$local_only remote_only=$remote_only backup=${backup:-none} runtime_deploy=$deploy feeder=stopped orchestrator=stopped"
