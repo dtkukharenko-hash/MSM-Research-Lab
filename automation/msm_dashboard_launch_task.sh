@@ -4,6 +4,7 @@ set -Eeuo pipefail
 REPO=/home/nnv/MSM-Research-Lab
 STATE=/home/nnv/.local/state/msm-orchestrator
 TASK_FILE="$REPO/.codex/TASK.md"
+SYNC=/usr/local/lib/msm-orchestrator/msm_dashboard_sync.sh
 LOCK=/run/lock/msm-dashboard-launch-task.lock
 
 exec 9>"$LOCK"
@@ -21,7 +22,8 @@ field() {
   ' "$TASK_FILE"
 }
 
-runuser -u nnv -- git -C "$REPO" pull --ff-only origin main
+[[ -x "$SYNC" ]] || { echo 'SYNC_HELPER_MISSING'; exit 1; }
+"$SYNC"
 
 [[ -f "$TASK_FILE" ]] || { echo 'TASK_FILE_MISSING'; exit 1; }
 TASK_ID=$(field task_id)
