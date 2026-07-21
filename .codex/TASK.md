@@ -1,257 +1,252 @@
 # Current Codex Task
 
-- task_id: `EXP-031R5-TEMPORAL-VALIDATION-2025`
+- task_id: `EXP-031R6A-BOUNDED-WORKER-IMPLEMENTATION`
 - status: `READY`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
-- task_kind: `RESEARCH`
+- task_kind: `DATA`
 - data_ready: `true`
 - data_manifest: `data/readiness/DATA-001_BYBIT_2025/REPORT.md`
 - data_manifest_sha256: `fd894efc57bbd91c792db92afa31f15e091a7f7128055ff2c57cf471e580f4ba`
-- commit_message: `EXP-031R5 bounded temporal validation dataset`
+- commit_message: `EXP-031R6A bounded worker implementation`
 
 ## Objective
 
-Build an honest calendar-2025 temporal-validation diagnostic dataset using the frozen EXP-027 and EXP-029R market-state protocol. This is a technical repair of EXP-031R4, not a new scientific hypothesis and not a predictive experiment.
+Build and independently validate the reusable bounded-memory worker required for the calendar-2025 temporal-validation dataset. This task produces implementation evidence only. It must not claim that the full 2025 dataset is ready and must not execute the full four-symbol calendar-year production run.
 
-EXP-031R3 failed from global memory exhaustion. EXP-031R4 stayed within the memory budget and produced deterministic files, but independent audit rejected its READY claim for four specific implementation defects:
+EXP-031R5 failed technically for concrete implementation reasons:
 
-1. `counterexamples.csv` rows were accumulated in a Python list instead of being written incrementally;
-2. overlap reconciliation compared serialized rows and identity presence rather than numeric values at tolerance `1e-09` under matching compound identities;
-3. observation and volatility compound-identity invariants were not independently validated or reported;
-4. the production path imported only EXP-027 and manually reproduced protocol logic instead of using committed deterministic helpers from EXP-027, EXP-029R, and EXP-031.
+1. the attempted worker was host-terminated before the third symbol;
+2. the committed task output was replaced by a deliberate failure stub;
+3. production code imported uncommitted EXP-031R4 code;
+4. production code used full CSV materialization;
+5. dataset outputs were header-only despite verified available data;
+6. validation and reconciliation outputs contained placeholders instead of executed checks.
 
-Correct exactly these defects while preserving the frozen protocol. EXP-031R4 files may be inspected read-only as failed implementation evidence, but they are not protocol evidence and must remain byte-identical, untracked, and unstaged. Do not read any earlier uncommitted EXP-031R, EXP-031R2, or EXP-031R3 directory as a protocol source.
+Correct the implementation architecture before another full production attempt. Do not change the frozen scientific protocol.
 
-## Mandatory data gate
+## Immutable failed baselines
 
-Before computation:
+All pre-existing EXP-031R4 and EXP-031R5 paths in the worktree are failed runtime evidence. They must remain byte-identical, untracked, and unstaged. Do not import, execute, copy, modify, delete, rename, chmod, or use their source code as an implementation dependency.
 
-1. verify the DATA-001 report SHA-256 above and require `DATA_READY=YES`;
-2. verify `data/readiness/DATA-001_BYBIT_2025/readiness_manifest.csv` SHA-256 is `14a43c01de55d3cb82349553ec3abf700a9e49137fba6eea9669d2c2cceba4b2`;
-3. require exactly twelve manifest rows and `source_status=READY` for every row;
-4. read exact canonical paths from the manifest and verify every `canonical_sha256` before run 1, between runs, and after run 2;
-5. independently verify complete 2025 grids for BTCUSDT, ETHUSDT, SOLUSDT, and XRPUSDT;
-6. treat canonical files as combined archives: manifest 2025 bounds describe the validated slice and do not imply earlier rows are absent.
+Do not inspect any earlier uncommitted EXP-031R, EXP-031R2, or EXP-031R3 directory.
 
-The persistent market-data root is read-only. Do not download, rewrite, merge, repair, replace, interpolate, forward-fill, gap-fill, or cross-symbol substitute canonical data.
+The protected Pine file must remain byte-identical, dirty, and unstaged:
+
+`experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
+
+Required SHA-256:
+
+`0889efa1f8fa8420962160cbc602b5f6f0836763aab6d34534245ea3dad0223f`
+
+Pre-existing tracked cache and bytecode paths are immutable baseline paths. Do not remove or rewrite them.
 
 ## Frozen protocol sources
 
-Use committed definitions and deterministic helpers from all three modules:
+The implementation may use protocol definitions only from committed files:
 
 - `experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/experiment_027.py`;
 - `experiments/EXP-029R_DERIVATIVES_DIAGNOSTIC_DATASET/experiment_029r.py`;
 - `experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/experiment_031.py`.
 
-The production path must import all three modules under distinct aliases after setting `sys.dont_write_bytecode = True`. It must call real deterministic helpers from each module in the actual dataset/reconciliation path, not merely import them or execute a smoke call. Small adapters may normalize arguments and stream outputs, but they must not duplicate protocol logic already available in a committed helper.
+Set `sys.dont_write_bytecode = True` before importing them. Import all three under distinct aliases. Never call a source experiment `main()`.
 
-At minimum, the implementation must use:
+Actual fixture execution must call deterministic helpers or use protocol constants from every source module. Import-only evidence is insufficient. Record source path, SHA-256, helper or constant name, use site, and positive call count in `helper_provenance.csv`.
 
-- EXP-027 helpers for ATR, hourly aggregation, representations, and causal state generation;
-- EXP-029R helpers/constants for canonical timestamp formatting, scalar fields, numeric formatting/tolerance, and volatility-state compatibility where applicable;
-- EXP-031 helpers/constants for the overlap interval, field schemas, identity/reconciliation semantics, and temporal-validation conventions where applicable.
+Minimum production uses:
 
-`data_provenance.csv` must include one helper-provenance row per used source module with source path, source SHA-256, helper names used, use site, and a positive production call count. Import-only evidence is FAIL. Calling any source experiment `main()` is forbidden.
+- EXP-027: ATR construction, hourly aggregation, five representations, causal state generation;
+- EXP-029R: timestamp formatting, scalar field set, numeric formatting and tolerance, volatility compatibility conventions;
+- EXP-031: overlap bounds, observation and volatility schemas, identity fields, temporal-validation comparison conventions.
 
-Reproduce without tuning:
+Small adapters may normalize arguments and stream rows. They must not duplicate an available protocol definition with a conflicting implementation.
 
-- symbols BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT;
-- FUNDING, OI, and JOINT event families, frozen sides, and 8H/24H episode views;
-- representative selection, episode identities, and exact matched-control rules;
-- calendar month and chronological third for the declared interval;
-- scales `15m` and `1H`;
-- all five frozen representations and thirteen scalar fields;
-- explicit `UNKNOWN` values and reasons;
-- volatility state from current ATR versus the preceding 96 fully closed bars.
-
-Use only bars fully closed at or before each observation timestamp. No future information and no outcome-based selection are permitted. Do not inspect, rank, filter, confirm, or reject EXP-030R cells.
-
-## Required implementation
+## Required implementation artifact
 
 Create:
 
-`experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/experiment_031r5.py`
+`experiments/EXP-031R6A_BOUNDED_WORKER_IMPLEMENTATION/experiment_031r6a.py`
 
-The script must:
+The file must be the real reusable production worker, not a scaffold or failure package generator.
 
-1. accept an explicit output directory and a worker/run mode;
-2. execute run 1 and run 2 sequentially in separate clean temporary directories;
-3. write deterministic gzip with empty filename and `mtime=0`;
-4. verify byte-identical substantive outputs before copying one verified run into the repository output directory;
-5. never parse an empty timestamp; unmatched controls keep an empty timestamp and explicit `UNKNOWN` state;
-6. include `representation` in observation and volatility schemas, identities, and deterministic ordering;
-7. use indexed timestamps or bisect-based lookup;
-8. emit the complete package even when integrity checks fail: honest 2025 rows plus a failed check yield `TEMPORAL_VALIDATION_DATASET_PARTIAL`, not an absent package;
-9. never rewrite a hashed output after final hash computation.
+Required CLI modes:
 
-## Bounded-memory architecture
+1. `--self-test` — execute the bounded fixture suite and exit nonzero on any failure;
+2. `--fixture-output-dir PATH` — generate all fixture evidence in an explicit clean directory;
+3. `--worker-output-dir PATH --symbol SYMBOL --start TIMESTAMP --end TIMESTAMP` — process one symbol and interval using the production path;
+4. `--full-output-dir PATH` — expose the future full-run entry point, but do not invoke this mode in this task.
 
-These are acceptance requirements:
+The production path must contain working functions for:
 
-1. process one symbol at a time in fixed order BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT;
-2. release symbol-specific bars, events, controls, indexes, and reconciliation state before loading the next symbol;
-3. stream `validation_observations.csv.gz`, `validation_volatility_state.csv`, and `counterexamples.csv` directly through open writers;
-4. every counterexample must be written when discovered; a Python list, deque, dataframe, or equivalent population accumulator for counterexamples is forbidden;
-5. stream committed EXP-029R observation and volatility inputs;
-6. use compact counters and disk-backed temporary SQLite tables for identity joins, multiset comparison, uniqueness checks, and mismatch diagnostics;
-7. never use `list(csv.DictReader(...))`, `readlines()`, whole-file `read_text()`, pandas, or equivalent full materialization for large canonical or generated CSV populations;
-8. never retain run-1 and run-2 row objects simultaneously;
-9. compare runs by streaming SHA-256 and row-count metadata;
-10. canonical ordering must come from deterministic nested iteration or disk-backed external ordering, not sorting millions of dictionaries in RAM;
-11. temporary shards and SQLite databases may exist only under clean temporary directories outside the repository and must be removed;
-12. record peak RSS with `resource.getrusage(resource.RUSAGE_SELF).ru_maxrss`; each run must remain below `4,194,304 KiB`;
-13. if the memory ceiling cannot be met, stop honestly with `TEMPORAL_VALIDATION_DATASET_FAILED` rather than consuming swap as working memory.
+- DATA-001 manifest and canonical hash validation;
+- exact source-grid validation;
+- one-symbol event and matched-control construction;
+- closed-bar observation generation for 15m and 1H;
+- five representations and thirteen scalar fields;
+- explicit UNKNOWN preservation for unmatched controls and unavailable state;
+- volatility state using the current ATR versus the preceding 96 fully closed bars;
+- deterministic CSV and gzip writers;
+- disk-backed compound-identity validation;
+- observation reconciliation at numeric tolerance `1e-09`;
+- representation-blind volatility multiset compatibility reconciliation;
+- immediate counterexample writing;
+- streaming SHA-256 and row counting;
+- peak RSS measurement.
 
-The auditor must reject any full-population `counters` or `counterexamples` list even if observed RSS is low.
+A `main()` that unconditionally emits FAILED, writes header-only production files, delegates to a failed attempt, or returns before the requested mode executes is forbidden.
 
-## Required row invariants
+## Bounded-memory contract
 
-- observations: `representative_episode_count * 2 roles * 2 scales * 5 representations * 13 fields`;
-- volatility: `representative_episode_count * 2 roles * 2 scales * 5 representations`.
+The implementation must be structurally bounded, not merely observed below a limit in the small fixture.
 
-Unmatched controls remain present in both invariants as `UNKNOWN`.
+1. Process exactly one symbol per worker invocation.
+2. Stream canonical CSV and gzip inputs through iterators.
+3. Stream observation, volatility, and counterexample outputs through open writers.
+4. Write every counterexample when discovered.
+5. Use temporary SQLite databases for identity uniqueness, keyed reconciliation, and duplicate-preserving multiset comparison.
+6. Keep SQLite files and all shards under a caller-supplied temporary directory outside the repository.
+7. Close writers, connections, and source files deterministically.
+8. Release symbol data and invoke garbage collection before exit.
+9. Use indexed timestamps or bisect-based closed-bar lookup.
+10. Obtain deterministic order from fixed nested iteration or SQL `ORDER BY`, not from sorting complete row populations in RAM.
+11. Deterministic gzip must use an empty filename and `mtime=0`.
+12. Record `resource.getrusage(resource.RUSAGE_SELF).ru_maxrss`.
 
-## Compound-identity invariants
+Forbidden production patterns include:
 
-Validate generated rows independently from row counts.
+- `list(csv.DictReader(...))`;
+- `list(gzip...DictReader(...))`;
+- `readlines()` on canonical or generated row files;
+- pandas, polars, or dataframe materialization;
+- a full observation, volatility, reconciliation, or counterexample population stored in a Python list, tuple, deque, or dictionary;
+- importing any EXP-031R4 or EXP-031R5 module;
+- intentional swap use as working memory.
 
-Observation identity must contain every protocol identity column and at least:
+Small fixed configuration lists and bounded one-symbol bar arrays are allowed. The audit must distinguish these from full output populations.
+
+## Compound identities
+
+Observation compound identity must contain every protocol identity field and at least:
 
 `symbol, episode_view, episode_id, event_id, event_family, side, observation_role, observation_identity, observation_timestamp, scale, representation, field`.
 
-Volatility identity must contain every protocol identity column and at least:
+Volatility compound identity must contain every protocol identity field and at least:
 
 `symbol, episode_view, episode_id, event_id, event_family, side, observation_role, observation_identity, observation_timestamp, scale, representation`.
 
-For each dataset:
+Implement SQLite tables with explicit UNIQUE constraints. The worker must report total rows, distinct identities, duplicate identities, and duplicate examples without retaining all identities in memory.
 
-1. insert identities into a temporary SQLite table with an explicit UNIQUE constraint;
-2. record total rows, distinct identities, duplicate identities, and duplicate examples;
-3. require `total_rows == distinct_identities`;
-4. stream every duplicate into `counterexamples.csv` with its full identity and reason;
-5. report separate checks named exactly `observation_compound_identity_unique` and `volatility_compound_identity_unique` in `validation_summary.csv`.
+## Reconciliation semantics
 
-A matching aggregate row count does not satisfy the compound-identity invariant.
+Use the half-open committed overlap interval:
 
-## Frozen overlap reconciliation
+`2024-10-01T00:00:00Z <= observation_timestamp < 2024-11-01T00:00:00Z`.
 
-Use the half-open interval:
+Observation reconciliation must:
 
-`2024-10-01T00:00:00Z <= observation_timestamp < 2024-11-01T00:00:00Z`
+- stream expected EXP-029R rows into SQLite;
+- reconstruct rows through the same production state path;
+- join by full compound identity including representation and field;
+- compare numeric values as numbers using `abs(expected - actual) <= 1e-09`;
+- compare nonnumeric state, validity, reason, origin, direction, and timestamp fields exactly;
+- classify missing, extra, numeric mismatch, and nonnumeric mismatch separately;
+- stream every mismatch immediately.
 
-Empty timestamps have no interval coordinate and are excluded only from overlap selection.
+Volatility compatibility reconciliation must:
 
-### Observation reconciliation
+- preserve committed duplicate multiplicity;
+- reconstruct five representation-labelled rows;
+- verify that the five volatility values are identical for each base identity;
+- drop only representation when projecting to the committed schema;
+- compare projected and committed rows as disk-backed multisets;
+- compare the ATR ratio numerically at `1e-09` and other fields exactly;
+- stream every mismatch immediately.
 
-For each symbol:
+Never parse an empty timestamp. Empty unmatched-control timestamps have no interval coordinate and remain explicit UNKNOWN rows.
 
-1. stream committed EXP-029R observation rows in the interval into a disk-backed SQLite expected table;
-2. recompute rows through the same helper-backed state path used for 2025 and stream them into a reconstructed table;
-3. key both tables by the full observation compound identity including `representation` and `field`;
-4. diagnose missing and extra identities by SQL joins;
-5. for matching identities, compare numeric `value` fields as numbers with `abs(expected - reconstructed) <= 1e-09`;
-6. compare validity, reason, direction, origin, timestamps, and other nonnumeric fields exactly;
-7. distinguish `MISSING_IDENTITY`, `EXTRA_IDENTITY`, `NUMERIC_VALUE_MISMATCH`, and `NONNUMERIC_VALUE_MISMATCH`;
-8. stream every mismatch immediately to `counterexamples.csv`;
-9. record expected count, reconstructed count, matched identity count, missing count, extra count, numeric mismatch count, nonnumeric mismatch count, maximum absolute numeric difference, tolerance, and canonical hashes.
+## Fixture suite
 
-Exact serialized-row equality is not a substitute for the tolerance comparison. Identity presence alone must never set `value_mismatches=0`.
+Run only a bounded real-data fixture in this task:
 
-### Volatility compatibility reconciliation
+- symbol: BTCUSDT;
+- reconciliation interval: the required October 2024 overlap;
+- 2025 construction interval: `2025-01-01T00:00:00Z` through `2025-01-03T00:00:00Z`;
+- both scales;
+- all five representations;
+- all thirteen scalar fields;
+- event and control roles, including unmatched controls when present.
 
-Committed EXP-029R `volatility_state.csv` is representation-blind because it emitted one row inside each five-representation loop but stored no `representation` column. Do not invent labels or modify EXP-029R.
+The fixture is implementation evidence, not a scientific result.
 
-For each symbol:
+Execute the complete fixture twice, sequentially, in separate clean temporary directories outside the repository. Never run the two workers concurrently. Compare substantive fixture outputs by streaming SHA-256 and row counts. All paired hashes must match.
 
-1. stream committed rows in the interval into a disk-backed multiset table preserving duplicate multiplicity;
-2. recompute five representation-labelled rows per episode/role/scale through the helper-backed 2025 state path;
-3. independently require the five reconstructed representation rows for each base identity to have identical `volatility_regime`, `regime_reason`, `atr_to_prior_96_median`, and `ohlc_closed_through`;
-4. project reconstructed rows to the exact committed schema by dropping only `representation`;
-5. compare committed and projected rows as multisets with duplicate multiplicity preserved;
-6. compare `atr_to_prior_96_median` numerically at tolerance `1e-09` and nonnumeric fields exactly;
-7. distinguish multiplicity, missing, extra, numeric, and nonnumeric mismatches and stream every mismatch immediately;
-8. record all counts, maximum absolute difference, tolerance, and canonical hashes.
-
-All four symbols must pass both reconciliation datasets for overall READY.
+Fixture worker peak RSS must remain below `1,048,576 KiB` (1 GiB). This stricter fixture threshold does not replace the future full-run ceiling of `4,194,304 KiB`.
 
 ## Required outputs
 
-Create exactly these twelve files:
+Create exactly these nine files:
 
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/REPORT.md`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/data_provenance.csv`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/episodes.csv`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/matched_controls.csv`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/validation_observations.csv.gz`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/validation_volatility_state.csv`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/protocol_reconciliation.csv`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/coverage_summary.csv`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/validation_summary.csv`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/counterexamples.csv`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/run_hashes.csv`;
-- `experiments/EXP-031R5_TEMPORAL_VALIDATION_2025/experiment_031r5.py`.
+- `experiments/EXP-031R6A_BOUNDED_WORKER_IMPLEMENTATION/REPORT.md`;
+- `experiments/EXP-031R6A_BOUNDED_WORKER_IMPLEMENTATION/experiment_031r6a.py`;
+- `experiments/EXP-031R6A_BOUNDED_WORKER_IMPLEMENTATION/implementation_audit.csv`;
+- `experiments/EXP-031R6A_BOUNDED_WORKER_IMPLEMENTATION/helper_provenance.csv`;
+- `experiments/EXP-031R6A_BOUNDED_WORKER_IMPLEMENTATION/fixture_reconciliation.csv`;
+- `experiments/EXP-031R6A_BOUNDED_WORKER_IMPLEMENTATION/fixture_identity_checks.csv`;
+- `experiments/EXP-031R6A_BOUNDED_WORKER_IMPLEMENTATION/fixture_run_hashes.csv`;
+- `experiments/EXP-031R6A_BOUNDED_WORKER_IMPLEMENTATION/memory_summary.csv`;
+- `experiments/EXP-031R6A_BOUNDED_WORKER_IMPLEMENTATION/test_results.csv`.
 
 No other repository path may be created or changed.
 
-## Validation contract
+## Output contracts
 
-`validation_summary.csv` must independently report PASS/FAIL for:
+`implementation_audit.csv` must report PASS or FAIL for at least:
 
-- DATA-001 report and readiness manifest;
-- all twelve canonical hashes before, between, and after runs;
-- exact 2025 coverage;
-- episode and representative identity uniqueness;
-- event/control join completeness;
-- observation row invariant;
-- volatility row invariant;
-- `observation_compound_identity_unique`;
-- `volatility_compound_identity_unique`;
-- closed-bar causality;
-- UNKNOWN preservation;
-- observation overlap reconciliation for every symbol;
-- five-representation volatility invariance;
-- volatility compatibility reconciliation for every symbol;
-- actual production use of helpers from EXP-027, EXP-029R, and EXP-031;
-- absence of EXP-030R cell access;
-- deterministic two-run equality;
-- peak RSS below 4 GiB for each run;
-- output sizes and allowlist boundaries;
-- absence of newly created cache, bytecode, temporary, partial, or SQLite files in the repository relative to baseline.
+- source compiles without repository bytecode creation;
+- no failed-attempt import or execution;
+- no unconditional failure stub;
+- no prohibited full-materialization pattern;
+- explicit streaming counterexample writer exists and is exercised;
+- SQLite uniqueness and reconciliation paths exist and are exercised;
+- all three committed helper modules are used in production fixture execution;
+- full-run CLI entry point exists but was not invoked;
+- no repository temp, SQLite, cache, bytecode, or partial file was created;
+- all baseline paths remain unchanged.
 
-Pre-existing tracked cache/bytecode paths and all pre-existing untracked EXP-031R4 files are immutable baseline paths. Do not delete, modify, stage, rename, chmod, or count them as task-created violations.
+`fixture_reconciliation.csv` must contain separate observation and volatility compatibility rows with expected count, reconstructed count, matched count, missing count, extra count, numeric mismatch count, nonnumeric mismatch count, maximum absolute numeric difference, tolerance, status, and detail.
 
-`protocol_reconciliation.csv` must contain one row per symbol and dataset (`observations`, `volatility_compatibility`) with the required counts and mismatch diagnostics.
+`fixture_identity_checks.csv` must report observation and volatility total rows, distinct identities, duplicate count, and status.
 
-`counterexamples.csv` must include every unavailable control, UNKNOWN state, duplicate identity, reconciliation mismatch, failed invariant, helper-provenance failure, memory-budget failure, and out-of-boundary path with an explicit reason. It must be streamed and never reconstructed from an in-memory population.
+`fixture_run_hashes.csv` must contain both fixture runs, substantive output names, row counts, SHA-256 values, and equality status.
 
-`run_hashes.csv` must contain run-1 and run-2 SHA-256 values for the other eleven allowlisted outputs and exclude itself. Every pair must match. The script source may use the same immutable source SHA for both run labels.
+`memory_summary.csv` must contain per-run peak RSS, threshold, and PASS or FAIL.
+
+`test_results.csv` must contain every executed command or test name, exit code, and status.
 
 ## Status
 
-`REPORT.md` must use exactly one status:
+`REPORT.md` must use exactly one implementation status:
 
-- `TEMPORAL_VALIDATION_DATASET_READY` when every required validation passes;
-- `TEMPORAL_VALIDATION_DATASET_PARTIAL` when honest 2025 rows exist but one or more integrity requirements fail;
-- `TEMPORAL_VALIDATION_DATASET_FAILED` when the dataset cannot be constructed honestly within the bounded-memory contract.
+- `BOUNDED_WORKER_IMPLEMENTATION_READY` when every required fixture, audit, determinism, identity, reconciliation, provenance, memory, and boundary check passes;
+- `BOUNDED_WORKER_IMPLEMENTATION_FAILED` otherwise.
 
-This task does not produce scientific ACCEPT/REJECT and does not authorize EXP-032 unless both conditions hold:
+The report must clearly state that no full four-symbol calendar-2025 dataset was produced and that this task makes no scientific confirmation, rejection, transfer, ranking, filtering, or predictive claim.
 
-1. `REPORT.md` states `TEMPORAL_VALIDATION_DATASET_READY`;
-2. the terminal Markdown reporter states `ORCHESTRATOR ACCEPTANCE: ACCEPTED`.
+## Acceptance
 
-## Final checks
+The auditor must inspect the source directly and reject the package when any of the following is true:
 
-Reopen every final CSV and gzip by streaming and independently recompute counts and identities. Confirm all outputs are below 95 MiB, `git diff --check` passes, exactly the twelve R5 allowlisted paths are task-created and unstaged, peak RSS evidence is present, no temporary database remains in the repository, the R4 baseline is unchanged, and the protected Pine remains unchanged.
+- the script is a stub or header-only generator;
+- any failed attempt is imported or executed;
+- any prohibited full-materialization pattern exists on a production path;
+- counterexamples are accumulated rather than streamed;
+- the numeric tolerance path is absent or unexercised;
+- compound identities are checked only by aggregate row count;
+- volatility duplicate multiplicity is not preserved;
+- any helper module has zero production fixture calls;
+- either fixture run is absent or hashes differ;
+- fixture RSS is at or above 1 GiB;
+- a full year or all-symbol production run was attempted;
+- any repository path outside the nine-file allowlist changed.
 
-Never modify, stage, delete, rename, chmod, or rewrite `.codex/TASK.md`, `.codex/ALLOWLIST.txt`, `.codex/RESULT.md`, `PROJECT_INSTRUCTIONS.md`, `docs/DEFINITIONS.md`, `start.sh`, automation files, `.git` internals, persistent market data, any existing experiment directory, any tracked cache/bytecode path, any EXP-031R4 file, or any EXP-009 file.
-
-The protected dirty file:
-
-`experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
-
-must remain byte-identical with SHA-256:
-
-`0889efa1f8fa8420962160cbc602b5f6f0836763aab6d34534245ea3dad0223f`
-
-and must remain dirty and unstaged.
+Before PASS, run `git diff --check`, stream-reopen every generated CSV, confirm every output is below 95 MiB, verify the protected Pine hash and unstaged state, verify all pre-existing R4/R5 paths are unchanged and unstaged, and confirm there are no new repository cache, bytecode, temporary, partial, SQLite, or shard paths.
