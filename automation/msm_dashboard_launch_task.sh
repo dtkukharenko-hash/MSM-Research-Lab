@@ -30,11 +30,13 @@ field() {
 [[ -f $TASK_FILE ]] || { echo 'TASK_FILE_MISSING'; exit 1; }
 TASK_ID=$(field task_id)
 TASK_STATUS=$(field status)
+TASK_HASH=$(sha256sum "$TASK_FILE" | awk '{print $1}')
 
 [[ -n $TASK_ID ]] || { echo 'TASK_ID_MISSING'; exit 1; }
 [[ $TASK_STATUS == READY ]] || { echo "TASK_NOT_READY status=$TASK_STATUS"; exit 1; }
+[[ $TASK_HASH =~ ^[0-9a-f]{64}$ ]] || { echo 'TASK_HASH_INVALID'; exit 1; }
 
-for file in msm_orchestrator.py msm_worker.sh msm_task_feeder.py msm_reporter.py; do
+for file in msm_orchestrator.py msm_worker.sh msm_task_feeder.py msm_reporter.py msm_dashboard_launch_task.sh; do
   [[ -f "$REPO/automation/$file" && -f "$RUNTIME/$file" ]] || {
     echo "RUNTIME_FILE_MISSING file=$file"
     exit 1
@@ -61,6 +63,14 @@ for dir in completed failed blocked; do
   fi
 done
 
+install -d -m 700 -o nnv -g nnv "$STATE/launch_tokens"
+TOKEN="$STATE/launch_tokens/${TASK_ID}-${TASK_HASH}.token"
+TEMP_TOKEN="$TOKEN.tmp.$$"
+printf '%s\n' "$TASK_HASH" >"$TEMP_TOKEN"
+chown nnv:nnv "$TEMP_TOKEN"
+chmod 600 "$TEMP_TOKEN"
+mv -f "$TEMP_TOKEN" "$TOKEN"
+
 systemctl enable --now msm-reporter.service msm-task-feeder.service msm-orchestrator.service
 systemctl restart msm-reporter.service msm-task-feeder.service msm-orchestrator.service
 
@@ -69,5 +79,7 @@ if systemctl cat msm-telegram-report@.service >/dev/null 2>&1; then
 fi
 
 echo "TASK_ID=$TASK_ID"
+echo "TASK_HASH=$TASK_HASH"
 echo 'RUNTIME_IDENTITY_OK'
+echo 'MANUAL_START_TOKEN_ARMED'
 echo 'START_REQUEST_ACCEPTED'
