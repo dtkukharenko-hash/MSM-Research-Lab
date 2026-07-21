@@ -16,7 +16,9 @@ from urllib.parse import urlparse
 REPO = Path("/home/nnv/MSM-Research-Lab")
 STATE = Path("/home/nnv/.local/state/msm-orchestrator")
 TASK_FILE = REPO / ".codex" / "TASK.md"
+REPORTS = STATE / "reports"
 ALLOWED_CLIENTS = ipaddress.ip_network("10.43.44.0/24")
+TASK_ID_RE = re.compile(r"^[A-Z0-9][A-Z0-9-]{1,127}$")
 LAUNCH_SERVICE = "msm-dashboard-launch.service"
 SYNC_SERVICE = "msm-dashboard-sync.service"
 SYNC_TIMER = "msm-dashboard-sync.timer"
@@ -40,7 +42,7 @@ def run(args: list[str], timeout: int = 20) -> tuple[int, str]:
             check=False,
         )
         return process.returncode, process.stdout.strip()
-    except Exception as exc:  # dashboard must remain available
+    except Exception as exc:
         return 1, f"ERROR: {exc}"
 
 
@@ -166,13 +168,35 @@ def current_state(task_id: str, rows: list[dict]) -> str:
     return "READY"
 
 
+def report_path(task_id: str) -> Path | None:
+    if not TASK_ID_RE.fullmatch(task_id):
+        return None
+    root = REPORTS.resolve()
+    path = (REPORTS / f"{task_id}.md").resolve()
+    if path.parent != root or not path.is_file():
+        return None
+    return path
+
+
 def report(task_id: str) -> dict:
-    path = STATE / "reports" / f"{task_id}.md"
+    path = report_path(task_id)
+    if path is None:
+        return {
+            "path": str(REPORTS / f"{task_id}.md"),
+            "present": False,
+            "content": "",
+            "download_url": "",
+        }
     try:
         content = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         content = ""
-    return {"path": str(path), "present": bool(content), "content": content[:300_000]}
+    return {
+        "path": str(path),
+        "present": bool(content),
+        "content": content[:300_000],
+        "download_url": "/download/report" if content else "",
+    }
 
 
 def status_payload() -> dict:
@@ -218,24 +242,25 @@ def status_payload() -> dict:
         "roles": role_results(task_id),
         "report": report(task_id)
         if task_id
-        else {"path": "", "present": False, "content": ""},
+        else {"path": "", "present": False, "content": "", "download_url": ""},
     }
 
 
 HTML = r"""<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MSM Research Lab</title><style>
-:root{color-scheme:dark;--bg:#0b1020;--card:#151c30;--line:#2a3553;--text:#e8ecf6;--muted:#9ca9c4;--ok:#39d98a;--bad:#ff6b78;--warn:#ffca58;--accent:#72a7ff}*{box-sizing:border-box}body{margin:0;padding:24px;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}main{max-width:1450px;margin:auto}header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:18px}h1,h2,h3{margin-top:0}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto}.s3{grid-column:span 3}.s6{grid-column:span 6}.s12{grid-column:span 12}.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.value{margin-top:6px;font-size:20px;font-weight:650;overflow-wrap:anywhere}.chip{display:inline-block;padding:6px 11px;border-radius:999px;font-weight:700;background:var(--accent);color:#07101f}.ok{background:var(--ok)}.bad{background:var(--bad)}.warn{background:var(--warn)}button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;font-size:14px;background:var(--ok);color:#06160e;cursor:pointer;margin:3px}button.secondary{background:var(--accent);color:#07101f}button:disabled{background:#4b556d;color:#aeb6c8;cursor:not-allowed}.message{margin-top:10px;white-space:pre-wrap}.service{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line)}pre{white-space:pre-wrap;word-break:break-word;margin:0;font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--line);text-align:left;padding:8px;vertical-align:top}th{color:var(--muted)}ol{padding-left:22px}@media(max-width:900px){body{padding:12px}.s3,.s6,.s12{grid-column:span 12}}
+:root{color-scheme:dark;--bg:#0b1020;--card:#151c30;--line:#2a3553;--text:#e8ecf6;--muted:#9ca9c4;--ok:#39d98a;--bad:#ff6b78;--warn:#ffca58;--accent:#72a7ff}*{box-sizing:border-box}body{margin:0;padding:24px;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}main{max-width:1450px;margin:auto}header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:18px}h1,h2,h3{margin-top:0}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto}.s3{grid-column:span 3}.s6{grid-column:span 6}.s12{grid-column:span 12}.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.value{margin-top:6px;font-size:20px;font-weight:650;overflow-wrap:anywhere}.chip{display:inline-block;padding:6px 11px;border-radius:999px;font-weight:700;background:var(--accent);color:#07101f}.ok{background:var(--ok)}.bad{background:var(--bad)}.warn{background:var(--warn)}button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;font-size:14px;background:var(--ok);color:#06160e;cursor:pointer;margin:3px}button.secondary{background:var(--accent);color:#07101f}button:disabled{background:#4b556d;color:#aeb6c8;cursor:not-allowed}.message{margin-top:10px;white-space:pre-wrap}.service{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line)}.row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}pre{white-space:pre-wrap;word-break:break-word;margin:0;font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--line);text-align:left;padding:8px;vertical-align:top}th{color:var(--muted)}ol{padding-left:22px}@media(max-width:900px){body{padding:12px}.s3,.s6,.s12{grid-column:span 12}}
 </style></head><body><main><header><div><h1>MSM Research Lab</h1><div class="muted">Оркестратор, автосинхронизация и запуск заданий</div></div><div class="muted" id="updated">Загрузка…</div></header><section class="grid">
 <div class="card s6"><div class="label">Текущее задание</div><div class="value" id="task">—</div><div class="muted" id="githead"></div></div><div class="card s3"><div class="label">Состояние</div><div class="value"><span class="chip" id="state">—</span></div></div><div class="card s3"><div class="label">Действия</div><div class="value"><button class="secondary" id="sync">Синхронизировать</button><button id="start" disabled>Запустить</button></div><div class="muted message" id="actionmsg"></div></div>
-<div class="card s6"><h2>Службы</h2><div id="services"></div></div><div class="card s6"><h2>Активные процессы</h2><pre id="processes">—</pre></div><div class="card s12"><h2>Переходы</h2><div id="transitions"></div></div><div class="card s6"><h2>Результаты ролей</h2><div id="roles">Пока нет</div></div><div class="card s6"><h2>Итоговый отчёт</h2><div class="muted" id="reportpath"></div><pre id="report">Ещё не сформирован</pre></div>
+<div class="card s6"><h2>Службы</h2><div id="services"></div></div><div class="card s6"><h2>Активные процессы</h2><pre id="processes">—</pre></div><div class="card s12"><h2>Переходы</h2><div id="transitions"></div></div><div class="card s6"><h2>Результаты ролей</h2><div id="roles">Пока нет</div></div><div class="card s6"><div class="row"><h2>Итоговый отчёт</h2><button class="secondary" id="download" disabled>Скачать отчёт</button></div><div class="muted" id="reportpath"></div><pre id="report">Ещё не сформирован</pre></div>
 </section></main><script>
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 const stateClass=s=>/COMPLETED|READY/.test(s)?'ok':/FAILED|BLOCKED/.test(s)?'bad':/CORRECTING/.test(s)?'warn':'';
 function renderTransitions(rows){if(!rows.length)return '<div class="muted">Переходов пока нет</div>';return '<table><thead><tr><th>UTC</th><th>Роль</th><th>Из</th><th>В</th></tr></thead><tbody>'+rows.map(r=>`<tr><td>${esc(r.timestamp||'')}</td><td>${esc(r.role||'')}</td><td>${esc(r.from_state||'')}</td><td><strong>${esc(r.to_state||r.state||'')}</strong></td></tr>`).join('')+'</tbody></table>'}
 function renderRoles(rows){if(!rows.length)return '<div class="muted">Пока нет результатов</div>';return rows.map(r=>`<h3>${esc(r.role)} — ${esc(r.verdict)}</h3><div>${esc(r.summary)}</div>${r.findings?.length?'<ol>'+r.findings.map(x=>`<li>${esc(x)}</li>`).join('')+'</ol>':''}`).join('<hr>')}
-async function refresh(){try{const d=await fetch('/api/status',{cache:'no-store'}).then(r=>r.json());document.getElementById('updated').textContent=`${d.hostname} · ${d.updated_at}`;document.getElementById('task').textContent=d.task.task_id||'—';document.getElementById('githead').textContent='Git: '+d.git_head;const st=document.getElementById('state');st.textContent=d.state;st.className=`chip ${stateClass(d.state)}`;const start=document.getElementById('start');start.disabled=!d.can_start;start.title=d.start_block_reason||'';const sync=document.getElementById('sync');sync.disabled=!d.can_sync;sync.title=d.sync_block_reason||'';if(!document.getElementById('actionmsg').dataset.busy){document.getElementById('actionmsg').textContent=d.can_start?'Задание READY. Можно запускать.':d.start_block_reason}document.getElementById('services').innerHTML=Object.entries(d.services).map(([n,s])=>`<div class="service"><span>${esc(n)}</span><strong>${esc(s)}</strong></div>`).join('');document.getElementById('processes').textContent=(d.processes||[]).join('\n')||'Нет активных процессов';document.getElementById('transitions').innerHTML=renderTransitions(d.transitions||[]);document.getElementById('roles').innerHTML=renderRoles(d.roles||[]);document.getElementById('reportpath').textContent=d.report.path||'';document.getElementById('report').textContent=d.report.present?d.report.content:'Ещё не сформирован'}catch(e){document.getElementById('actionmsg').textContent='Ошибка связи: '+e}}
+async function refresh(){try{const d=await fetch('/api/status',{cache:'no-store'}).then(r=>r.json());document.getElementById('updated').textContent=`${d.hostname} · ${d.updated_at}`;document.getElementById('task').textContent=d.task.task_id||'—';document.getElementById('githead').textContent='Git: '+d.git_head;const st=document.getElementById('state');st.textContent=d.state;st.className=`chip ${stateClass(d.state)}`;const start=document.getElementById('start');start.disabled=!d.can_start;start.title=d.start_block_reason||'';const sync=document.getElementById('sync');sync.disabled=!d.can_sync;sync.title=d.sync_block_reason||'';const download=document.getElementById('download');download.disabled=!d.report.present;download.dataset.url=d.report.download_url||'';download.title=d.report.present?'Скачать Markdown-файл отчёта':'Отчёт ещё не сформирован';if(!document.getElementById('actionmsg').dataset.busy){document.getElementById('actionmsg').textContent=d.can_start?'Задание READY. Можно запускать.':d.start_block_reason}document.getElementById('services').innerHTML=Object.entries(d.services).map(([n,s])=>`<div class="service"><span>${esc(n)}</span><strong>${esc(s)}</strong></div>`).join('');document.getElementById('processes').textContent=(d.processes||[]).join('\n')||'Нет активных процессов';document.getElementById('transitions').innerHTML=renderTransitions(d.transitions||[]);document.getElementById('roles').innerHTML=renderRoles(d.roles||[]);document.getElementById('reportpath').textContent=d.report.path||'';document.getElementById('report').textContent=d.report.present?d.report.content:'Ещё не сформирован'}catch(e){document.getElementById('actionmsg').textContent='Ошибка связи: '+e}}
 async function action(path,header,message){const box=document.getElementById('actionmsg');box.dataset.busy='1';box.textContent=message;try{const r=await fetch(path,{method:'POST',headers:{'X-MSM-Action':header}});const d=await r.json();box.textContent=(d.ok?'Готово: ':'Ошибка: ')+(d.output||d.error||'');}catch(e){box.textContent='Ошибка: '+e}delete box.dataset.busy;setTimeout(refresh,1000)}
 document.getElementById('start').addEventListener('click',()=>action('/api/start','start-current-task','Запуск…'));
 document.getElementById('sync').addEventListener('click',()=>action('/api/sync','sync-repository','Синхронизация…'));
+document.getElementById('download').addEventListener('click',e=>{const url=e.currentTarget.dataset.url;if(url)window.location.assign(url)});
 refresh();setInterval(refresh,3000);
 </script></body></html>"""
 
@@ -247,6 +272,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)
 
@@ -256,6 +282,29 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             return False
 
+    def send_current_report(self) -> None:
+        if not self.client_allowed():
+            self.send_json(403, {"ok": False, "error": "client network is not allowed"})
+            return
+        task_id = task_fields().get("task_id", "")
+        path = report_path(task_id)
+        if path is None:
+            self.send_json(404, {"ok": False, "error": "report is not available"})
+            return
+        try:
+            body = path.read_bytes()
+        except OSError as exc:
+            self.send_json(500, {"ok": False, "error": f"cannot read report: {exc}"})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "text/markdown; charset=utf-8")
+        self.send_header("Content-Disposition", f'attachment; filename="{task_id}.md"')
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path == "/":
@@ -264,10 +313,13 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
             self.wfile.write(body)
         elif path == "/api/status":
             self.send_json(200, status_payload())
+        elif path == "/download/report":
+            self.send_current_report()
         elif path == "/health":
             self.send_json(200, {"ok": True})
         else:
