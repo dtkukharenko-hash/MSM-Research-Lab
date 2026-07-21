@@ -1,0 +1,21 @@
+[Unit]
+Description=MSM Research Lab web dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nnv
+Group=nnv
+ExecStart=/usr/bin/python3 -B /usr/local/lib/msm-orchestrator/msm_dashboard.py
+Restart=always
+RestartSec=5
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadOnlyPaths=/home/nnv/MSM-Research-Lab
+ReadOnlyPaths=/home/nnv/.local/state/msm-orchestrator
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
