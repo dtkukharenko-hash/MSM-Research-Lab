@@ -45,7 +45,8 @@ run_fixture() {
   for path in \
     "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_start.sh" \
     "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_launch_task.sh" \
-    "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_sync.sh"; do
+    "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_sync.sh" \
+    "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_publish_r6a3r.sh"; do
     [[ -x "$path" ]] || {
       echo "fixture failed executable install: $path" >&2
       return 1
@@ -55,7 +56,8 @@ run_fixture() {
     "$tmp/install/etc/systemd/system/msm-dashboard.service" \
     "$tmp/install/etc/systemd/system/msm-dashboard-launch.service" \
     "$tmp/install/etc/systemd/system/msm-dashboard-sync.service" \
-    "$tmp/install/etc/systemd/system/msm-dashboard-sync.timer"; do
+    "$tmp/install/etc/systemd/system/msm-dashboard-sync.timer" \
+    "$tmp/install/etc/systemd/system/msm-dashboard-publish-r6a3r.service"; do
     [[ -f "$path" ]] || {
       echo "fixture failed unit install: $path" >&2
       return 1
@@ -113,10 +115,10 @@ trap 'rm -rf "$PYCACHE_ROOT"' EXIT
 for f in \
   msm_orchestrator.py msm_task_feeder.py msm_reporter.py msm_dashboard.py \
   msm_worker.sh msm_dashboard_start.sh msm_dashboard_launch_task.sh msm_dashboard_sync.sh \
-  install_orchestrator.sh verify_orchestrator.sh \
+  msm_dashboard_publish_r6a3r.sh install_orchestrator.sh verify_orchestrator.sh \
   msm-orchestrator.service msm-task-feeder.service msm-reporter.service \
   msm-dashboard.service msm-dashboard-launch.service msm-dashboard-sync.service \
-  msm-dashboard-sync.timer msm-dashboard.sudoers; do
+  msm-dashboard-sync.timer msm-dashboard-publish-r6a3r.service msm-dashboard.sudoers; do
   [[ -f "$REPO/automation/$f" ]] || { echo "missing $f" >&2; exit 1; }
 done
 PYTHONPYCACHEPREFIX="$PYCACHE_ROOT" python3 -m py_compile \
@@ -129,6 +131,7 @@ bash -n "$REPO/automation/msm_worker.sh"
 bash -n "$REPO/automation/msm_dashboard_start.sh"
 bash -n "$REPO/automation/msm_dashboard_launch_task.sh"
 bash -n "$REPO/automation/msm_dashboard_sync.sh"
+bash -n "$REPO/automation/msm_dashboard_publish_r6a3r.sh"
 bash -n "$REPO/automation/verify_orchestrator.sh"
 if command -v visudo >/dev/null 2>&1; then
   visudo -cf "$REPO/automation/msm-dashboard.sudoers" >/dev/null
@@ -150,6 +153,7 @@ install -m 755 \
   "$REPO/automation/msm_dashboard_start.sh" \
   "$REPO/automation/msm_dashboard_launch_task.sh" \
   "$REPO/automation/msm_dashboard_sync.sh" \
+  "$REPO/automation/msm_dashboard_publish_r6a3r.sh" \
   "$DEST/"
 install -m 644 \
   "$REPO/automation/msm-orchestrator.service" \
@@ -159,10 +163,20 @@ install -m 644 \
   "$REPO/automation/msm-dashboard-launch.service" \
   "$REPO/automation/msm-dashboard-sync.service" \
   "$REPO/automation/msm-dashboard-sync.timer" \
+  "$REPO/automation/msm-dashboard-publish-r6a3r.service" \
   "$UNIT/"
 install -m 440 "$REPO/automation/msm-dashboard.sudoers" "$SUDOERS/msm-dashboard"
 for d in "$STATE" "$STATE"/{queue,running,completed,blocked,failed,logs,locks,reports}; do
   install -d -m 700 -o "$RUN_USER" -g "$RUN_GROUP" "$d"
 done
 install -d -m 700 -o "$RUN_USER" -g "$RUN_GROUP" "$DATA_ROOT"
+
 echo "installed immutable source copies at $DEST; dashboard at http://10.43.44.254:8765; automatic task sync available via msm-dashboard-sync.timer; persistent market data at $DATA_ROOT; terminal reports at $STATE/reports"
+
+if [[ $MODE == production && $ROOT == / && -f "$REPO/.codex/TASK.md" ]]; then
+  task_id=$(awk '/^## / {exit} /^- task_id:/ {sub(/^- task_id:[[:space:]]*/, ""); gsub(/^[`\"]|[`\"]$/, ""); print; exit}' "$REPO/.codex/TASK.md")
+  task_status=$(awk '/^## / {exit} /^- status:/ {sub(/^- status:[[:space:]]*/, ""); gsub(/^[`\"]|[`\"]$/, ""); print; exit}' "$REPO/.codex/TASK.md")
+  if [[ $task_id == INFRA-R6A3R-DIRECT-PUBLICATION-HOLD && $task_status == HOLD ]]; then
+    "$DEST/msm_dashboard_publish_r6a3r.sh"
+  fi
+fi
