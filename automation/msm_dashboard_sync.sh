@@ -65,4 +65,23 @@ if ! "${GIT[@]}" diff --cached --quiet; then
   exit 1
 fi
 
-echo "SYNC_OK before=$before after=$after local_only=$local_only remote_only=$remote_only backup=${backup:-none}"
+runtime_changed=''
+if [[ "$before" != "$after" ]]; then
+  runtime_changed=$("${GIT[@]}" diff --name-only "$before" "$after" -- automation start.sh | head -n 1)
+fi
+
+if [[ -n "$runtime_changed" ]]; then
+  bash "$REPO/automation/install_orchestrator.sh" --activate-production
+  systemctl daemon-reload
+  systemctl enable --now msm-dashboard-sync.timer msm-reporter.service >/dev/null
+  systemd-run \
+    --unit=msm-dashboard-restart \
+    --on-active=2s \
+    --collect \
+    /usr/bin/systemctl restart msm-dashboard.service >/dev/null
+  deploy='scheduled'
+else
+  deploy='not-needed'
+fi
+
+echo "SYNC_OK before=$before after=$after local_only=$local_only remote_only=$remote_only backup=${backup:-none} runtime_deploy=$deploy"
