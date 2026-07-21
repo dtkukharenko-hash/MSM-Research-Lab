@@ -32,7 +32,7 @@ run_fixture() {
     MSM_ORCH_RUN_GROUP="$run_group" \
     bash "$0" --install --test-mode
 
-  for path in "$tmp/state" "$tmp/state"/{queue,running,completed,blocked,failed,logs,locks,reports} "$tmp/market-data"; do
+  for path in "$tmp/state" "$tmp/state"/{queue,running,completed,blocked,failed,logs,locks,reports,launch_tokens} "$tmp/market-data"; do
     [[ $(stat -c '%U:%G:%a' "$path") == "$run_user:$run_group:700" ]] || {
       echo "fixture failed runtime ownership or mode: $path" >&2
       return 1
@@ -166,7 +166,7 @@ install -m 644 \
   "$REPO/automation/msm-dashboard-publish-r6a3r.service" \
   "$UNIT/"
 install -m 440 "$REPO/automation/msm-dashboard.sudoers" "$SUDOERS/msm-dashboard"
-for d in "$STATE" "$STATE"/{queue,running,completed,blocked,failed,logs,locks,reports}; do
+for d in "$STATE" "$STATE"/{queue,running,completed,blocked,failed,logs,locks,reports,launch_tokens}; do
   install -d -m 700 -o "$RUN_USER" -g "$RUN_GROUP" "$d"
 done
 install -d -m 700 -o "$RUN_USER" -g "$RUN_GROUP" "$DATA_ROOT"
