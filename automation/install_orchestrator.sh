@@ -42,22 +42,25 @@ run_fixture() {
     echo 'fixture failed to preserve sentinel state file' >&2
     return 1
   }
-  [[ -x "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_start.sh" ]] || {
-    echo 'fixture failed dashboard launcher mode' >&2
-    return 1
-  }
-  [[ -x "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_launch_task.sh" ]] || {
-    echo 'fixture failed isolated dashboard launch task mode' >&2
-    return 1
-  }
-  [[ -f "$tmp/install/etc/systemd/system/msm-dashboard.service" ]] || {
-    echo 'fixture failed dashboard service install' >&2
-    return 1
-  }
-  [[ -f "$tmp/install/etc/systemd/system/msm-dashboard-launch.service" ]] || {
-    echo 'fixture failed isolated launch service install' >&2
-    return 1
-  }
+  for path in \
+    "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_start.sh" \
+    "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_launch_task.sh" \
+    "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_sync.sh"; do
+    [[ -x "$path" ]] || {
+      echo "fixture failed executable install: $path" >&2
+      return 1
+    }
+  done
+  for path in \
+    "$tmp/install/etc/systemd/system/msm-dashboard.service" \
+    "$tmp/install/etc/systemd/system/msm-dashboard-launch.service" \
+    "$tmp/install/etc/systemd/system/msm-dashboard-sync.service" \
+    "$tmp/install/etc/systemd/system/msm-dashboard-sync.timer"; do
+    [[ -f "$path" ]] || {
+      echo "fixture failed unit install: $path" >&2
+      return 1
+    }
+  done
   [[ $(stat -c '%a' "$tmp/install/etc/sudoers.d/msm-dashboard") == 440 ]] || {
     echo 'fixture failed dashboard sudoers mode' >&2
     return 1
@@ -107,7 +110,13 @@ fi
 PYCACHE_ROOT=$(mktemp -d)
 trap 'rm -rf "$PYCACHE_ROOT"' EXIT
 
-for f in msm_orchestrator.py msm_task_feeder.py msm_reporter.py msm_dashboard.py msm_worker.sh msm_dashboard_start.sh msm_dashboard_launch_task.sh install_orchestrator.sh verify_orchestrator.sh msm-orchestrator.service msm-task-feeder.service msm-reporter.service msm-dashboard.service msm-dashboard-launch.service msm-dashboard.sudoers; do
+for f in \
+  msm_orchestrator.py msm_task_feeder.py msm_reporter.py msm_dashboard.py \
+  msm_worker.sh msm_dashboard_start.sh msm_dashboard_launch_task.sh msm_dashboard_sync.sh \
+  install_orchestrator.sh verify_orchestrator.sh \
+  msm-orchestrator.service msm-task-feeder.service msm-reporter.service \
+  msm-dashboard.service msm-dashboard-launch.service msm-dashboard-sync.service \
+  msm-dashboard-sync.timer msm-dashboard.sudoers; do
   [[ -f "$REPO/automation/$f" ]] || { echo "missing $f" >&2; exit 1; }
 done
 PYTHONPYCACHEPREFIX="$PYCACHE_ROOT" python3 -m py_compile \
@@ -119,6 +128,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -B "$REPO/automation/msm_reporter.py" --self-t
 bash -n "$REPO/automation/msm_worker.sh"
 bash -n "$REPO/automation/msm_dashboard_start.sh"
 bash -n "$REPO/automation/msm_dashboard_launch_task.sh"
+bash -n "$REPO/automation/msm_dashboard_sync.sh"
 bash -n "$REPO/automation/verify_orchestrator.sh"
 if command -v visudo >/dev/null 2>&1; then
   visudo -cf "$REPO/automation/msm-dashboard.sudoers" >/dev/null
@@ -139,6 +149,7 @@ install -m 644 \
 install -m 755 \
   "$REPO/automation/msm_dashboard_start.sh" \
   "$REPO/automation/msm_dashboard_launch_task.sh" \
+  "$REPO/automation/msm_dashboard_sync.sh" \
   "$DEST/"
 install -m 644 \
   "$REPO/automation/msm-orchestrator.service" \
@@ -146,10 +157,12 @@ install -m 644 \
   "$REPO/automation/msm-reporter.service" \
   "$REPO/automation/msm-dashboard.service" \
   "$REPO/automation/msm-dashboard-launch.service" \
+  "$REPO/automation/msm-dashboard-sync.service" \
+  "$REPO/automation/msm-dashboard-sync.timer" \
   "$UNIT/"
 install -m 440 "$REPO/automation/msm-dashboard.sudoers" "$SUDOERS/msm-dashboard"
 for d in "$STATE" "$STATE"/{queue,running,completed,blocked,failed,logs,locks,reports}; do
   install -d -m 700 -o "$RUN_USER" -g "$RUN_GROUP" "$d"
 done
 install -d -m 700 -o "$RUN_USER" -g "$RUN_GROUP" "$DATA_ROOT"
-echo "installed immutable source copies at $DEST; dashboard at http://10.43.44.254:8765; persistent market data at $DATA_ROOT; terminal reports at $STATE/reports"
+echo "installed immutable source copies at $DEST; dashboard at http://10.43.44.254:8765; automatic task sync available via msm-dashboard-sync.timer; persistent market data at $DATA_ROOT; terminal reports at $STATE/reports"
