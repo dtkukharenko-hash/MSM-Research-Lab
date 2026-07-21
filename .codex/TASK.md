@@ -1,12 +1,12 @@
 # Current Codex Task
 
-- task_id: `INFRA-R6A3R-DIRECT-PUBLICATION-HOLD`
+- task_id: `EXP-032-ADA-ONLY-TEMPORAL-STRUCTURE-HOLD`
 - status: `HOLD`
 - target_branch: `main`
-- infrastructure_maintenance: `true`
-- task_kind: `INFRA`
+- infrastructure_maintenance: `false`
+- task_kind: `RESEARCH`
 - data_ready: `true`
 
 ## Status
 
-Role-based recovery is suspended. EXP-031R6A3R already received planner, implementer, corrector, and final auditor PASS; its only terminal failure was git push. Publication is handled by the constrained dashboard publication service using Git objects and a temporary index. No experiment or fixture computation may be rerun.
+Preparing the ADA-only temporal-structure task and its exact allowlist. Do not launch while this HOLD marker is present.
