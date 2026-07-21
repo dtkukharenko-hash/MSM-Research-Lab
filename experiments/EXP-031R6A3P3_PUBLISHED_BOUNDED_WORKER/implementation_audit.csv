@@ -1,0 +1,8 @@
+requirement,evidence,status
+one BTCUSDT worker per invocation,--worker-output-dir requires symbol/start/end; separate January invocation completed,PASS
+exact 15m OHLC/OI and 8H funding grids,validate_sources validates canonical hashes and both declared half-open intervals,PASS
+five representation-labelled volatility rows,VOL schema contains representation; full volatility identity includes representation,PASS
+independent volatility invariance query,"fresh SQLite per October/January checks five labels, equal payload and closed-through",PASS
+committed independent reconciliation,EXP-029R observations and volatility streamed into external SQLite; volatility compared as duplicate-preserving multiset,PASS
+bounded-memory/no replacement inserts,fixture_counterexamples opens before interval work and receives its shared stream; SQLite INSERT only; no pandas/polars/readlines/list DictReader,PASS
+no full four-symbol calendar-2025 execution,only October 2024 and January 1-3 2025 BTCUSDT invocations recorded,PASS

@@ -1,0 +1,5 @@
+dataset,interval,total_rows,distinct_identities,duplicate_identities,status
+observations,OCTOBER,37440,37440,0,PASS
+volatility,OCTOBER,2880,2880,0,PASS
+observations,JANUARY,1560,1560,0,PASS
+volatility,JANUARY,120,120,0,PASS
