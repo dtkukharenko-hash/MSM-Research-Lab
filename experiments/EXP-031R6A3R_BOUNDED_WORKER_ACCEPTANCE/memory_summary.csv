@@ -1,0 +1,3 @@
+invocation,rss_kib,limit_kib,status,detail
+self_test_october_and_january,95420,1048576,PASS,/usr/bin/time maximum resident set size; external SQLite scratch under /dev/shm
+separate_worker_btcusdt_january,94164,1048576,PASS,/usr/bin/time maximum resident set size; one symbol only

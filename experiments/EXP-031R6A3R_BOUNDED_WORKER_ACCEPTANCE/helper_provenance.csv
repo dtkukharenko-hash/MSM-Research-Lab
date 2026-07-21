@@ -1,0 +1,4 @@
+module_alias,committed_source,helper_or_constant,positive_use,status
+frozen_exp027,experiments/EXP-027_MULTI_MARKET_DERIVATIVES_TRANSFER/experiment_027.py,REPS|atr|hourbars|state,representation labels and causal state reconstruction,PASS
+frozen_exp029r,experiments/EXP-029R_DERIVATIVES_DIAGNOSTIC_DATASET/experiment_029r.py,FIELDS|TOL|regime|dt|st,"thirteen scalar fields, fixed tolerance, volatility regime, timestamps",PASS
+frozen_exp031,experiments/EXP-031_TEMPORAL_VALIDATION_DIAGNOSTIC_DATASET/experiment_031.py,PROBE_START|PROBE_END|obs_fields|identity,"frozen October interval, output schema, compound identities",PASS

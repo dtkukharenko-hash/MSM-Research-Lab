@@ -1,0 +1,3 @@
+interval,representatives,event_rows,control_rows,matched_controls,unmatched_controls,expected_unknown_observation_rows,generated_unknown_observation_rows,expected_unknown_volatility_rows,generated_unknown_volatility_rows,status
+OCTOBER,144,144,144,0,144,18720,18720,1440,1440,PASS
+JANUARY,6,6,6,0,6,780,780,60,60,PASS

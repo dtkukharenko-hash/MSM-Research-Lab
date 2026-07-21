@@ -1,0 +1,7 @@
+command,result,status
+python3 -m py_compile experiment_031r6a3r.py,syntax valid,PASS
+--fixture-output-dir external run 1,October + January fixture completed,PASS
+--fixture-output-dir external run 2,all substantive output hashes equal run 1,PASS
+--worker-output-dir BTCUSDT January,one-symbol worker completed,PASS
+--self-test --temp-dir external,completed; RSS 95600 KiB,PASS
+--worker-output-dir ETHUSDT January,rejected; worker is restricted to BTCUSDT,PASS
