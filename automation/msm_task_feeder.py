@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed, deterministic ingress for local MSM orchestrator tasks."""
+"""Fail-closed, manually armed ingress for local MSM orchestrator tasks."""
 from __future__ import annotations
 
 import argparse
@@ -15,7 +15,8 @@ from pathlib import Path
 
 TASK_PATH = ".codex/TASK.md"
 ALLOWLIST_PATH = ".codex/ALLOWLIST.txt"
-TERMINAL_DIRS = ("queue", "running", "completed", "blocked", "failed")
+STATE_DIRS = ("queue", "running", "completed", "blocked", "failed", "logs", "locks", "launch_tokens")
+SEARCH_DIRS = ("queue", "running", "completed", "blocked", "failed")
 TASK_ID_RE = re.compile(r"^[A-Z0-9][A-Z0-9-]{1,127}$")
 FIELD_RE = re.compile(r"^- ([a-z_][a-z0-9_]*): `([^`\r\n]+)`$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -37,6 +38,7 @@ def utc_now() -> str:
 def _owner_ids(owner: str, group: str) -> tuple[int, int]:
     import grp
     import pwd
+
     return pwd.getpwnam(owner).pw_uid, grp.getgrnam(group).gr_gid
 
 
@@ -49,31 +51,31 @@ def secure_dir(path: Path, owner: str, group: str) -> None:
 
 
 def atomic_new(path: Path, value: dict, owner: str, group: str) -> bool:
-    """Create a JSON file exactly once; never replace an existing state file."""
+    """Create one state file exactly once; never replace an existing envelope."""
     secure_dir(path.parent, owner, group)
     data = (json.dumps(value, sort_keys=True, indent=2) + "\n").encode("utf-8")
-    tmp = path.with_name(path.name + ".tmp.%d" % os.getpid())
+    temporary = path.with_name(path.name + f".tmp.{os.getpid()}")
     try:
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError:
-        raise FeedError("stale temporary envelope exists: " + tmp.name)
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as exc:
+        raise FeedError("stale temporary envelope exists: " + temporary.name) from exc
     try:
         offset = 0
         while offset < len(data):
-            offset += os.write(fd, data[offset:])
-        os.fsync(fd)
-        os.fchmod(fd, 0o600)
+            offset += os.write(descriptor, data[offset:])
+        os.fsync(descriptor)
+        os.fchmod(descriptor, 0o600)
         uid, gid = _owner_ids(owner, group)
         if (os.getuid(), os.getgid()) != (uid, gid):
-            os.fchown(fd, uid, gid)
+            os.fchown(descriptor, uid, gid)
     finally:
-        os.close(fd)
+        os.close(descriptor)
     try:
-        os.link(tmp, path)
+        os.link(temporary, path)
     except FileExistsError:
         return False
     finally:
-        tmp.unlink(missing_ok=True)
+        temporary.unlink(missing_ok=True)
     return True
 
 
@@ -86,42 +88,53 @@ def parse_metadata(task_bytes: bytes) -> dict[str, str]:
     for line in lines:
         if line.startswith("## "):
             break
-        if line.startswith("- "):
-            match = FIELD_RE.match(line)
-            if not match:
-                raise FeedError("malformed Markdown metadata")
-            key, value = match.groups()
-            if key in fields:
-                raise FeedError("duplicate metadata field: " + key)
-            fields[key] = value
+        if not line.startswith("- "):
+            continue
+        match = FIELD_RE.match(line)
+        if not match:
+            raise FeedError("malformed Markdown metadata")
+        key, value = match.groups()
+        if key in fields:
+            raise FeedError("duplicate metadata field: " + key)
+        fields[key] = value
+
     required = {
-        "task_id", "status", "target_branch", "infrastructure_maintenance",
-        "task_kind", "data_ready",
+        "task_id",
+        "status",
+        "target_branch",
+        "infrastructure_maintenance",
+        "task_kind",
+        "data_ready",
     }
     if not required <= set(fields):
         raise FeedError("missing required metadata")
     if not TASK_ID_RE.fullmatch(fields["task_id"]):
         raise FeedError("invalid task_id")
-    if fields["status"] not in {"READY", "COMPLETED", "OPEN", "BLOCKED", "REJECT", "ACCEPT"}:
+    if fields["status"] not in {"READY", "HOLD", "COMPLETED", "OPEN", "BLOCKED", "REJECT", "ACCEPT"}:
         raise FeedError("invalid status")
     if fields["target_branch"] != "main":
         raise FeedError("target branch must be main")
     if fields["infrastructure_maintenance"] not in {"true", "false"}:
         raise FeedError("invalid infrastructure_maintenance")
-    if fields["task_kind"] not in {"DATA", "RESEARCH", "INFRASTRUCTURE"}:
+    if fields["task_kind"] not in {"DATA", "RESEARCH", "INFRA", "INFRASTRUCTURE"}:
         raise FeedError("invalid task_kind")
     if fields["data_ready"] not in {"true", "false"}:
         raise FeedError("invalid data_ready")
+    if fields.get("allow_user_decision", "false") not in {"true", "false"}:
+        raise FeedError("invalid allow_user_decision")
     return fields
 
 
 def is_protected(path: str) -> bool:
-    lower = path.lower()
+    lowered = path.lower()
     return (
         path in FORBIDDEN_EXACT
-        or path == ".git" or path.startswith(".git/")
-        or path.startswith("/usr/") or path.startswith("/etc/") or path.startswith("/home/")
-        or any(token in lower for token in ("secret", "credential", "private_key", ".pem", ".key", ".env"))
+        or path == ".git"
+        or path.startswith(".git/")
+        or path.startswith("/usr/")
+        or path.startswith("/etc/")
+        or path.startswith("/home/")
+        or any(token in lowered for token in ("secret", "credential", "private_key", ".pem", ".key", ".env"))
     )
 
 
@@ -157,7 +170,15 @@ def read_allowlist(repo: Path) -> list[str]:
     for raw in lines:
         value = raw.strip()
         candidate = Path(value)
-        if value != raw or value != candidate.as_posix() or value.endswith("/") or candidate.is_absolute() or "\\" in value or "." in candidate.parts or ".." in candidate.parts:
+        if (
+            value != raw
+            or value != candidate.as_posix()
+            or value.endswith("/")
+            or candidate.is_absolute()
+            or "\\" in value
+            or "." in candidate.parts
+            or ".." in candidate.parts
+        ):
             raise FeedError("allowlist path is not normalized")
         if value.startswith("-") or is_protected(value):
             raise FeedError("forbidden allowlist path: " + value)
@@ -191,29 +212,31 @@ def data_gate_reason(repo: Path, fields: dict[str, str]) -> str | None:
     return None
 
 
-def block_reason(task_bytes: bytes, fields: dict[str, str]) -> str | None:
+def explicit_gate_reason(fields: dict[str, str]) -> str | None:
+    """Use metadata only. Never infer state transitions from task prose."""
     if fields["status"] != "READY":
         return "task status is not READY"
     if fields["infrastructure_maintenance"] == "true":
         return "infrastructure task requires manual bootstrap"
-    text = task_bytes.decode("utf-8", errors="replace").lower()
-    gates = {
-        "definition change": "definition change requires user decision",
-        "hypothesis change": "hypothesis change requires user decision",
-        "holdout": "holdout access requires user decision",
-        "tradingview": "visual or TradingView review requires user decision",
-        "visual review": "visual or TradingView review requires user decision",
-        "ambiguous": "ambiguous research judgment requires user decision",
-        "user decision": "task explicitly requires user decision",
-    }
-    return next((reason for token, reason in gates.items() if token in text), None)
+    return None
 
 
-def envelope(fields: dict[str, str], task_hash: str, status: str = "READY", reason: str | None = None) -> dict:
+def make_envelope(
+    fields: dict[str, str],
+    task_hash: str,
+    status: str = "READY",
+    reason: str | None = None,
+) -> dict:
     item = {
-        "schema_version": "1", "task_id": fields["task_id"], "task_hash": task_hash,
-        "status": status, "task_path": TASK_PATH, "allowlist_path": ALLOWLIST_PATH,
-        "created_at": utc_now(), "attempt": 0, "max_corrections": 2,
+        "schema_version": "1",
+        "task_id": fields["task_id"],
+        "task_hash": task_hash,
+        "status": status,
+        "task_path": TASK_PATH,
+        "allowlist_path": ALLOWLIST_PATH,
+        "created_at": utc_now(),
+        "attempt": 0,
+        "max_corrections": 2,
     }
     if reason:
         item["failure_reason"] = reason
@@ -222,21 +245,33 @@ def envelope(fields: dict[str, str], task_hash: str, status: str = "READY", reas
 
 
 def existing(root: Path, task_id: str) -> list[dict]:
-    found = []
-    for name in TERMINAL_DIRS:
+    found: list[dict] = []
+    for name in SEARCH_DIRS:
         directory = root / name
-        if directory.exists():
-            for path in directory.glob("*.json"):
-                try:
-                    value = json.loads(path.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError):
-                    continue
-                if value.get("task_id") == task_id:
-                    found.append(value)
+        if not directory.exists():
+            continue
+        for path in directory.glob("*.json"):
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if value.get("task_id") == task_id:
+                found.append(value)
     return found
 
 
-def ingest(repo: Path, state: Path, *, dry_run: bool = False, owner: str = "nnv", group: str = "nnv") -> tuple[str, str]:
+def token_path(state: Path, task_id: str, task_hash: str) -> Path:
+    return state / "launch_tokens" / f"{task_id}-{task_hash}.token"
+
+
+def ingest(
+    repo: Path,
+    state: Path,
+    *,
+    dry_run: bool = False,
+    owner: str = "nnv",
+    group: str = "nnv",
+) -> tuple[str, str]:
     task_file = repo / TASK_PATH
     if not task_file.is_file():
         raise FeedError("TASK.md missing")
@@ -245,30 +280,58 @@ def ingest(repo: Path, state: Path, *, dry_run: bool = False, owner: str = "nnv"
     task_hash = hashlib.sha256(task_bytes).hexdigest()
     if fields["status"] != "READY":
         return "IGNORED", "task status is not READY"
-    # Validate even blocked tasks: invalid allowlists must never reach the queue.
+
     read_allowlist(repo)
-    for name in ("queue", "running", "completed", "blocked", "failed", "logs", "locks"):
+    for name in STATE_DIRS:
         secure_dir(state / name, owner, group)
+
     lock_path = state / "locks" / "feeder.lock"
     with open(lock_path, "a+", encoding="utf-8") as lock:
         os.chmod(lock_path, 0o600)
         fcntl.flock(lock, fcntl.LOCK_EX)
         if (state / "KILL").exists():
             return "BLOCKED", "kill switch present"
+
         matches = existing(state, fields["task_id"])
         if any(item.get("task_hash") == task_hash for item in matches):
             return "NOOP", "identical task already recorded"
+
+        launch_token = token_path(state, fields["task_id"], task_hash)
+        if not dry_run:
+            if not launch_token.is_file():
+                return "IGNORED", "manual start token missing"
+            try:
+                token_value = launch_token.read_text(encoding="utf-8").strip()
+            except OSError as exc:
+                raise FeedError("cannot read manual start token") from exc
+            if token_value != task_hash:
+                return "IGNORED", "manual start token hash mismatch"
+
+        technical_reason = data_gate_reason(repo, fields) or explicit_gate_reason(fields)
         conflict = bool(matches)
-        reason = data_gate_reason(repo, fields) or block_reason(task_bytes, fields)
         if conflict:
+            destination = "blocked"
+            status = "BLOCKED_USER_DECISION"
             reason = "duplicate task ID with different hash"
-        destination = "blocked" if reason else "queue"
-        item = envelope(fields, task_hash, "BLOCKED_USER_DECISION" if reason else "READY", reason)
+            result = "BLOCKED"
+        elif technical_reason:
+            destination = "failed"
+            status = "FAILED_TECHNICAL"
+            reason = technical_reason
+            result = "FAILED"
+        else:
+            destination = "queue"
+            status = "READY"
+            reason = None
+            result = "ENQUEUED"
+
+        item = make_envelope(fields, task_hash, status, reason)
         filename = fields["task_id"] + "-" + task_hash + ".json"
         if dry_run:
-            return ("BLOCKED" if reason else "DRY_RUN"), reason or "validation passed"
+            return ("DRY_RUN" if result == "ENQUEUED" else result), reason or "validation passed"
         if atomic_new(state / destination / filename, item, owner, group):
-            return ("BLOCKED" if reason else "ENQUEUED"), reason or filename
+            launch_token.unlink(missing_ok=True)
+            return result, reason or filename
         return "NOOP", "envelope already exists"
 
 
@@ -283,7 +346,12 @@ def main() -> int:
     args = parser.parse_args()
     while True:
         try:
-            status, detail = ingest(Path(args.repo), Path(args.state_dir), owner=args.owner, group=args.group)
+            status, detail = ingest(
+                Path(args.repo),
+                Path(args.state_dir),
+                owner=args.owner,
+                group=args.group,
+            )
             print(status + ": " + detail)
         except FeedError as exc:
             print("REJECTED: " + str(exc), file=sys.stderr)
