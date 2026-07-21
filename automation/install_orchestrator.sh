@@ -32,7 +32,7 @@ run_fixture() {
     MSM_ORCH_RUN_GROUP="$run_group" \
     bash "$0" --install --test-mode
 
-  for path in "$tmp/state" "$tmp/state"/{queue,running,completed,blocked,failed,logs,locks} "$tmp/market-data"; do
+  for path in "$tmp/state" "$tmp/state"/{queue,running,completed,blocked,failed,logs,locks,reports} "$tmp/market-data"; do
     [[ $(stat -c '%U:%G:%a' "$path") == "$run_user:$run_group:700" ]] || {
       echo "fixture failed runtime ownership or mode: $path" >&2
       return 1
@@ -86,10 +86,11 @@ fi
 PYCACHE_ROOT=$(mktemp -d)
 trap 'rm -rf "$PYCACHE_ROOT"' EXIT
 
-for f in msm_orchestrator.py msm_task_feeder.py msm_worker.sh install_orchestrator.sh verify_orchestrator.sh msm-orchestrator.service msm-task-feeder.service; do
+for f in msm_orchestrator.py msm_task_feeder.py msm_reporter.py msm_worker.sh install_orchestrator.sh verify_orchestrator.sh msm-orchestrator.service msm-task-feeder.service msm-reporter.service; do
   [[ -f "$REPO/automation/$f" ]] || { echo "missing $f" >&2; exit 1; }
 done
-PYTHONPYCACHEPREFIX="$PYCACHE_ROOT" python3 -m py_compile "$REPO/automation/msm_orchestrator.py" "$REPO/automation/msm_task_feeder.py"
+PYTHONPYCACHEPREFIX="$PYCACHE_ROOT" python3 -m py_compile "$REPO/automation/msm_orchestrator.py" "$REPO/automation/msm_task_feeder.py" "$REPO/automation/msm_reporter.py"
+PYTHONDONTWRITEBYTECODE=1 python3 -B "$REPO/automation/msm_reporter.py" --self-test
 bash -n "$REPO/automation/msm_worker.sh"
 bash -n "$REPO/automation/verify_orchestrator.sh"
 if [[ $MODE == production && ${EUID:-$(id -u)} -ne 0 && $ROOT == / ]]; then
@@ -98,10 +99,10 @@ if [[ $MODE == production && ${EUID:-$(id -u)} -ne 0 && $ROOT == / ]]; then
 fi
 
 install -d -m 755 "$DEST" "$UNIT"
-install -m 644 "$REPO/automation/msm_orchestrator.py" "$REPO/automation/msm_task_feeder.py" "$REPO/automation/msm_worker.sh" "$DEST/"
-install -m 644 "$REPO/automation/msm-orchestrator.service" "$REPO/automation/msm-task-feeder.service" "$UNIT/"
-for d in "$STATE" "$STATE"/{queue,running,completed,blocked,failed,logs,locks}; do
+install -m 644 "$REPO/automation/msm_orchestrator.py" "$REPO/automation/msm_task_feeder.py" "$REPO/automation/msm_reporter.py" "$REPO/automation/msm_worker.sh" "$DEST/"
+install -m 644 "$REPO/automation/msm-orchestrator.service" "$REPO/automation/msm-task-feeder.service" "$REPO/automation/msm-reporter.service" "$UNIT/"
+for d in "$STATE" "$STATE"/{queue,running,completed,blocked,failed,logs,locks,reports}; do
   install -d -m 700 -o "$RUN_USER" -g "$RUN_GROUP" "$d"
 done
 install -d -m 700 -o "$RUN_USER" -g "$RUN_GROUP" "$DATA_ROOT"
-echo "installed immutable source copies at $DEST; persistent market data at $DATA_ROOT"
+echo "installed immutable source copies at $DEST; persistent market data at $DATA_ROOT; terminal reports at $STATE/reports"
