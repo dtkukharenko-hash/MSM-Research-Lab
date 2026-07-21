@@ -16,8 +16,8 @@ for dir in queue running; do
   fi
 done
 
-# No task is active. Freeze the role pipeline before changing TASK/runtime so a
-# newly synchronized READY task cannot be consumed by an older worker.
+# Freeze the role pipeline before changing TASK/runtime. It stays stopped until
+# the user explicitly presses Start for the synchronized READY task.
 systemctl stop msm-task-feeder.service msm-orchestrator.service >/dev/null 2>&1 || true
 
 GIT=(runuser -u nnv -- git -C "$REPO")
@@ -56,52 +56,33 @@ after=$("${GIT[@]}" rev-parse HEAD)
 pine_hash_after=$(sha256sum "$pine_path" | awk '{print $1}')
 pine_status_after=$("${GIT[@]}" status --porcelain=v1 -- "$PINE")
 
-[[ "$pine_hash_after" == "$pine_hash_before" ]] || {
-  echo 'SYNC_ABORT_PROTECTED_PINE_HASH_CHANGED'
-  exit 1
-}
-[[ "$pine_status_after" == "$pine_status_before" ]] || {
-  echo 'SYNC_ABORT_PROTECTED_PINE_STATUS_CHANGED'
-  exit 1
-}
-if ! "${GIT[@]}" diff --cached --quiet; then
-  echo 'SYNC_ABORT_STAGED_CHANGES_CREATED'
+[[ "$pine_hash_after" == "$pine_hash_before" ]] || { echo 'SYNC_ABORT_PROTECTED_PINE_HASH_CHANGED'; exit 1; }
+[[ "$pine_status_after" == "$pine_status_before" ]] || { echo 'SYNC_ABORT_PROTECTED_PINE_STATUS_CHANGED'; exit 1; }
+"${GIT[@]}" diff --cached --quiet || { echo 'SYNC_ABORT_STAGED_CHANGES_CREATED'; exit 1; }
+
+# Always reinstall the checked-in runtime. Comparing Git revisions is not enough:
+# the repository may already be current while /usr/local still contains an older worker.
+bash "$REPO/automation/install_orchestrator.sh" --activate-production
+systemctl daemon-reload
+systemctl enable --now msm-dashboard-sync.timer msm-reporter.service >/dev/null
+
+# An installer-side constrained publication may advance origin/main. Reconcile it
+# without touching pre-existing dirty/untracked paths.
+"${GIT[@]}" fetch origin main
+read -r local_after remote_after < <("${GIT[@]}" rev-list --left-right --count HEAD...origin/main)
+if (( local_after == 0 && remote_after > 0 )); then
+  "${GIT[@]}" merge --ff-only origin/main
+elif (( local_after > 0 || remote_after > 0 )); then
+  echo "SYNC_POST_DEPLOY_DIVERGENCE local=$local_after remote=$remote_after"
   exit 1
 fi
+after=$("${GIT[@]}" rev-parse HEAD)
 
-runtime_changed=''
-if [[ "$before" != "$after" ]]; then
-  runtime_changed=$("${GIT[@]}" diff --name-only "$before" "$after" -- automation start.sh | head -n 1)
-fi
-
-if [[ -n "$runtime_changed" ]]; then
-  # The production installer also performs the constrained held R6A3R
-  # publication when TASK.md carries the dedicated HOLD marker.
-  bash "$REPO/automation/install_orchestrator.sh" --activate-production
-  systemctl daemon-reload
-  systemctl enable --now msm-dashboard-sync.timer msm-reporter.service >/dev/null
-
-  # Publication may have advanced origin/main. Pull that collision-free commit
-  # into the local main branch before returning control to the dashboard.
-  "${GIT[@]}" fetch origin main
-  read -r local_after remote_after < <("${GIT[@]}" rev-list --left-right --count HEAD...origin/main)
-  if (( local_after == 0 && remote_after > 0 )); then
-    "${GIT[@]}" merge --ff-only origin/main
-  elif (( local_after > 0 || remote_after > 0 )); then
-    echo "SYNC_POST_DEPLOY_DIVERGENCE local=$local_after remote=$remote_after"
-    exit 1
-  fi
-  after=$("${GIT[@]}" rev-parse HEAD)
-
-  systemd-run \
-    --unit=msm-dashboard-restart \
-    --on-active=2s \
-    --collect \
-    /usr/bin/systemctl restart msm-dashboard.service >/dev/null
-  deploy='scheduled'
-else
-  deploy='not-needed'
-fi
+systemd-run \
+  --unit=msm-dashboard-restart \
+  --on-active=2s \
+  --collect \
+  /usr/bin/systemctl restart msm-dashboard.service >/dev/null
 
 pine_hash_final=$(sha256sum "$pine_path" | awk '{print $1}')
 pine_status_final=$("${GIT[@]}" status --porcelain=v1 -- "$PINE")
@@ -109,4 +90,4 @@ pine_status_final=$("${GIT[@]}" status --porcelain=v1 -- "$PINE")
 [[ "$pine_status_final" == "$pine_status_before" ]] || { echo 'SYNC_FINAL_PROTECTED_PINE_STATUS_CHANGED'; exit 1; }
 "${GIT[@]}" diff --cached --quiet || { echo 'SYNC_FINAL_STAGED_CHANGES'; exit 1; }
 
-echo "SYNC_OK before=$before after=$after local_only=$local_only remote_only=$remote_only backup=${backup:-none} runtime_deploy=$deploy feeder=stopped orchestrator=stopped"
+echo "SYNC_OK before=$before after=$after local_only=$local_only remote_only=$remote_only backup=${backup:-none} runtime_deploy=installed feeder=stopped orchestrator=stopped"
