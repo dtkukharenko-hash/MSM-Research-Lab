@@ -42,6 +42,18 @@ run_fixture() {
     echo 'fixture failed to preserve sentinel state file' >&2
     return 1
   }
+  [[ -x "$tmp/install/usr/local/lib/msm-orchestrator/msm_dashboard_start.sh" ]] || {
+    echo 'fixture failed dashboard launcher mode' >&2
+    return 1
+  }
+  [[ -f "$tmp/install/etc/systemd/system/msm-dashboard.service" ]] || {
+    echo 'fixture failed dashboard service install' >&2
+    return 1
+  }
+  [[ $(stat -c '%a' "$tmp/install/etc/sudoers.d/msm-dashboard") == 440 ]] || {
+    echo 'fixture failed dashboard sudoers mode' >&2
+    return 1
+  }
 
   for mode in '' '--install' '--test-mode' '--activate-production --test-mode' '--activate-production --install' '--install --activate-production' '--install --test-mode --test-mode' '--test-mode --install'; do
     if MSM_ORCH_INSTALLER_FIXTURE=0 \
@@ -73,6 +85,7 @@ REPO=${MSM_REPO:-/home/nnv/MSM-Research-Lab}
 ROOT=${MSM_ORCH_INSTALL_ROOT:-/}
 DEST="$ROOT/usr/local/lib/msm-orchestrator"
 UNIT="$ROOT/etc/systemd/system"
+SUDOERS="$ROOT/etc/sudoers.d"
 STATE=${MSM_ORCH_STATE_DIR:-/home/nnv/.local/state/msm-orchestrator}
 RUN_USER=${MSM_ORCH_RUN_USER:-nnv}
 RUN_GROUP=${MSM_ORCH_RUN_GROUP:-$RUN_USER}
@@ -86,23 +99,44 @@ fi
 PYCACHE_ROOT=$(mktemp -d)
 trap 'rm -rf "$PYCACHE_ROOT"' EXIT
 
-for f in msm_orchestrator.py msm_task_feeder.py msm_reporter.py msm_worker.sh install_orchestrator.sh verify_orchestrator.sh msm-orchestrator.service msm-task-feeder.service msm-reporter.service; do
+for f in msm_orchestrator.py msm_task_feeder.py msm_reporter.py msm_dashboard.py msm_worker.sh msm_dashboard_start.sh install_orchestrator.sh verify_orchestrator.sh msm-orchestrator.service msm-task-feeder.service msm-reporter.service msm-dashboard.service msm-dashboard.sudoers; do
   [[ -f "$REPO/automation/$f" ]] || { echo "missing $f" >&2; exit 1; }
 done
-PYTHONPYCACHEPREFIX="$PYCACHE_ROOT" python3 -m py_compile "$REPO/automation/msm_orchestrator.py" "$REPO/automation/msm_task_feeder.py" "$REPO/automation/msm_reporter.py"
+PYTHONPYCACHEPREFIX="$PYCACHE_ROOT" python3 -m py_compile \
+  "$REPO/automation/msm_orchestrator.py" \
+  "$REPO/automation/msm_task_feeder.py" \
+  "$REPO/automation/msm_reporter.py" \
+  "$REPO/automation/msm_dashboard.py"
 PYTHONDONTWRITEBYTECODE=1 python3 -B "$REPO/automation/msm_reporter.py" --self-test
 bash -n "$REPO/automation/msm_worker.sh"
+bash -n "$REPO/automation/msm_dashboard_start.sh"
 bash -n "$REPO/automation/verify_orchestrator.sh"
+if command -v visudo >/dev/null 2>&1; then
+  visudo -cf "$REPO/automation/msm-dashboard.sudoers" >/dev/null
+fi
 if [[ $MODE == production && ${EUID:-$(id -u)} -ne 0 && $ROOT == / ]]; then
   echo 'production activation requires root' >&2
   exit 1
 fi
 
-install -d -m 755 "$DEST" "$UNIT"
-install -m 644 "$REPO/automation/msm_orchestrator.py" "$REPO/automation/msm_task_feeder.py" "$REPO/automation/msm_reporter.py" "$REPO/automation/msm_worker.sh" "$DEST/"
-install -m 644 "$REPO/automation/msm-orchestrator.service" "$REPO/automation/msm-task-feeder.service" "$REPO/automation/msm-reporter.service" "$UNIT/"
+install -d -m 755 "$DEST" "$UNIT" "$SUDOERS"
+install -m 644 \
+  "$REPO/automation/msm_orchestrator.py" \
+  "$REPO/automation/msm_task_feeder.py" \
+  "$REPO/automation/msm_reporter.py" \
+  "$REPO/automation/msm_dashboard.py" \
+  "$REPO/automation/msm_worker.sh" \
+  "$DEST/"
+install -m 755 "$REPO/automation/msm_dashboard_start.sh" "$DEST/"
+install -m 644 \
+  "$REPO/automation/msm-orchestrator.service" \
+  "$REPO/automation/msm-task-feeder.service" \
+  "$REPO/automation/msm-reporter.service" \
+  "$REPO/automation/msm-dashboard.service" \
+  "$UNIT/"
+install -m 440 "$REPO/automation/msm-dashboard.sudoers" "$SUDOERS/msm-dashboard"
 for d in "$STATE" "$STATE"/{queue,running,completed,blocked,failed,logs,locks,reports}; do
   install -d -m 700 -o "$RUN_USER" -g "$RUN_GROUP" "$d"
 done
 install -d -m 700 -o "$RUN_USER" -g "$RUN_GROUP" "$DATA_ROOT"
-echo "installed immutable source copies at $DEST; persistent market data at $DATA_ROOT; terminal reports at $STATE/reports"
+echo "installed immutable source copies at $DEST; dashboard at http://10.43.44.254:8765; persistent market data at $DATA_ROOT; terminal reports at $STATE/reports"
