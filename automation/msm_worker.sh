@@ -56,7 +56,7 @@ case "$ROLE" in
     role_instruction="Audit only the completed task delta relative to the baseline. Verify every required output, deterministic evidence, persistent-data claims, allowlist boundary, and protected paths. If required outputs are absent or invalid, return TECHNICAL_CORRECTION_REQUIRED."
     ;;
   corrector)
-    role_instruction="Correct the completed task delta relative to the baseline. Create missing required outputs or replace incomplete files with complete allowlisted outputs. Use the persistent market-data root when required. Remove cache files and leave repository changes unstaged."
+    role_instruction="Correct the completed task delta relative to the baseline. Create missing required outputs or replace incomplete files with complete allowlisted outputs. Compare git status with the supplied baseline and remove every task-created path outside the allowlist without touching baseline paths. Use the persistent market-data root when required. Remove cache files and leave repository changes unstaged."
     ;;
 esac
 if [[ $TASK_KIND == RESEARCH && $ALLOW_USER_DECISION == true ]]; then
@@ -80,31 +80,95 @@ timeout "$TIMEOUT" bwrap --die-with-parent --ro-bind / / --bind "$REPO" "$REPO" 
   --setenv MSM_MARKET_DATA_ROOT "$DATA_ROOT" --setenv PYTHONDONTWRITEBYTECODE 1 --setenv PYTHONPYCACHEPREFIX "$RUNTIME_CACHE/pycache" \
   --proc /proc --dev /dev "$CODEX" exec --json -o "$RUNTIME_OUTPUT" --dangerously-bypass-approvals-and-sandbox -C "$REPO" "$prompt" >"$JSONL"
 [[ -s $RUNTIME_OUTPUT ]] || { echo 'Codex did not produce a runtime result' >&2; exit 1; }
-python3 - "$RUNTIME_OUTPUT" "$ROLE" "$TASK_KIND" "$ALLOW_USER_DECISION" <<'PY'
+python3 - "$RUNTIME_OUTPUT" "$ROLE" "$TASK_KIND" "$ALLOW_USER_DECISION" "$REPO" "$BASELINE" "$ALLOWLIST" <<'PY'
 import json
 import os
+import pathlib
+import shutil
+import subprocess
 import sys
 
-path, expected_role, task_kind, allow_user_decision = sys.argv[1:]
+path, expected_role, task_kind, allow_user_decision, repo_text, baseline_path, allowlist_path = sys.argv[1:]
+repo = pathlib.Path(repo_text).resolve()
 with open(path, encoding="utf-8") as source:
     value = json.load(source)
 if not isinstance(value, dict) or value.get("role") != expected_role:
     raise SystemExit("invalid worker result")
+findings = value.get("findings")
+if not isinstance(findings, list):
+    findings = []
+
+# Remove every new untracked path outside the allowlist. The baseline proves these
+# paths were created by the current task, so deleting them cannot touch user state.
+if baseline_path:
+    with open(baseline_path, encoding="utf-8") as source:
+        baseline = json.load(source)
+    baseline_paths = set(baseline.get("preexisting_paths", {}))
+    with open(allowlist_path, encoding="utf-8") as source:
+        allowed = {
+            line.strip()
+            for line in source
+            if line.strip() and not line.lstrip().startswith("#")
+        }
+    raw = subprocess.run(
+        ["git", "-C", str(repo), "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        check=True,
+        capture_output=True,
+    ).stdout
+    entries = {}
+    records = raw.split(b"\0")
+    index = 0
+    while index < len(records) - 1:
+        row = records[index]
+        index += 1
+        if len(row) < 4:
+            continue
+        code = row[:2].decode("ascii", "replace")
+        relative = row[3:].decode("utf-8", "surrogateescape")
+        if relative:
+            entries[relative] = code
+    unexpected = sorted(set(entries) - baseline_paths - allowed)
+    blocked = []
+    for relative in unexpected:
+        code = entries[relative]
+        candidate = (repo / relative).resolve()
+        if repo not in candidate.parents or code != "??":
+            blocked.append(f"{code} {relative}")
+            continue
+        if candidate.is_symlink() or candidate.is_file():
+            candidate.unlink(missing_ok=True)
+        elif candidate.is_dir():
+            shutil.rmtree(candidate)
+        else:
+            candidate.unlink(missing_ok=True)
+        parent = candidate.parent
+        while parent != repo:
+            try:
+                parent.rmdir()
+            except OSError:
+                break
+            parent = parent.parent
+        findings.append("runtime removed task-created path outside allowlist: " + relative)
+    if blocked:
+        findings.append("non-untracked path outside allowlist remains: " + ", ".join(blocked))
+        value["verdict"] = "TECHNICAL_CORRECTION_REQUIRED"
+        value["summary"] = (
+            str(value.get("summary", ""))
+            + " A tracked or staged path outside the allowlist remains and requires technical correction."
+        ).strip()
+
 if value.get("verdict") == "USER_DECISION_REQUIRED" and not (
     task_kind == "RESEARCH" and allow_user_decision == "true"
 ):
-    findings = value.get("findings")
-    if not isinstance(findings, list):
-        findings = []
     findings.append(
         "runtime normalized USER_DECISION_REQUIRED to TECHNICAL_CORRECTION_REQUIRED because this task forbids user-decision blocking"
     )
-    value["findings"] = findings
     value["verdict"] = "TECHNICAL_CORRECTION_REQUIRED"
     value["summary"] = (
         str(value.get("summary", ""))
         + " This task cannot enter BLOCKED_USER_DECISION."
     ).strip()
+value["findings"] = findings
 temporary = path + ".normalized"
 with open(temporary, "w", encoding="utf-8") as target:
     json.dump(value, target, ensure_ascii=False, sort_keys=True)
