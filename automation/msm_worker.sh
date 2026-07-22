@@ -98,8 +98,9 @@ findings = value.get("findings")
 if not isinstance(findings, list):
     findings = []
 
-# Remove every new untracked path outside the allowlist. The baseline proves these
-# paths were created by the current task, so deleting them cannot touch user state.
+# Remove new untracked paths outside the allowlist. Restore only clean-baseline,
+# worktree-only tracked bytecode changes; all other tracked/staged changes remain
+# hard failures so user files can never be silently overwritten.
 if baseline_path:
     with open(baseline_path, encoding="utf-8") as source:
         baseline = json.load(source)
@@ -110,51 +111,71 @@ if baseline_path:
             for line in source
             if line.strip() and not line.lstrip().startswith("#")
         }
-    raw = subprocess.run(
-        ["git", "-C", str(repo), "status", "--porcelain=v1", "-z", "--untracked-files=all"],
-        check=True,
-        capture_output=True,
-    ).stdout
-    entries = {}
-    records = raw.split(b"\0")
-    index = 0
-    while index < len(records) - 1:
-        row = records[index]
-        index += 1
-        if len(row) < 4:
-            continue
-        code = row[:2].decode("ascii", "replace")
-        relative = row[3:].decode("utf-8", "surrogateescape")
-        if relative:
-            entries[relative] = code
+
+    def status_entries():
+        raw = subprocess.run(
+            ["git", "-C", str(repo), "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+            check=True,
+            capture_output=True,
+        ).stdout
+        entries = {}
+        records = raw.split(b"\0")
+        index = 0
+        while index < len(records) - 1:
+            row = records[index]
+            index += 1
+            if len(row) < 4:
+                continue
+            code = row[:2].decode("ascii", "replace")
+            relative = row[3:].decode("utf-8", "surrogateescape")
+            if relative:
+                entries[relative] = code
+        return entries
+
+    entries = status_entries()
     unexpected = sorted(set(entries) - baseline_paths - allowed)
-    blocked = []
     for relative in unexpected:
         code = entries[relative]
         candidate = (repo / relative).resolve()
-        if repo not in candidate.parents or code != "??":
-            blocked.append(f"{code} {relative}")
+        if repo not in candidate.parents:
             continue
-        if candidate.is_symlink() or candidate.is_file():
-            candidate.unlink(missing_ok=True)
-        elif candidate.is_dir():
-            shutil.rmtree(candidate)
-        else:
-            candidate.unlink(missing_ok=True)
-        parent = candidate.parent
-        while parent != repo:
-            try:
-                parent.rmdir()
-            except OSError:
-                break
-            parent = parent.parent
-        findings.append("runtime removed task-created path outside allowlist: " + relative)
+        if code == "??":
+            if candidate.is_symlink() or candidate.is_file():
+                candidate.unlink(missing_ok=True)
+            elif candidate.is_dir():
+                shutil.rmtree(candidate)
+            else:
+                candidate.unlink(missing_ok=True)
+            parent = candidate.parent
+            while parent != repo:
+                try:
+                    parent.rmdir()
+                except OSError:
+                    break
+                parent = parent.parent
+            findings.append("runtime removed task-created path outside allowlist: " + relative)
+            continue
+        worktree_only = len(code) == 2 and code[0] == " " and code[1] in {"M", "D", "T"}
+        tracked_bytecode = "/__pycache__/" in ("/" + relative) and relative.endswith(".pyc")
+        if worktree_only and tracked_bytecode:
+            subprocess.run(
+                ["git", "-C", str(repo), "restore", "--worktree", "--source=HEAD", "--", relative],
+                check=True,
+                capture_output=True,
+            )
+            findings.append("runtime restored tracked bytecode outside allowlist: " + relative)
+
+    remaining_entries = status_entries()
+    blocked = [
+        f"{remaining_entries[relative]} {relative}"
+        for relative in sorted(set(remaining_entries) - baseline_paths - allowed)
+    ]
     if blocked:
-        findings.append("non-untracked path outside allowlist remains: " + ", ".join(blocked))
+        findings.append("non-task path outside allowlist remains: " + ", ".join(blocked))
         value["verdict"] = "TECHNICAL_CORRECTION_REQUIRED"
         value["summary"] = (
             str(value.get("summary", ""))
-            + " A tracked or staged path outside the allowlist remains and requires technical correction."
+            + " A tracked, staged, or otherwise unsafe path outside the allowlist remains and requires technical correction."
         ).strip()
 
 if value.get("verdict") == "USER_DECISION_REQUIRED" and not (
