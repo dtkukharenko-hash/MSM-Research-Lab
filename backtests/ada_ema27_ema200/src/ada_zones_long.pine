@@ -1,0 +1,182 @@
+//@version=6
+// ADA zones — LONG. Разметка зон по правилам L1-L5.
+//
+//   L1. Контекст: EMA27 > EMA200 и EMA200 растёт.
+//   L2. Пока close >= EMA27, ведём бегущий МАКСИМУМ high.
+//   L3. Событие: close уходит НИЖЕ EMA27 -> бегущий максимум ФИКСИРУЕТСЯ
+//       как level, верхняя граница зоны (горизонталь).
+//   L4. Зона активна, пока close < level и low не дошёл до EMA200.
+//   L5. Исходы: breakout (close > level) | ema200 (low <= EMA200).
+//
+// Подбираемых порогов нет, кроме minBars — отсечки мгновенных проколов EMA27.
+// Порт с backtests/ada_ema27_ema200/src/zones_both.py (side='long'):
+// та же логика и тот же порядок проверок.
+//
+// Перерисовка: на незакрытом баре зона живёт по текущим значениям и может
+// закрыться или продлиться до закрытия бара. На истории всё детерминировано.
+// Для алертов включайте "Once Per Bar Close".
+
+indicator("ADA zones — LONG (EMA27/EMA200)", overlay = true, max_boxes_count = 500, max_lines_count = 500, max_labels_count = 500)
+
+// ─────────────────────────── входные параметры ───────────────────────────
+
+grpR      = "Правила"
+fastLen   = input.int(27,    "EMA быстрая",                   minval = 1, group = grpR)
+slowLen   = input.int(200,   "EMA медленная",                 minval = 2, group = grpR)
+slopeLb   = input.int(30,    "Горизонт наклона EMA200, баров", minval = 1, group = grpR)
+reqSlope  = input.bool(true, "Требовать рост EMA200 (L1)",    group = grpR)
+minBars   = input.int(3,     "Мин. длительность зоны, баров", minval = 1, group = grpR)
+
+grpL       = "Ограничители (по умолчанию выключены)"
+useMaxBars = input.bool(false, "Ограничить длительность зоны", group = grpL, tooltip = "В питон-версии ограничителя нет. Добавлено из-за вырожденных зон: одна шортовая зона прожила 342 бара с размахом 68%.")
+maxBars    = input.int(150,    "Максимум баров в зоне",        minval = 5, group = grpL)
+useMinCorr = input.bool(false, "Требовать мин. ширину коридора", group = grpL)
+minCorr    = input.float(2.0,  "Мин. (EMA27-EMA200)/EMA200, %", minval = 0.0, step = 0.5, group = grpL)
+
+grpV       = "Отображение"
+showEmas   = input.bool(true, "Показывать EMA",              group = grpV)
+showLive   = input.bool(true, "Показывать активную зону",    group = grpV)
+showLabels = input.bool(true, "Подписи (длина / размах)",    group = grpV)
+extendLvl  = input.bool(true, "Продлевать level после зоны", group = grpV)
+showTable  = input.bool(true, "Таблица статистики",          group = grpV)
+colBO      = input.color(color.new(color.teal, 80), "Заливка: пробой вверх",    group = grpV)
+colE2      = input.color(color.new(color.red,  80), "Заливка: дошли до EMA200", group = grpV)
+colLive    = input.color(color.new(color.gray, 88), "Заливка: активная зона",   group = grpV)
+
+// ────────────────────────────── индикаторы ───────────────────────────────
+
+ema27  = ta.ema(close, fastLen)
+ema200 = ta.ema(close, slowLen)
+
+// Наклон EMA200: % за slopeLb баров — ровно как slope200 в питоне.
+slope200 = (ema200 / ema200[slopeLb] - 1) * 100
+rising   = slope200 > 0
+
+// Ширина коридора между средними, %.
+corridor = (ema27 - ema200) / ema200 * 100
+
+plot(showEmas ? ema27  : na, "EMA27",  color = color.new(color.orange, 0), linewidth = 1)
+plot(showEmas ? ema200 : na, "EMA200", color = color.new(color.red, 0),    linewidth = 2)
+
+// ──────────────────────────── состояние машины ───────────────────────────
+
+var bool  inZone  = false
+var float runMax  = na   // L2: бегущий максимум над EMA27
+var float level   = na   // L3: зафиксированная верхняя граница
+var int   startBI = na
+var float zoneHi  = na   // максимум внутри зоны — для размаха
+var float zoneLo  = na   // минимум внутри зоны — нижняя грань бокса
+var box   zBox    = na
+var line  zLine   = na
+var int   nBO     = 0
+var int   nE2     = 0
+
+// Флаги текущего бара. Объявлены без var — сбрасываются каждый бар.
+bool   justBreakout = false
+bool   justEma200   = false
+bool   doClose      = false
+string outcome      = ""
+
+// ──────────────────────────── основная логика ────────────────────────────
+
+if not inZone
+    if close >= ema27
+        // L2 — копим бегущий максимум, пока цена над быстрой средней.
+        runMax := na(runMax) ? high : math.max(runMax, high)
+    else
+        // L3 — событие: ушли под EMA27. Проверяем контекст L1.
+        bool ctx = ema27 > ema200 and not na(slope200)
+        if reqSlope
+            ctx := ctx and rising
+        if useMinCorr
+            ctx := ctx and corridor >= minCorr
+
+        if ctx and not na(runMax) and runMax > close
+            inZone  := true
+            level   := runMax
+            startBI := bar_index
+            zoneHi  := high
+            zoneLo  := low
+            zBox    := box.new(bar_index, level, bar_index, low, bgcolor = colLive, border_color = color.new(color.gray, 60), border_width = 1)
+            zLine   := line.new(bar_index, level, bar_index, level, color = color.new(color.gray, 30), width = 1, style = line.style_dashed)
+        else
+            runMax := na
+else
+    // Зона активна. Порядок проверок совпадает с питон-версией.
+    zoneHi := math.max(zoneHi, high)
+    zoneLo := math.min(zoneLo, low)
+
+    if low <= ema200
+        doClose := true
+        outcome := "ema200"
+    else if close > level
+        doClose := true
+        outcome := "breakout"
+    else if useMaxBars and (bar_index - startBI) >= maxBars
+        doClose := true
+        outcome := "timeout"
+    else if showLive
+        // L4 — зона продолжается, тянем правую границу.
+        box.set_right(zBox, bar_index)
+        box.set_bottom(zBox, zoneLo)
+        line.set_x2(zLine, bar_index)
+
+// ─────────────────────── закрытие зоны (вне функции) ──────────────────────
+// Всё это должно быть в глобальной области: Pine запрещает менять
+// глобальные переменные внутри пользовательских функций.
+
+if doClose
+    int zbars = bar_index - startBI
+
+    if zbars < minBars
+        // Мгновенный прокол EMA27 — зоной не считаем, следы убираем.
+        box.delete(zBox)
+        line.delete(zLine)
+    else
+        bool  isBO   = outcome == "breakout"
+        color fill   = isBO ? colBO : colE2
+        color border = isBO ? color.new(color.teal, 20) : color.new(color.red, 20)
+
+        box.set_bgcolor(zBox, fill)
+        box.set_border_color(zBox, border)
+        box.set_left(zBox, startBI)
+        box.set_right(zBox, bar_index)
+        box.set_top(zBox, level)
+        box.set_bottom(zBox, zoneLo)
+        line.set_x2(zLine, extendLvl ? bar_index + 10 : bar_index)
+
+        if showLabels
+            float rng = (zoneHi - zoneLo) / math.avg(zoneHi, zoneLo) * 100
+            label.new(startBI + int(zbars / 2), level, text = str.tostring(zbars) + "б / " + str.tostring(rng, "#.#") + "%", style = label.style_label_down, color = color.new(color.gray, 100), textcolor = isBO ? color.teal : color.red, size = size.tiny)
+
+        justBreakout := isBO
+        justEma200   := outcome == "ema200"
+        if isBO
+            nBO += 1
+        if outcome == "ema200"
+            nE2 += 1
+
+    zBox   := na
+    zLine  := na
+    inZone := false
+    runMax := na
+
+// ─────────────────────────────── алерты ──────────────────────────────────
+
+alertcondition(justBreakout, "Зона пробита вверх",     "ADA LONG: close выше level, зона пробита вверх")
+alertcondition(justEma200,   "Откат дошёл до EMA200",  "ADA LONG: low коснулся EMA200, зона закрыта вниз")
+
+// ───────────────────────────── статистика ────────────────────────────────
+
+var table t = table.new(position.top_right, 2, 4, bgcolor = color.new(color.black, 80), border_width = 1)
+
+if showTable and barstate.islast
+    int tot = nBO + nE2
+    table.cell(t, 0, 0, "Зон",          text_color = color.gray,  text_size = size.small)
+    table.cell(t, 1, 0, str.tostring(tot), text_color = color.white, text_size = size.small)
+    table.cell(t, 0, 1, "Пробой вверх", text_color = color.gray,  text_size = size.small)
+    table.cell(t, 1, 1, str.tostring(nBO), text_color = color.teal, text_size = size.small)
+    table.cell(t, 0, 2, "До EMA200",    text_color = color.gray,  text_size = size.small)
+    table.cell(t, 1, 2, str.tostring(nE2), text_color = color.red, text_size = size.small)
+    table.cell(t, 0, 3, "Доля пробоев", text_color = color.gray,  text_size = size.small)
+    table.cell(t, 1, 3, tot > 0 ? str.tostring(nBO * 100 / tot, "#") + "%" : "—", text_color = color.white, text_size = size.small)
