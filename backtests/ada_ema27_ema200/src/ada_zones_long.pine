@@ -3,14 +3,21 @@
 //
 //   L1. Контекст: EMA27 > EMA200 и EMA200 растёт.
 //   L2. Пока close >= EMA27, ведём бегущий МАКСИМУМ high.
-//   L3. Событие: close уходит НИЖЕ EMA27 -> бегущий максимум ФИКСИРУЕТСЯ
-//       как level, верхняя граница зоны (горизонталь).
+//   L3. Событие: close уходит НИЖЕ EMA27 и держится там confirmBars закрытий
+//       подряд -> бегущий максимум ФИКСИРУЕТСЯ как level, верхняя граница
+//       зоны (горизонталь). Неподтверждённый заход событием не считается:
+//       нога вверх продолжается, максимум копится дальше, включая high
+//       самих проколовших баров.
 //   L4. Зона активна, пока close < level и low не дошёл до EMA200.
 //   L5. Исходы: breakout (close > level) | ema200 (low <= EMA200).
 //
-// Подбираемых порогов нет, кроме minBars — отсечки мгновенных проколов EMA27.
-// Порт с backtests/ada_ema27_ema200/src/zones_both.py (side='long'):
-// та же логика и тот же порядок проверок.
+// Подбираемых порогов нет, кроме minBars (отсечка мгновенных проколов EMA27)
+// и confirmBars. Порт с backtests/ada_ema27_ema200/src/zones_both.py
+// (side='long'): та же логика и тот же порядок проверок.
+//
+// Ретроспективность: при confirmBars > 1 бокс рисуется от бара первого
+// закрытия под EMA27, но появляется на графике на confirmBars-1 баров позже —
+// раньше событие не подтверждено. Для разметки это нормально, для входов нет.
 //
 // Перерисовка: на незакрытом баре зона живёт по текущим значениям и может
 // закрыться или продлиться до закрытия бара. На истории всё детерминировано.
@@ -26,6 +33,7 @@ slowLen   = input.int(200,   "EMA медленная",                 minval = 
 slopeLb   = input.int(30,    "Горизонт наклона EMA200, баров", minval = 1, group = grpR)
 reqSlope  = input.bool(true, "Требовать рост EMA200 (L1)",    group = grpR)
 minBars   = input.int(3,     "Мин. длительность зоны, баров", minval = 1, group = grpR)
+confirmBars = input.int(2,   "Закрытий под EMA27 для события (L3)", minval = 1, group = grpR, tooltip = "1 — любой заход за среднюю. 2 — одиночное закрытие событием не считается. 3 и выше теряют эталонную зону 15.12.2023->03.01.2024.")
 
 grpL       = "Ограничители (по умолчанию выключены)"
 useMaxBars = input.bool(false, "Ограничить длительность зоны", group = grpL, tooltip = "В питон-версии ограничителя нет. Добавлено из-за вырожденных зон: одна шортовая зона прожила 342 бара с размахом 68%.")
@@ -71,6 +79,15 @@ var line  zLine   = na
 var int   nBO     = 0
 var int   nE2     = 0
 
+// L3, ожидание подтверждения. Питон смотрит серию закрытий вперёд, Pine так
+// не умеет, поэтому событие копится здесь и зона открывается задним числом.
+var int   belowN    = 0    // закрытий подряд под EMA27, ещё не подтверждённых
+var int   pendBI    = na   // бар первого закрытия — левая граница будущей зоны
+var float pendLevel = na   // level, снятый на первом закрытии, дальше не меняется
+var float pendHi    = na
+var float pendLo    = na
+var bool  pendOk    = false
+
 // Флаги текущего бара. Объявлены без var — сбрасываются каждый бар.
 bool   justBreakout = false
 bool   justEma200   = false
@@ -81,26 +98,50 @@ string outcome      = ""
 
 if not inZone
     if close >= ema27
+        if belowN > 0 and pendOk
+            // Заход не подтвердился — нога вверх продолжается, и high
+            // проколовших баров ей принадлежит.
+            runMax := math.max(runMax, pendHi)
+        belowN := 0
+        pendOk := false
         // L2 — копим бегущий максимум, пока цена над быстрой средней.
         runMax := na(runMax) ? high : math.max(runMax, high)
     else
-        // L3 — событие: ушли под EMA27. Проверяем контекст L1.
-        bool ctx = ema27 > ema200 and not na(slope200)
-        if reqSlope
-            ctx := ctx and rising
-        if useMinCorr
-            ctx := ctx and corridor >= minCorr
+        belowN += 1
+        if belowN == 1
+            // Первое закрытие под EMA27. Контекст L1 и level снимаются здесь
+            // и дальше не меняются, даже если подтверждение придёт позже.
+            bool ctx = ema27 > ema200 and not na(slope200)
+            if reqSlope
+                ctx := ctx and rising
+            if useMinCorr
+                ctx := ctx and corridor >= minCorr
 
-        if ctx and not na(runMax) and runMax > close
+            pendOk    := ctx and not na(runMax) and runMax > close
+            pendLevel := runMax
+            pendBI    := bar_index
+            pendHi    := high
+            pendLo    := low
+            if not pendOk
+                runMax := na
+        else if pendOk
+            pendHi := math.max(pendHi, high)
+            pendLo := math.min(pendLo, low)
+            if low <= ema200
+                // Дошли до EMA200, не успев подтвердить событие: зоны нет.
+                pendOk := false
+                runMax := na
+
+        if pendOk and belowN >= confirmBars
             inZone  := true
-            level   := runMax
-            startBI := bar_index
-            zoneHi  := high
-            zoneLo  := low
-            zBox    := box.new(bar_index, level, bar_index, low, bgcolor = colLive, border_color = color.new(color.gray, 60), border_width = 1)
-            zLine   := line.new(bar_index, level, bar_index, level, color = color.new(color.gray, 30), width = 1, style = line.style_dashed)
-        else
-            runMax := na
+            level   := pendLevel
+            startBI := pendBI
+            zoneHi  := pendHi
+            zoneLo  := pendLo
+            belowN  := 0
+            pendOk  := false
+            zBox    := box.new(pendBI, level, bar_index, zoneLo, bgcolor = colLive, border_color = color.new(color.gray, 60), border_width = 1)
+            zLine   := line.new(pendBI, level, bar_index, level, color = color.new(color.gray, 30), width = 1, style = line.style_dashed)
 else
     // Зона активна. Порядок проверок совпадает с питон-версией.
     zoneHi := math.max(zoneHi, high)
@@ -160,6 +201,8 @@ if doClose
     zLine  := na
     inZone := false
     runMax := na
+    belowN := 0
+    pendOk := false
 
 // ─────────────────────────────── алерты ──────────────────────────────────
 
