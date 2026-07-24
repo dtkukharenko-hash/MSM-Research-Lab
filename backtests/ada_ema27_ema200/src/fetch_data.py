@@ -40,7 +40,12 @@ EMA_SLOW = 200
 CACHE_DIR = Path.home() / ".local/share/msm-market-data/bybit/linear/ADAUSDT"
 
 # tf -> (интервал Bybit, длительность бара)
+# 3m и 5m в DATA-002 отсутствуют: там нативный источник — 15m, всё остальное
+# получено агрегацией. Эти два тянутся только через --source api и валидации
+# DATA-002 за собой не несут; проверять гэпы приходится отдельно.
 TIMEFRAMES = {
+    "3m": ("3", pd.Timedelta(minutes=3)),
+    "5m": ("5", pd.Timedelta(minutes=5)),
     "15m": ("15", pd.Timedelta(minutes=15)),
     "1h": ("60", pd.Timedelta(hours=1)),
     "4h": ("240", pd.Timedelta(hours=4)),
@@ -88,12 +93,18 @@ def fetch_from_api(
     seen: set[int] = set()
 
     while cursor < end_exclusive:
+        # Bybit при заданных start и end отдаёт ПОСЛЕДНИЕ limit баров перед end,
+        # а не первые после start. Если передать сюда весь целевой интервал,
+        # первая же страница вернёт хвост окна, курсор перепрыгнет за
+        # end_exclusive и выгрузка оборвётся на 1000 барах. Поэтому окно
+        # страницы сужаем ровно до limit баров от курсора.
+        page_end = min(end_exclusive, cursor + bar * limit)
         params = {
             "category": CATEGORY,
             "symbol": SYMBOL,
             "interval": interval,
             "start": int(cursor.timestamp() * 1000),
-            "end": int(end_exclusive.timestamp() * 1000) - 1,
+            "end": int(page_end.timestamp() * 1000) - 1,
             "limit": limit,
         }
         payload = None
