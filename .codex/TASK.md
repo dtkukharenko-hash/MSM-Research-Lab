@@ -1,6 +1,6 @@
 # Current Codex Task
 
-- task_id: `EXP-034A2R1-TEMPORAL-FEATURE-CORE-CONFORMANCE`
+- task_id: `EXP-034A3-TEMPORAL-STATE-MACHINE-CONFORMANCE`
 - status: `READY`
 - target_branch: `main`
 - infrastructure_maintenance: `false`
@@ -8,188 +8,292 @@
 - allow_user_decision: `false`
 - manual_start_required: `true`
 - data_ready: `false`
-- commit_message: `EXP-034A2R1 focused temporal feature core correction`
+- commit_message: `EXP-034A3 temporal state machine conformance`
 
 ## Purpose
 
-Produce a focused, independently auditable correction of the deterministic temporal feature core after EXP-034A2 failed technical audit.
+Build and independently verify only the deterministic causal state machine that consumes the accepted temporal feature-core output.
 
-EXP-034A2 established that 17 tests execute, two external runs can be deterministic, and memory is bounded, but acceptance failed because future isolation was not substantively tested, overlap coverage was incomplete, even-population quantiles were absent, and the fixture omitted flat and alternating segments.
+The only permitted report line is exactly one of:
 
-This task makes no statement about ADA or market structure. Its only permitted report line is exactly one of:
+- `State machine status: STATE_MACHINE_READY`
+- `State machine status: STATE_MACHINE_FAILED`
 
-- `Feature core status: FEATURE_CORE_READY`
-- `Feature core status: FEATURE_CORE_FAILED`
+This task makes no statement about ADA or market structure. Event matching, null models, EMA baselines, stability metrics, scientific acceptance, and every real-market calculation remain excluded.
 
-## Reuse boundary
+## Pinned accepted dependency
 
-The implementer may inspect these EXP-034A2 files only as an implementation starting point:
+Use the accepted feature core only from:
 
-- `temporal_feature_core.py`
-- `test_temporal_feature_core.py`
-- `PROTOCOL.md`
-- `API_CONTRACT.md`
+`experiments/EXP-034A2R1_TEMPORAL_FEATURE_CORE_CONFORMANCE/temporal_feature_core.py`
 
-It may copy and correct code into the new R1 directory.
+Required provenance:
 
-Do not use EXP-034A2 `REPORT.md`, expected results, test-results rows, hashes, resource records, audit assertions, PASS claims, or verdict as evidence. All R1 evidence must be regenerated independently in clean external directories.
+- implementation commit: `244f4ae95146fbe374e7b701167a72ce73d04049`
+- Git blob SHA: `8f21d9073c66dbf19b9e2164b7e45b8d8166601a`
+- file SHA-256: `29f2dd7cf5391b7df60fa9d9754f845581d472b77ec3cef74d22a3bb80b74521`
 
-Preserve every EXP-034A2 and earlier path byte-for-byte.
+Planner and auditor must verify all three values. Do not copy, modify, replace, or regenerate the accepted feature core or its evidence. The new module consumes feature rows matching its output schema.
 
 ## Strict boundary
 
-Use deterministic synthetic fixtures only. Do not open DATA-002, market-data paths, APIs, network resources, or any real instrument file. No trading concepts or metrics are permitted.
+Use deterministic synthetic feature rows only.
 
-The state machine, movement phases, event matching, null models, baselines, stability metrics, scientific acceptance, and real-market calculation remain excluded.
+Do not open:
+
+- DATA-002 or any market-data path;
+- API or network resources;
+- files for ADA, BTC, ETH, or any real instrument;
+- failed EXP-033, EXP-034A, or EXP-034A1 implementation/evidence files.
+
+No trading concepts or metrics are permitted.
 
 ## Required module
 
-Create `temporal_feature_core.py` as an importable Python standard-library module implementing:
+Create `temporal_state_machine.py` as a Python standard-library importable module.
 
-1. `join_closed_daily(primary_rows, daily_rows)`
-   - timestamps are bar opens;
-   - a 4H primary row at `t` emits at `t+4h`;
-   - a daily row at `d` is available only at `d+24h`;
-   - select the latest daily row satisfying `d+24h <= t+4h`;
-   - return explicit `UNKNOWN` when unavailable;
-   - never use the current unclosed daily row.
+Expose:
 
-2. `join_closed_children(primary_rows, child_rows)`
-   - for `[t,t+4h)`, require exactly four valid 1H children at `t`, `t+1h`, `t+2h`, `t+3h`;
-   - missing, duplicate, off-grid, invalid, or borrowed children produce `UNKNOWN`.
+`build_states(feature_rows, thresholds)`
 
-3. `compute_features(rows, scale)`
-   - true range: `max(high-low, abs(high-prev_close), abs(low-prev_close))`;
-   - ATR14: simple trailing mean of 14 true ranges;
-   - EMA27: alpha `2/28`, seeded by the first 27-close SMA, then recursive;
-   - normalized slope: `(EMA27[t]-EMA27[t-k])/ATR14[t]`;
-   - normalized displacement: `(close[t]-close[t-w])/ATR14[t]`;
-   - efficiency: `abs(close[t]-close[t-w]) / sum(abs(close[i]-close[i-1]))`;
-   - overlap density: mean adjacent range intersection divided by the smaller positive range, clipped to `[0,1]`;
-   - volatility percentile: rank current ATR14 against the preceding 96 completed ATR14 values, excluding current;
-   - expose EMA27 and every primitive required for literal audit.
+### Input feature-row schema
 
-Fixed windows:
+Each row must contain:
 
-- 4H: slope `k=3`, displacement/efficiency `w=12`, overlap over 6 adjacent pairs;
-- 1H: slope `k=6`, displacement/efficiency `w=24`, overlap over 12 adjacent pairs.
+- `timestamp`: strictly increasing UTC bar-open timestamp;
+- `scale`: `4H` or `1H`;
+- `normalized_slope`;
+- `normalized_displacement`;
+- `efficiency`;
+- `overlap_density`;
+- `retracement`.
 
-4. `clip_unit(value)`
-   - finite input below zero returns `0.0`;
-   - finite input above one returns `1.0`;
-   - otherwise return the value;
-   - non-finite input is rejected.
+`retracement` is a causal non-negative finite value supplied by the caller. The state module must not infer it from future rows.
 
-5. `nearest_rank(values, probability)`
-   - sort finite values ascending;
-   - rank is `ceil(probability * n)`, one-based;
-   - return the value at zero-based index `rank-1`;
-   - reject empty input and probability outside `(0,1]`.
+A feature value may be the explicit string `UNKNOWN`. Invalid, non-finite, duplicate-timestamp, non-monotonic, mixed-scale, or malformed input must be rejected or emitted as specified below. Never substitute zero for unavailable data.
 
-6. `freeze_thresholds(development_features)`
-   - separately per scale calculate `S70`, `S50`, `D70`, `D50`, `E30`, `O70`;
-   - return exact values, valid population counts, and SHA-256 of the canonical development feature population;
-   - validation/appended future rows may never enter the population.
+### Threshold schema
 
-All functions must reject non-monotonic timestamps, duplicate timestamps, invalid OHLC relations, non-finite numbers, and invalid scales. Insufficient history returns explicit `UNKNOWN`, never zero-filled data.
+For the selected scale require finite non-negative:
+
+- `S70`, `S50`, `D70`, `D50`, `E30`, `O70`.
+
+Require `S70 >= S50`, `D70 >= D50`, and `0 <= E30 <= 1`, `0 <= O70 <= 1`.
+
+### Output row schema
+
+For every input row return an immutable row containing:
+
+- `timestamp`;
+- `raw_direction`: `-1`, `0`, `+1`, or `UNKNOWN`;
+- `confirmed_direction`: `-1`, `0`, `+1`, or `UNKNOWN`;
+- `direction`: `-1`, `0`, `+1`, or `UNKNOWN`;
+- `phase`: exactly `UNKNOWN`, `DENSITY`, `EMERGING`, `DEVELOPING`, `CORRECTION`, or `TERMINATING`;
+- `age`: non-negative integer;
+- `density_gate`, `support_gate`, `correction_gate`, `weak_termination_gate` booleans or `UNKNOWN`.
+
+No previously emitted output row may be revised.
+
+## Deterministic state semantics
+
+### 1. Invalid or unavailable row
+
+If any required feature is `UNKNOWN`, emit:
+
+- `raw_direction=UNKNOWN`;
+- `confirmed_direction=UNKNOWN`;
+- `direction=UNKNOWN`;
+- `phase=UNKNOWN`;
+- `age=0`.
+
+Reset active direction, age, weak-termination count, raw-confirmation history, and pending opposite direction.
+
+### 2. Raw direction
+
+For a valid row:
+
+- `+1` when slope `>= S70`, displacement `>= D70`, and efficiency `> E30`;
+- `-1` when slope `<= -S70`, displacement `<= -D70`, and efficiency `> E30`;
+- otherwise `0`.
+
+The strict efficiency comparison is intentional. Equality to `E30` does not qualify.
+
+### 3. Confirmation
+
+A non-zero direction is confirmed only when the current and immediately preceding valid raw directions are equal and non-zero.
+
+Otherwise `confirmed_direction=0`.
+
+An `UNKNOWN` row clears confirmation history.
+
+### 4. Inactive state
+
+When no active parent exists:
+
+- if a pending opposite direction exists after termination and the current raw direction equals it, emit `EMERGING`, activate it, and set age `0`;
+- otherwise, if current `confirmed_direction` is non-zero, emit `EMERGING`, activate it, and set age `0`;
+- otherwise emit `DENSITY` only when efficiency `<= E30` and overlap `>= O70`;
+- otherwise emit `UNKNOWN` with direction `0` and age `0`, without inventing a phase.
+
+### 5. Active-state priority
+
+When an active direction exists, evaluate in this exact order:
+
+1. confirmed opposite direction;
+2. two-bar weak retracement termination;
+3. correction;
+4. developing fallback.
+
+#### Confirmed opposite direction
+
+If `confirmed_direction == -active_direction`, the current bar must emit `TERMINATING`, never `EMERGING`.
+
+Output `direction` as the terminating parent direction, set age `0`, clear the active parent after emission, and store the opposite direction as pending. The next valid bar may emit opposite `EMERGING` only if its raw direction continues to equal that pending direction.
+
+#### Weak retracement termination
+
+`weak_termination_gate` is true when:
+
+- `retracement >= 0.618`; and
+- `abs(normalized_slope) < S50`.
+
+Two consecutive valid bars with this gate true terminate the active parent on the second bar. The first weak bar does not terminate. Any valid false gate or `UNKNOWN` resets the weak count.
+
+#### Correction
+
+For active `+1`, correction gate is:
+
+- displacement `<= -D50`; and
+- retracement `< 0.618`.
+
+For active `-1`, use the sign-symmetric condition:
+
+- displacement `>= D50`; and
+- retracement `< 0.618`.
+
+When true, emit `CORRECTION` and retain the parent.
+
+#### Developing
+
+For active `+1`, support gate is slope `>= S50` or displacement `>= D50`.
+
+For active `-1`, support gate is slope `<= -S50` or displacement `<= -D50`.
+
+If no higher-priority termination or correction condition fired, emit `DEVELOPING`. Preserve the support-gate boolean even when false; this fallback prevents an active parent from disappearing without an explicit termination rule.
+
+### 6. Age
+
+- `EMERGING`: age `0`;
+- every subsequent `DEVELOPING` or `CORRECTION` bar retaining the parent: previous age plus `1`;
+- `TERMINATING`, `DENSITY`, and `UNKNOWN`: age `0`;
+- opposite `EMERGING` begins a new parent at age `0`.
+
+### 7. Prefix invariance
+
+Appending later feature rows must leave every output field belonging to the original prefix byte-identical. Thresholds are input constants and must never be refit by this module.
 
 ## Mandatory independent tests
 
-Use `unittest`. Expected values must be literals or independently calculated oracle expressions that do not call the function under test to create expectations.
+Use `unittest`. Expected values must be literals or independently calculated oracle logic that does not call `build_states` to create expectations.
 
-Publish at least these 22 distinct substantive test methods and exactly one `test_results.csv` row per executed method:
+Publish at least these 24 distinct substantive test methods and exactly one `test_results.csv` row per executed method:
 
-1. daily join at 00:00 primary open;
-2. daily join at 04:00 and 20:00 primary opens;
-3. year-boundary daily join and refusal of same-day unclosed row;
-4. exact four-child join;
-5. missing child rejection;
-6. duplicate and off-grid child rejection;
-7. true range with upward and downward gaps;
-8. ATR14 first-valid index and literal value;
-9. EMA27 seed value;
-10. EMA27 first recursive update;
-11. normalized slope and displacement literals;
-12. zero-denominator efficiency returns `UNKNOWN`;
-13. no-overlap literal result `0.0`;
-14. full-overlap literal result `1.0`;
-15. `clip_unit` literal clipping below zero and above one;
-16. zero-range overlap handling;
-17. volatility percentile excludes current observation;
-18. nearest-rank odd-population literals;
-19. nearest-rank even-population literals, including `[1,2,3,4]` at `0.30`, `0.50`, and `0.70`;
-20. future isolation: freeze a development prefix, append future rows, mutate only appended rows to extreme values, recompute the full feature series, freeze the same prefix again, and prove every threshold, population count, and population SHA-256 is identical;
-21. prefix feature invariance: appended rows leave every feature of the original prefix byte-identical;
-22. invalid numeric, invalid OHLC, duplicate timestamp, and non-monotonic timestamp rejection.
+1. pinned dependency commit/blob/SHA-256 verification;
+2. positive raw direction including threshold equality;
+3. negative sign symmetry;
+4. efficiency equality to `E30` produces raw zero;
+5. one non-zero raw bar does not confirm;
+6. two equal consecutive non-zero raw bars confirm;
+7. zero raw between candidates prevents confirmation;
+8. `UNKNOWN` clears confirmation and all active state;
+9. density exact threshold boundaries;
+10. valid inactive non-density row emits `UNKNOWN` without activation;
+11. positive `EMERGING` at second confirming bar;
+12. negative `EMERGING` symmetry;
+13. `EMERGING → DEVELOPING` age sequence `0 → 1`;
+14. repeated developing ages increment exactly;
+15. positive-parent correction literal case;
+16. negative-parent correction sign symmetry;
+17. correction retains parent and increments age;
+18. confirmed opposite emits `TERMINATING`, not `EMERGING`;
+19. terminating bar resets age and records pending opposite;
+20. opposite direction emerges only on the following continuing raw bar;
+21. one weak-retracement bar does not terminate;
+22. two consecutive weak-retracement bars terminate and interruption resets the count;
+23. prefix invariance and no retroactive revision;
+24. invalid thresholds, non-finite values, mixed scale, duplicate timestamp, and non-monotonic timestamp rejection.
 
-Passing without an assertion against a substantive expected value is insufficient. Combining the required overlap or quantile cases into undocumented blanket checks is insufficient.
+A test that only checks absence of exceptions is insufficient.
 
 ## Synthetic fixture
 
-Create one deterministic valid fixture containing clearly labelled segments:
+Create one deterministic valid fixture of at least 80 feature rows containing labelled segments for:
 
-- rising trend;
-- falling trend;
-- gap-up and gap-down cases;
-- a flat segment with repeated closes and positive candle ranges;
-- an alternating up/down close segment;
-- daily rows crossing a year boundary;
-- complete 1H children for valid 4H parents.
+- initial `UNKNOWN`;
+- `DENSITY`;
+- positive `EMERGING`, `DEVELOPING`, `CORRECTION`, and recovery;
+- weak-retracement `TERMINATING`;
+- negative `EMERGING`, `DEVELOPING`, and `CORRECTION`;
+- confirmed-opposite `TERMINATING` followed by delayed opposite `EMERGING`;
+- alternating non-confirming raw directions;
+- age resets and increments.
 
-Deliberate invalid variants must be constructed separately inside tests and must not contaminate the valid fixture.
+Store it as deterministic gzip with `mtime=0` and a fixed filename header.
 
-Store the valid fixture in deterministic gzip with `mtime=0` and a fixed filename header.
+`expected_state_results.json` must contain independently produced literal expected rows for the full fixture and explicit oracle cases for every mandatory transition. It must be generated without importing `temporal_state_machine.py`.
 
-`expected_feature_results.json` must contain literal oracle values for every mandatory formula/case, including full overlap, clipping, odd and even quantiles, EMA seed/update, future-isolation hashes, flat-segment behavior, and alternating-segment behavior. It must be produced without importing `temporal_feature_core.py`.
+Invalid variants belong only inside tests and must not contaminate the valid fixture.
 
 ## Evidence generation
 
-`test_temporal_feature_core.py` must support:
+`test_temporal_state_machine.py` must support:
 
 - `--self-test --temp-dir PATH`
 - `--generate-evidence --output-dir PATH --temp-dir PATH`
 
-`--generate-evidence` must actually execute the unittest suite. `test_results.csv` must be derived from executed test IDs and outcomes, not from discovered names or unconditional PASS rows. Published test-row count must equal the executed test count.
+Evidence generation must actually execute unittest. `test_results.csv` must be derived from executed test IDs and outcomes, never discovered names or blanket PASS rows.
 
-Run two complete clean evidence generations in separate external directories. Compare every deterministic substantive output except `run_hashes.csv` and `resource_usage.csv`. `run_hashes.csv` schema:
+Run two complete clean evidence generations in separate external directories. Compare every deterministic substantive output except `run_hashes.csv` and `resource_usage.csv`.
+
+`run_hashes.csv` schema:
 
 `path,run1_sha256,run2_sha256,equal`
 
-Measure peak RSS for both complete runs and record actual values in `resource_usage.csv`; each must remain below `262144 KiB`.
+Measure actual peak RSS for both complete runs in `resource_usage.csv`; each must remain below `262144 KiB`.
 
-Use `/dev/shm` or supplied external temporary directories. Set `PYTHONDONTWRITEBYTECODE=1` and an external `PYTHONPYCACHEPREFIX`. Do not create repository-local cache, bytecode, log, SQLite, journal, partial, coverage, or temporary files.
+Use `/dev/shm` or supplied external temporary directories. Set `PYTHONDONTWRITEBYTECODE=1` and an external `PYTHONPYCACHEPREFIX`. Do not create repository-local cache, bytecode, logs, SQLite, journal, partial, coverage, or temporary files.
 
 ## Required outputs
 
-Create exactly the 11 paths in `.codex/ALLOWLIST.txt` under:
+Create exactly the 11 allowlisted files under:
 
-`experiments/EXP-034A2R1_TEMPORAL_FEATURE_CORE_CONFORMANCE/`
-
-Required files:
+`experiments/EXP-034A3_TEMPORAL_STATE_MACHINE_CONFORMANCE/`
 
 - `REPORT.md`
 - `PROTOCOL.md`
 - `API_CONTRACT.md`
-- `temporal_feature_core.py`
-- `test_temporal_feature_core.py`
-- `synthetic_feature_fixture.csv.gz`
-- `expected_feature_results.json`
+- `temporal_state_machine.py`
+- `test_temporal_state_machine.py`
+- `synthetic_state_fixture.csv.gz`
+- `expected_state_results.json`
 - `test_results.csv`
 - `run_hashes.csv`
 - `resource_usage.csv`
 - `implementation_audit.csv`
 
-`FEATURE_CORE_READY` is permitted only when every mandatory test passed, all expected values are independent, the future-isolation test performs real append and mutation, fixture labels include flat and alternating segments, paired-run hashes match, measured RSS passes, all files reopen, and repository boundaries pass.
+`STATE_MACHINE_READY` is permitted only when the pinned dependency is verified, all mandatory tests pass, literal expected transitions are independent, opposite-direction termination semantics pass, two-bar weak termination passes, age semantics pass, prefix invariance passes, paired hashes match, measured RSS passes, all files reopen, and repository boundaries pass.
 
-Otherwise report `FEATURE_CORE_FAILED` and return `TECHNICAL_CORRECTION_REQUIRED`.
+Otherwise report `STATE_MACHINE_FAILED` and return `TECHNICAL_CORRECTION_REQUIRED`.
 
 ## Immutable state
 
-Preserve all pre-existing dirty, tracked, and untracked paths byte-for-byte and unstaged, including every EXP-033/EXP-034 attempt and the protected Pine:
+Preserve every pre-existing dirty, tracked, and untracked path byte-for-byte and unstaged, including all earlier EXP-033/EXP-034 attempts and the accepted feature core.
+
+Preserve the protected Pine byte-identically and unstaged:
 
 `experiments/EXP-009_CAUSAL_MOVE_AGE/EXP-009A_START_VISUAL_REVIEW/artifacts/EXP009A_START_REVIEW.pine`
 
-Required Pine SHA-256:
+Required SHA-256:
 
 `0889efa1f8fa8420962160cbc602b5f6f0836763aab6d34534245ea3dad0223f`
 
@@ -197,14 +301,14 @@ Do not modify `.codex/RESULT.md`.
 
 ## Role contract
 
-Planner verifies the exact fresh R1 directory, 11-path allowlist, synthetic boundary, A2 source availability, Python/unittest, external temp storage, and immutable baseline.
+Planner verifies the fresh A3 directory, exact 11-path allowlist, pinned dependency provenance, Python/unittest, external temp storage, synthetic-only boundary, and immutable baseline.
 
-Implementer may copy A2 implementation code but must independently repair and regenerate all R1 evidence. It must not copy A2 evidence files.
+Implementer creates the complete state module and independently generated evidence. Missing or ambiguous semantics are technical failures, not user decisions.
 
-Auditor independently executes the suite, inspects literal/oracle expectations, verifies all 22 cases, checks real future append/mutation isolation, flat/alternating fixture labels, full-overlap/clipping/even-quantile coverage, paired runs, RSS, allowlist, and immutable state.
+Auditor independently verifies every state priority, direction confirmation, pending-opposite behavior, weak termination, correction symmetry, age rule, full expected fixture, deterministic runs, RSS, allowlist equality, dependency provenance, and immutable state.
 
-Corrector fixes only R1 allowlisted files and external temporary output. It must regenerate the complete evidence package after any code or test change.
+Corrector modifies only A3 allowlisted files and regenerates the complete evidence package after any code or test change.
 
 No role may return `USER_DECISION_REQUIRED`. Technical defects are `TECHNICAL_CORRECTION_REQUIRED` or `FAILED`.
 
-On final auditor PASS, orchestrator may commit and push exactly the 11 R1 allowlisted files.
+On final auditor PASS, orchestrator may commit and push exactly the 11 A3 files.
