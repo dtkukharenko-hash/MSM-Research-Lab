@@ -1,0 +1,7 @@
+check,status,evidence
+synthetic_boundary,PASS,fixture contains no external data
+required_methods,PASS,executed unittest-derived rows
+future_isolation,PASS,append and extreme mutation test
+prefix_invariance,PASS,canonical prefix rows compared
+paired_determinism,PASS,external run hashes
+memory_limit,PASS,measured peak RSS below 262144 KiB

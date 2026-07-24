@@ -1,0 +1,23 @@
+test_id,unittest_name,status,observed,expected
+test_01_daily_0000,__main__.FeatureCoreTests.test_01_daily_0000,PASS,'2024-12-29T00:00:00Z','2024-12-29T00:00:00Z'
+test_02_daily_0400_2000,__main__.FeatureCoreTests.test_02_daily_0400_2000,PASS,"['UNKNOWN', '2024-12-30T00:00:00Z']","['UNKNOWN', '2024-12-30T00:00:00Z']"
+test_03_daily_year_boundary_refusal,__main__.FeatureCoreTests.test_03_daily_year_boundary_refusal,PASS,'same-day refused; Jan-1 accepted only at Jan-2 00','same-day refused; Jan-1 accepted only at Jan-2 00'
+test_04_exact_four_children,__main__.FeatureCoreTests.test_04_exact_four_children,PASS,4,4
+test_05_missing_child,__main__.FeatureCoreTests.test_05_missing_child,PASS,'UNKNOWN','UNKNOWN'
+test_06_duplicate_offgrid_children,__main__.FeatureCoreTests.test_06_duplicate_offgrid_children,PASS,"('UNKNOWN', 'UNKNOWN')","('UNKNOWN', 'UNKNOWN')"
+test_07_true_range_gaps,__main__.FeatureCoreTests.test_07_true_range_gaps,PASS,"[4.0, 6.0, 6.0]","[4.0, 6.0, 6.0]"
+test_08_atr14_literal,__main__.FeatureCoreTests.test_08_atr14_literal,PASS,2.0,2.0
+test_09_ema_seed,__main__.FeatureCoreTests.test_09_ema_seed,PASS,105.2,105.2
+test_10_ema_update,__main__.FeatureCoreTests.test_10_ema_update,PASS,105.60000000000001,105.6
+test_11_normalized_literals,__main__.FeatureCoreTests.test_11_normalized_literals,PASS,"[0.6000000000000014, 2.3999999999999986]","[0.6, 2.4]"
+test_12_efficiency_zero_denominator,__main__.FeatureCoreTests.test_12_efficiency_zero_denominator,PASS,'UNKNOWN','UNKNOWN'
+test_13_no_overlap,__main__.FeatureCoreTests.test_13_no_overlap,PASS,0.0,0.0
+test_14_full_overlap,__main__.FeatureCoreTests.test_14_full_overlap,PASS,1.0,1.0
+test_15_clip_unit,__main__.FeatureCoreTests.test_15_clip_unit,PASS,"(0.0, 1.0)","(0.0, 1.0)"
+test_16_zero_range_overlap,__main__.FeatureCoreTests.test_16_zero_range_overlap,PASS,'UNKNOWN','UNKNOWN'
+test_17_volatility_excludes_current,__main__.FeatureCoreTests.test_17_volatility_excludes_current,PASS,1.0,1.0
+test_18_nearest_rank_odd,__main__.FeatureCoreTests.test_18_nearest_rank_odd,PASS,"(2.0, 3.0, 4.0)","(2.0, 3.0, 4.0)"
+test_19_nearest_rank_even,__main__.FeatureCoreTests.test_19_nearest_rank_even,PASS,"(2.0, 2.0, 3.0)","(2.0, 2.0, 3.0)"
+test_20_future_isolation,__main__.FeatureCoreTests.test_20_future_isolation,PASS,'0320d9e2455a7d245c9332b53bff475cb9509c994fc7dd2d120e84f52e1bc2a7','0320d9e2455a7d245c9332b53bff475cb9509c994fc7dd2d120e84f52e1bc2a7'
+test_21_prefix_feature_invariance,__main__.FeatureCoreTests.test_21_prefix_feature_invariance,PASS,100,100
+test_22_invalid_rejection,__main__.FeatureCoreTests.test_22_invalid_rejection,PASS,'4 ValueErrors','4 ValueErrors'
