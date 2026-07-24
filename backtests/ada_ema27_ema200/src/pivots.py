@@ -36,6 +36,24 @@ from zones import add_features, load
 CONFIRM_BARS = 2   # как в zones_both.py: одиночный прокол EMA27 — не событие
 WARMUP = 31
 
+# Отсечка изолированного прокола. Если максимум ноги превышает ВТОРОЙ по
+# величине больше чем на ISO_ATR * ATR, он признан неподтверждённым: соседние
+# свечи до него не дотянулись, и экстремумом ноги считается второй.
+#
+# Мотив — наблюдение владельца по бару 2023-10-16 12:00: high 0.2609 при
+# соседях 0.2525..0.2530 и закрытии 0.2500 ниже соседей. Выход отвергнут
+# внутри самого бара, ни предыдущими, ни следующими свечами не подтверждён.
+#
+# Значение взято из ПЛАТО, а не подобрано под точку: на 12 границах ручной
+# разметки c = 1.25..2.50 даёт одинаковые 11 попаданий из 12, и плато
+# ограничено с двух сторон разными отказами — ниже 1.25 правило начинает
+# отбрасывать законные экстремумы (ломается низ B), выше 2.50 прокол снова
+# проходит (ломается верх F2). Затрагивает 1% экстремумов (4 из 340).
+#
+# ATR здесь — масштаб самого рынка, а не абсолютное число: правило переносимо
+# на другой инструмент и таймфрейм без перекалибровки.
+ISO_ATR = 2.0
+
 # Границы прямоугольников владельца, сверенные с барами: (низ, верх, окно поиска).
 # Только те шесть, где уровни сняты с картинки надёжно (ada_4h_4..7.png).
 #
@@ -60,53 +78,74 @@ BOX_EDGES = {
 }
 
 
-def pivots(df: pd.DataFrame, confirm_bars: int = CONFIRM_BARS) -> pd.DataFrame:
+def pivots(df: pd.DataFrame, confirm_bars: int = CONFIRM_BARS,
+           iso_atr: float | None = ISO_ATR) -> pd.DataFrame:
     """Чередующиеся опорные экстремумы. Заглядывания нет.
 
     Экстремум фиксируется задним числом: сам бар известен сразу, но признан
     опорным только через confirm_bars закрытий по другую сторону EMA27.
     Колонка `confirmed` хранит момент признания — как в zones_both.py.
+
+    iso_atr — отсечка изолированного прокола (см. ISO_ATR). None отключает её
+    и возвращает прежнее поведение «экстремум ноги = её максимум».
+
+    Ведётся ДВА лучших значения ноги: если первое оторвалось от второго больше
+    чем на iso_atr*ATR, соседние свечи до него не дотянулись, и опорным
+    считается второе.
     """
     c, h, l = (df[k].to_numpy() for k in ("close", "high", "low"))
-    e27 = df.ema27.to_numpy()
+    e27, atr = df.ema27.to_numpy(), df.atr.to_numpy()
     ts = df.timestamp_utc
     n = len(df)
+    sign = 1.0                          # +1 когда копим максимум, -1 минимум
+
+    def reset(i: int, up: bool):
+        """Начать новую ногу с бара i."""
+        v = h[i] if up else l[i]
+        return [i, v, -1, np.nan]       # idx1, val1, idx2, val2
 
     out: list[dict] = []
     above = c[WARMUP] >= e27[WARMUP]
-    ext_i = WARMUP                      # бар текущего бегущего экстремума
-    ext_v = h[WARMUP] if above else l[WARMUP]
+    top = reset(WARMUP, above)
     run = 0                             # закрытий подряд по другую сторону
+
+    def offer(i: int, up: bool) -> None:
+        """Предложить бар i в лучшие два значения ноги."""
+        v = h[i] if up else l[i]
+        s = 1.0 if up else -1.0
+        if s * v > s * top[1]:
+            top[2], top[3] = top[0], top[1]
+            top[0], top[1] = i, v
+        elif np.isnan(top[3]) or s * v > s * top[3]:
+            top[2], top[3] = i, v
 
     for i in range(WARMUP + 1, n):
         same = (c[i] >= e27[i]) == above
+        # Нога не кончилась, пока событие не подтверждено: бар может закрыться
+        # по ту сторону EMA27 и при этом напечатать экстремум дальше прежнего.
+        offer(i, above)
         if same:
             run = 0
-            if above and h[i] > ext_v:
-                ext_i, ext_v = i, h[i]
-            elif not above and l[i] < ext_v:
-                ext_i, ext_v = i, l[i]
             continue
 
         run += 1
-        # Нога ещё не кончилась: бар может закрыться по ту сторону, но
-        # напечатать экстремум дальше прежнего.
-        if above and h[i] > ext_v:
-            ext_i, ext_v = i, h[i]
-        elif not above and l[i] < ext_v:
-            ext_i, ext_v = i, l[i]
-
         if run >= confirm_bars:
+            ext_i, ext_v = top[0], top[1]
+            if (iso_atr is not None and top[2] >= 0
+                    and abs(top[1] - top[3]) > iso_atr * atr[top[0]]):
+                # Максимум оторван от второго: прокол не подтверждён соседями.
+                ext_i, ext_v = top[2], top[3]
             out.append({
                 "kind": "high" if above else "low",
                 "time": ts.iloc[ext_i],
                 "price": ext_v,
                 "confirmed": ts.iloc[i],
                 "lag": i - ext_i,
+                "isolated": ext_i != top[0],
                 "idx": ext_i,
             })
             above = not above
-            ext_i, ext_v = i, (h[i] if above else l[i])
+            top = reset(i, above)
             run = 0
 
     return pd.DataFrame(out)
