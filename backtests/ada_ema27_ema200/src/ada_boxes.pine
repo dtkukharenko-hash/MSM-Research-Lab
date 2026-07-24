@@ -39,6 +39,13 @@
 //   Прямоугольник рисуется от бара более раннего свинга, а появляется на
 //   графике позже. Для разметки это нормально, для входов нет.
 //
+// ── Сторона ───────────────────────────────────────────────────────────────
+//   Переключатель Лонг / Шорт / Обе фильтрует по контексту L1/S1 из
+//   zones_both.py: лонг — EMA27 выше EMA200 и EMA200 растёт, шорт — зеркально.
+//   Фильтр действует ТОЛЬКО на отрисовку. Машина состояний считается всегда,
+//   иначе ноги вокруг EMA27 разорвутся на границе контекста и сверка с
+//   питоном (600/340/254 экстремума, бар в бар) перестанет иметь смысл.
+//
 // Заглядывания вперёд нет: свинг бара k подтверждается на k+w, экстремум ноги
 // признаётся только после confirmBars закрытий по другую сторону EMA27.
 
@@ -70,6 +77,15 @@ grace    = input.int(0,   "Отсрочка выхода, баров", minval = 
 markFlip = input.bool(true, "Подсветить смену режима", group = grpB,
      tooltip = "Обе средние внутри прямоугольника: смена знака EMA27-EMA200 после него наступает у 58% таких против 15% остальных.")
 
+grpS     = "Сторона"
+side     = input.string("Обе", "Что показывать", options = ["Лонг", "Шорт", "Обе"], group = grpS,
+     tooltip = "Контекст берётся из правил L1/S1 модуля zones_both.py: лонг — EMA27 выше EMA200, шорт — ниже. Фильтр действует ТОЛЬКО на отрисовку, машина состояний работает всегда, поэтому сверка с питоном остаётся в силе.")
+reqSlope = input.bool(true, "Требовать наклон EMA200", group = grpS,
+     tooltip = "Лонг — EMA200 растёт, шорт — падает. Правило L1/S1.")
+slopeLb  = input.int(30, "Горизонт наклона, баров", minval = 1, group = grpS)
+dimOther = input.bool(false, "Вне контекста — бледным, а не скрывать", group = grpS)
+tintBg   = input.bool(true, "Подкрасить фон по контексту", group = grpS)
+
 grpV     = "Отображение"
 showEmas = input.bool(true, "Показывать EMA", group = grpV)
 colHi    = input.color(color.new(color.red,   0), "Опорный хай", group = grpV)
@@ -87,6 +103,17 @@ atrv   = ta.atr(atrLen)
 
 plot(showEmas ? ema27  : na, "EMA27",  color = color.new(color.orange, 0), linewidth = 1)
 plot(showEmas ? ema200 : na, "EMA200", color = color.new(color.red, 0),    linewidth = 2)
+
+// ── контекст L1/S1 ───────────────────────────────────────────────────────
+// Наклон считается ровно как slope200 в питоне: % за slopeLb баров.
+float slope200 = (ema200 / ema200[slopeLb] - 1) * 100
+bool ctxLong  = ema27 > ema200 and (not reqSlope or slope200 > 0)
+bool ctxShort = ema27 < ema200 and (not reqSlope or slope200 < 0)
+// Показывать ли объект, рождённый на текущем баре.
+bool inCtx = side == "Обе" ? true : side == "Лонг" ? ctxLong : ctxShort
+bool drawIt = inCtx or dimOther
+
+bgcolor(tintBg ? (ctxLong ? color.new(color.teal, 94) : ctxShort ? color.new(color.maroon, 94) : na) : na, title = "Контекст")
 
 // ═══════════════════════ ОПОРНЫЕ ЭКСТРЕМУМЫ ══════════════════════════════
 // Питон ведёт ногу списком баров и сортирует; Pine так не умеет, поэтому
@@ -148,20 +175,24 @@ if started
                 pVal := val2
                 iso  := true
 
-            if showPiv
+            // Фильтр стороны — только отрисовка. Машина состояний выше
+            // работает всегда, иначе ноги разорвутся и сверка с питоном
+            // перестанет иметь смысл.
+            int fade = inCtx ? 0 : 65
+            if showPiv and drawIt
                 label.new(pIdx, pVal,
                      text  = iso ? "•" : (above ? "▼" : "▲"),
                      style = above ? label.style_label_down : label.style_label_up,
                      color = color.new(color.black, 100),
-                     textcolor = iso ? colIso : (above ? colHi : colLo),
+                     textcolor = color.new(iso ? colIso : (above ? colHi : colLo), fade),
                      size  = size.tiny)
-            if showLvl
+            if showLvl and drawIt
                 line.new(pIdx, pVal, pIdx + lvlBars, pVal,
-                     color = color.new(above ? colHi : colLo, 55),
+                     color = color.new(above ? colHi : colLo, 55 + fade / 3),
                      width = 1, style = line.style_dotted)
 
-            nPiv += 1
-            nIso += iso ? 1 : 0
+            nPiv += inCtx ? 1 : 0
+            nIso += iso and inCtx ? 1 : 0
 
             // Новая нога начинается с текущего бара.
             above := not above
@@ -200,17 +231,20 @@ if showBox
     if inBox
         if close >= bBot and close <= bTop
             outN := 0
-            box.set_right(bBox, bar_index)
+            if not na(bBox)
+                box.set_right(bBox, bar_index)
         else
             outN += 1
             if outN > grace
                 // Первый бар снаружи входит в прямоугольник — как в ranges.detect.
                 int endBI = bar_index - outN + 1
                 if endBI - bStart >= minBars
-                    box.set_right(bBox, endBI)
+                    if not na(bBox)
+                        box.set_right(bBox, endBI)
                     nBox += 1
                 else
-                    box.delete(bBox)
+                    if not na(bBox)
+                        box.delete(bBox)
                 inBox := false
                 bBox  := na
                 outN  := 0
@@ -226,9 +260,23 @@ if showBox
                 outN   := 0
                 // Обе средние внутри — признак будущей смены режима.
                 bool bothIn = markFlip and ema200 >= slp and ema200 <= shp
-                bBox := box.new(bStart, bTop, bar_index, bBot,
-                     bgcolor = bothIn ? colFlip : colBox,
-                     border_color = color.new(color.gray, 50), border_width = 1)
+                color fill = bothIn ? colFlip : colBox
+                // Вне выбранной стороны бокс не создаётся, но состояние
+                // (inBox, границы, счётчик выхода) ведётся как обычно.
+                //
+                // Через if, а не тернарник: Pine вычисляет обе ветви условного
+                // выражения, и box.new создался бы даже в отброшенной.
+                //
+                // Прозрачность вне контекста задаётся отдельным цветом, а не
+                // color.new(fill, 0): вход colBox уже прозрачный на 88, и
+                // повторный color.new сбросил бы это в непрозрачную заливку.
+                if drawIt
+                    bBox := box.new(bStart, bTop, bar_index, bBot,
+                         bgcolor = inCtx ? fill : color.new(fill, 96),
+                         border_color = color.new(color.gray, inCtx ? 50 : 85),
+                         border_width = 1)
+                else
+                    bBox := na
 
 // ───────────────────────────── статистика ────────────────────────────────
 
@@ -241,5 +289,7 @@ if showTbl and barstate.islast
     table.cell(t, 1, 1, str.tostring(nIso), text_color = colIso, text_size = size.small)
     table.cell(t, 0, 2, "Прямоугольников", text_color = color.gray, text_size = size.small)
     table.cell(t, 1, 2, str.tostring(nBox), text_color = color.white, text_size = size.small)
-    table.cell(t, 0, 3, "Масштаб w", text_color = color.gray, text_size = size.small)
-    table.cell(t, 1, 3, str.tostring(swingW), text_color = color.white, text_size = size.small)
+    table.cell(t, 0, 3, "Сторона / w", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 3, side + " / " + str.tostring(swingW),
+         text_color = side == "Лонг" ? color.teal : side == "Шорт" ? color.red : color.white,
+         text_size = size.small)
