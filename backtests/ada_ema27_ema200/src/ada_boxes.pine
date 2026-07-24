@@ -1,0 +1,240 @@
+//@version=6
+// ADA: опорные экстремумы и прямоугольники (EMA27 / EMA200).
+//
+// Порт двух питон-модулей ветки backtest/ada-ema27-ema200:
+//   src/pivots.py — опорные экстремумы через чередование вокруг EMA27;
+//   src/ranges.py — прямоугольник как коридор между экстремумами.
+//
+// ── Опорные экстремумы (правило, дающее 11 попаданий из 12 в границы ручной
+//    разметки) ────────────────────────────────────────────────────────────
+//   Пока close выше EMA27, копим максимум high. Как только close ушёл ниже и
+//   продержался confirmBars закрытий, накопленный максимум фиксируется как
+//   опорный хай, дальше зеркально. Экстремумы строго чередуются — соседняя
+//   пара и есть нога для фибо-сетки.
+//
+//   Отсечка изолированного прокола: ведутся ДВА лучших значения ноги, и если
+//   первое оторвалось от второго больше чем на isoAtr*ATR, соседние свечи до
+//   него не дотянулись — опорным считается второе. Значение 2.0 взято из
+//   плато 1.25..2.50 на 12 границах ручной разметки; затрагивает 1% экстремумов.
+//
+// ── Прямоугольник (ЭКСПЕРИМЕНТАЛЬНО, с питоном не сведён) ────────────────
+//   Побарный эмулятор (src/pine_emu2.py) показывает расхождение с
+//   ranges.detect: 45 против 46 при w=18 и 34 против 53 при w=5, старты
+//   не совпадают. Причина структурная — питон сканирует вперёд и прыгает
+//   через коридор, Pine идёт побарно. Экстремумы при этом сходятся точно
+//   (600/340/254 при confirmBars 1/2/3, бар в бар и цена в цену), так что
+//   полагаться стоит на них, а прямоугольники смотреть как ориентир.
+//   Границы — последний подтверждённый свинг-хай и свинг-лоу, EMA27 обязана
+//   лежать внутри. Живёт, пока close внутри. Масштаб задаётся окном свинга w:
+//   разметка владельца многомасштабна, от 18 до 372 баров.
+//
+//   Отсрочка выхода (grace): больше половины выходов возвращаются внутрь
+//   (51% за 3 бара на w=18), а закрытий подряд снаружи у возвращающихся
+//   медиана 3 против 128 у настоящих. Отсрочка 13 баров сохраняет 90%
+//   возвращающихся. По умолчанию 0 — ровно как в ranges.py; включайте
+//   осознанно, питон-версия с ней не сверена.
+//
+// ── Ретроспективность ─────────────────────────────────────────────────────
+//   Экстремум известен не сразу: медиана запаздывания 4 бара, p90 — 16.
+//   Прямоугольник рисуется от бара более раннего свинга, а появляется на
+//   графике позже. Для разметки это нормально, для входов нет.
+//
+// Заглядывания вперёд нет: свинг бара k подтверждается на k+w, экстремум ноги
+// признаётся только после confirmBars закрытий по другую сторону EMA27.
+
+indicator("ADA: экстремумы и прямоугольники", overlay = true,
+     max_boxes_count = 500, max_lines_count = 500, max_labels_count = 500,
+     max_bars_back = 500)
+
+// ─────────────────────────── входные параметры ───────────────────────────
+
+grpE        = "Опорные экстремумы"
+fastLen     = input.int(27,   "EMA быстрая",  minval = 1, group = grpE)
+slowLen     = input.int(200,  "EMA медленная", minval = 2, group = grpE)
+confirmBars = input.int(2,    "Закрытий за EMA27 для фиксации", minval = 1, group = grpE,
+     tooltip = "1 — любой заход за среднюю. 2 — проверено, лучшее на разметке. 3+ теряет границы.")
+isoAtr      = input.float(2.0, "Отсечка прокола, ATR", minval = 0.0, step = 0.25, group = grpE,
+     tooltip = "Если максимум ноги оторван от второго значения больше чем на столько ATR, он признан неподтверждённым и берётся второе. 0 отключает. Плато на разметке: 1.25..2.50.")
+atrLen      = input.int(14,   "Период ATR",   minval = 1, group = grpE)
+showPiv     = input.bool(true, "Показывать экстремумы", group = grpE)
+showLvl     = input.bool(true, "Тянуть уровни вправо", group = grpE)
+lvlBars     = input.int(40,   "Длина уровня, баров", minval = 1, group = grpE)
+
+grpB     = "Прямоугольники"
+showBox  = input.bool(true, "Показывать прямоугольники", group = grpB)
+swingW   = input.int(18,  "Окно свинга (масштаб)", minval = 1, group = grpB,
+     tooltip = "Задаёт масштаб. Разметка владельца многомасштабна: 18..372 бара. w=18 согласуется с крупными прямоугольниками, малые требуют w=3..8.")
+minBars  = input.int(36,  "Мин. длительность, баров", minval = 1, group = grpB)
+grace    = input.int(0,   "Отсрочка выхода, баров", minval = 0, group = grpB,
+     tooltip = "0 = как в ranges.py: смерть на первом закрытии снаружи. 13 сохраняет 90% возвращающихся выходов, но с питоном не сверено.")
+markFlip = input.bool(true, "Подсветить смену режима", group = grpB,
+     tooltip = "Обе средние внутри прямоугольника: смена знака EMA27-EMA200 после него наступает у 58% таких против 15% остальных.")
+
+grpV     = "Отображение"
+showEmas = input.bool(true, "Показывать EMA", group = grpV)
+colHi    = input.color(color.new(color.red,   0), "Опорный хай", group = grpV)
+colLo    = input.color(color.new(color.lime,  0), "Опорный лой", group = grpV)
+colIso   = input.color(color.new(color.gray, 30), "Отсечённый прокол", group = grpV)
+colBox   = input.color(color.new(color.blue, 88), "Заливка прямоугольника", group = grpV)
+colFlip  = input.color(color.new(color.orange, 85), "Заливка: обе средние внутри", group = grpV)
+showTbl  = input.bool(true, "Таблица", group = grpV)
+
+// ────────────────────────────── индикаторы ───────────────────────────────
+
+ema27  = ta.ema(close, fastLen)
+ema200 = ta.ema(close, slowLen)
+atrv   = ta.atr(atrLen)
+
+plot(showEmas ? ema27  : na, "EMA27",  color = color.new(color.orange, 0), linewidth = 1)
+plot(showEmas ? ema200 : na, "EMA200", color = color.new(color.red, 0),    linewidth = 2)
+
+// ═══════════════════════ ОПОРНЫЕ ЭКСТРЕМУМЫ ══════════════════════════════
+// Питон ведёт ногу списком баров и сортирует; Pine так не умеет, поэтому
+// держим только два лучших значения — этого достаточно, отсечка сравнивает
+// именно первое со вторым.
+
+var bool  above = na      // текущая сторона: копим максимум или минимум
+var int   idx1  = na      // бар лучшего значения ноги
+var float val1  = na
+var float atr1  = na      // ATR на баре лучшего значения — для отсечки
+var int   idx2  = na      // бар второго значения
+var float val2  = na
+var int   runN  = 0       // закрытий подряд по другую сторону
+var int   nPiv  = 0
+var int   nIso  = 0
+
+// Инициализация на первом баре, где обе средние готовы.
+if na(above) and not na(ema200) and bar_index > slowLen
+    above := close >= ema27
+    idx1  := bar_index
+    val1  := above ? high : low
+    atr1  := atrv
+    runN  := 0
+
+if not na(above)
+    // Предложить текущий бар в лучшие два. Делается ДО проверки стороны:
+    // нога не кончилась, пока событие не подтверждено, и бар может закрыться
+    // по ту сторону EMA27, напечатав при этом экстремум дальше прежнего.
+    float v = above ? high : low
+    bool better  = above ? v > val1 : v < val1
+    bool second  = above ? v > nz(val2, v - 1) : v < nz(val2, v + 1)
+    if better
+        idx2 := idx1
+        val2 := val1
+        idx1 := bar_index
+        val1 := v
+        atr1 := atrv
+    else if na(val2) or second
+        idx2 := bar_index
+        val2 := v
+
+    bool sameSide = (close >= ema27) == above
+    if sameSide
+        runN := 0
+    else
+        runN += 1
+        if runN >= confirmBars
+            int   pIdx = idx1
+            float pVal = val1
+            bool  iso  = false
+            if isoAtr > 0 and not na(val2) and math.abs(val1 - val2) > isoAtr * atr1
+                // Максимум оторван от второго: соседи до него не дотянулись.
+                pIdx := idx2
+                pVal := val2
+                iso  := true
+
+            if showPiv
+                label.new(pIdx, pVal,
+                     text  = iso ? "•" : (above ? "▼" : "▲"),
+                     style = above ? label.style_label_down : label.style_label_up,
+                     color = color.new(color.black, 100),
+                     textcolor = iso ? colIso : (above ? colHi : colLo),
+                     size  = size.tiny)
+            if showLvl
+                line.new(pIdx, pVal, pIdx + lvlBars, pVal,
+                     color = color.new(above ? colHi : colLo, 55),
+                     width = 1, style = line.style_dotted)
+
+            nPiv += 1
+            nIso += iso ? 1 : 0
+
+            // Новая нога начинается с текущего бара.
+            above := not above
+            idx1  := bar_index
+            val1  := above ? high : low
+            atr1  := atrv
+            idx2  := na
+            val2  := na
+            runN  := 0
+
+// ═══════════════════════════ ПРЯМОУГОЛЬНИКИ ══════════════════════════════
+// Свинг на баре k подтверждается на k+w — заглядывания нет.
+
+var int   shi   = na
+var float shp   = na
+var int   sli   = na
+var float slp   = na
+var bool  inBox = false
+var float bTop  = na
+var float bBot  = na
+var int   bStart = na
+var box   bBox  = na
+var int   outN  = 0
+var int   nBox  = 0
+
+bool isSH = not na(high[swingW])  and high[swingW] >= ta.highest(high, 2 * swingW + 1)
+bool isSL = not na(low[swingW])   and low[swingW]  <= ta.lowest(low,  2 * swingW + 1)
+if isSH
+    shi := bar_index - swingW
+    shp := high[swingW]
+if isSL
+    sli := bar_index - swingW
+    slp := low[swingW]
+
+if showBox
+    if inBox
+        if close >= bBot and close <= bTop
+            outN := 0
+            box.set_right(bBox, bar_index)
+        else
+            outN += 1
+            if outN > grace
+                // Первый бар снаружи входит в прямоугольник — как в ranges.detect.
+                int endBI = bar_index - outN + 1
+                if endBI - bStart >= minBars
+                    box.set_right(bBox, endBI)
+                    nBox += 1
+                else
+                    box.delete(bBox)
+                inBox := false
+                bBox  := na
+                outN  := 0
+                shi   := na
+                sli   := na
+    else
+        if not na(shi) and not na(sli) and shp > slp and ema27 >= slp and ema27 <= shp
+            if close >= slp and close <= shp
+                inBox  := true
+                bTop   := shp
+                bBot   := slp
+                bStart := math.min(shi, sli)
+                outN   := 0
+                // Обе средние внутри — признак будущей смены режима.
+                bool bothIn = markFlip and ema200 >= slp and ema200 <= shp
+                bBox := box.new(bStart, bTop, bar_index, bBot,
+                     bgcolor = bothIn ? colFlip : colBox,
+                     border_color = color.new(color.gray, 50), border_width = 1)
+
+// ───────────────────────────── статистика ────────────────────────────────
+
+var table t = table.new(position.top_right, 2, 4,
+     bgcolor = color.new(color.black, 80), border_width = 1)
+if showTbl and barstate.islast
+    table.cell(t, 0, 0, "Экстремумов", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 0, str.tostring(nPiv), text_color = color.white, text_size = size.small)
+    table.cell(t, 0, 1, "Проколов отсечено", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 1, str.tostring(nIso), text_color = colIso, text_size = size.small)
+    table.cell(t, 0, 2, "Прямоугольников", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 2, str.tostring(nBox), text_color = color.white, text_size = size.small)
+    table.cell(t, 0, 3, "Масштаб w", text_color = color.gray, text_size = size.small)
+    table.cell(t, 1, 3, str.tostring(swingW), text_color = color.white, text_size = size.small)
