@@ -1,0 +1,165 @@
+"""Фиксация экстремумов через чередование относительно EMA27.
+
+Владелец: экстремумы вокруг EMA27 — опорные точки для построения коррекции по
+Фибоначчи, но их нужно правильно фиксировать. Здесь проверяется правило,
+которое не содержит ни окна, ни порога:
+
+  пока close выше EMA27, копим бегущий МАКСИМУМ high;
+  как только close ушёл ниже EMA27 и продержался confirm_bars закрытий —
+  накопленный максимум ФИКСИРУЕТСЯ как опорный хай;
+  дальше зеркально копим минимум, пока close ниже EMA27.
+
+Экстремумы получаются строго чередующимися (хай, лой, хай, ...) — то есть
+готовой ногой для фибо-сетки: соседняя пара и есть импульс, от которого
+строится коррекция.
+
+Отличие от swing_flags в ranges.py: там экстремум определяется окном +/-w и
+подтверждается w барами справа. Здесь окна нет вообще, роль подтверждения
+играет переход цены через EMA27. Это ровно та же логика confirm_bars, что уже
+проверена в zones_both.py для события L3: одиночное закрытие за средней
+экстремум не фиксирует, потому что нога не закончилась.
+
+Проверка: границы прямоугольников, размеченных владельцем вручную, должны
+попадать в множество зафиксированных экстремумов. Уровни границ сняты с
+ada_4h_4..7.png и сверены с барами — расхождение 0.0001..0.0006.
+"""
+
+from __future__ import annotations
+
+import argparse
+
+import numpy as np
+import pandas as pd
+
+from zones import add_features, load
+
+CONFIRM_BARS = 2   # как в zones_both.py: одиночный прокол EMA27 — не событие
+WARMUP = 31
+
+# Границы прямоугольников владельца, сверенные с барами: (низ, верх, окно поиска).
+# Только те шесть, где уровни сняты с картинки надёжно (ada_4h_4..7.png).
+#
+# Окно обязательно. Без него проверка бессмысленна: при 340 экстремумах на
+# 2.5 года найти хоть один в пределах 0.3% от любой заданной цены почти
+# гарантировано, и совпадение находилось бы за год до самого бокса.
+BOX_EDGES = {
+    "F1": (0.2542, 0.2694, "2023-09-28", "2023-10-12"),
+    "F2": (0.2426, 0.2530, "2023-10-09", "2023-10-24"),
+    "A": (0.3492, 0.3956, "2023-11-08", "2023-12-07"),
+    "B": (0.5581, 0.6819, "2023-12-10", "2024-01-06"),
+    # G1/G2 по ada_4h_8.png (перестроенный вариант). Верх G1 и низ G2 —
+    # ОДИН И ТОТ ЖЕ уровень 0.5434: high 0.5437 09.01 00:00, затем low 0.5433
+    # 13.01 12:00. Уровень настоящий, но объекты по обе стороны от него —
+    # не боковики (ER 0.47 и 0.43 против 0.03..0.23 у остальных семи).
+    "G1": (0.4873, 0.5437, "2024-01-07", "2024-01-11"),
+    "G2": (0.5433, 0.6174, "2024-01-10", "2024-01-15"),
+}
+
+
+def pivots(df: pd.DataFrame, confirm_bars: int = CONFIRM_BARS) -> pd.DataFrame:
+    """Чередующиеся опорные экстремумы. Заглядывания нет.
+
+    Экстремум фиксируется задним числом: сам бар известен сразу, но признан
+    опорным только через confirm_bars закрытий по другую сторону EMA27.
+    Колонка `confirmed` хранит момент признания — как в zones_both.py.
+    """
+    c, h, l = (df[k].to_numpy() for k in ("close", "high", "low"))
+    e27 = df.ema27.to_numpy()
+    ts = df.timestamp_utc
+    n = len(df)
+
+    out: list[dict] = []
+    above = c[WARMUP] >= e27[WARMUP]
+    ext_i = WARMUP                      # бар текущего бегущего экстремума
+    ext_v = h[WARMUP] if above else l[WARMUP]
+    run = 0                             # закрытий подряд по другую сторону
+
+    for i in range(WARMUP + 1, n):
+        same = (c[i] >= e27[i]) == above
+        if same:
+            run = 0
+            if above and h[i] > ext_v:
+                ext_i, ext_v = i, h[i]
+            elif not above and l[i] < ext_v:
+                ext_i, ext_v = i, l[i]
+            continue
+
+        run += 1
+        # Нога ещё не кончилась: бар может закрыться по ту сторону, но
+        # напечатать экстремум дальше прежнего.
+        if above and h[i] > ext_v:
+            ext_i, ext_v = i, h[i]
+        elif not above and l[i] < ext_v:
+            ext_i, ext_v = i, l[i]
+
+        if run >= confirm_bars:
+            out.append({
+                "kind": "high" if above else "low",
+                "time": ts.iloc[ext_i],
+                "price": ext_v,
+                "confirmed": ts.iloc[i],
+                "lag": i - ext_i,
+                "idx": ext_i,
+            })
+            above = not above
+            ext_i, ext_v = i, (h[i] if above else l[i])
+            run = 0
+
+    return pd.DataFrame(out)
+
+
+def check_edges(pv: pd.DataFrame, tol_pct: float) -> None:
+    """Попадают ли границы прямоугольников владельца в множество экстремумов.
+
+    Поиск ведётся ТОЛЬКО внутри окна соответствующего бокса — см. BOX_EDGES.
+    """
+    print("  граница бокса      ближайший экстремум в окне   промах")
+    hits = total = 0
+    for lab, (bot, top, d0, d1) in BOX_EDGES.items():
+        lo_t = pd.Timestamp(d0, tz="UTC")
+        hi_t = pd.Timestamp(d1, tz="UTC") + pd.Timedelta("1D")
+        win = pv[(pv.time >= lo_t) & (pv.time < hi_t)]
+        for name, val, kind in (("низ ", bot, "low"), ("верх", top, "high")):
+            total += 1
+            src = win[win.kind == kind]
+            if src.empty:
+                print(f"  {lab:>3} {name} {val:.4f}   нет экстремума в окне"
+                      f"{'':16}ПРОМАХ")
+                continue
+            d = (src.price - val).abs() / val * 100
+            k = int(d.idxmin())
+            ok = d.min() <= tol_pct
+            hits += ok
+            print(f"  {lab:>3} {name} {val:.4f}   {src.price[k]:.4f} "
+                  f"{src.time[k]:%Y-%m-%d %H:%M}   {d.min():5.2f}% "
+                  f"{'+' if ok else '     ПРОМАХ'}")
+    print(f"  попаданий {hits} из {total} при допуске {tol_pct}%")
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--tf", default="4h")
+    p.add_argument("--suffix", default="_ext")
+    p.add_argument("--confirm-bars", type=int, default=CONFIRM_BARS)
+    p.add_argument("--tol", type=float, default=0.3, help="допуск попадания, %%")
+    p.add_argument("--sweep", action="store_true")
+    args = p.parse_args(argv)
+
+    df = add_features(load(args.tf, args.suffix))
+    cbs = (1, 2, 3, 4) if args.sweep else (args.confirm_bars,)
+    for cb in cbs:
+        pv = pivots(df, cb)
+        legs = pv.price.pct_change().abs() * 100
+        print(f"\n=== {args.tf} confirm_bars={cb}: {len(pv)} экстремумов "
+              f"({(pv.kind == 'high').sum()} хаёв, {(pv.kind == 'low').sum()} лоёв) ===")
+        print(f"нога между соседними: медиана {legs.median():.1f}% "
+              f"(p10 {legs.quantile(.1):.1f}, p90 {legs.quantile(.9):.1f}) | "
+              f"запаздывание фиксации: медиана {pv.lag.median():.0f} баров "
+              f"(p90 {pv.lag.quantile(.9):.0f})")
+        check_edges(pv, args.tol)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
