@@ -93,25 +93,30 @@ plot(showEmas ? ema200 : na, "EMA200", color = color.new(color.red, 0),    linew
 // держим только два лучших значения — этого достаточно, отсечка сравнивает
 // именно первое со вторым.
 
-var bool  above = na      // текущая сторона: копим максимум или минимум
-var int   idx1  = na      // бар лучшего значения ноги
+// Pine выводит для `var bool x = na` тип const bool и запрещает присваивание,
+// поэтому состояние «ещё не начали» держим отдельным флагом, а не na-булевой.
+// Целые индексы баров тоже без na: сентинел -1, иначе na(int) даёт сюрпризы.
+var bool  started = false // прошла ли инициализация
+var bool  above = false   // текущая сторона: копим максимум или минимум
+var int   idx1  = -1      // бар лучшего значения ноги
 var float val1  = na
 var float atr1  = na      // ATR на баре лучшего значения — для отсечки
-var int   idx2  = na      // бар второго значения
+var int   idx2  = -1      // бар второго значения
 var float val2  = na
 var int   runN  = 0       // закрытий подряд по другую сторону
 var int   nPiv  = 0
 var int   nIso  = 0
 
 // Инициализация на первом баре, где обе средние готовы.
-if na(above) and not na(ema200) and bar_index > slowLen
-    above := close >= ema27
-    idx1  := bar_index
-    val1  := above ? high : low
-    atr1  := atrv
-    runN  := 0
+if not started and not na(ema200) and bar_index > slowLen
+    started := true
+    above   := close >= ema27
+    idx1    := bar_index
+    val1    := above ? high : low
+    atr1    := atrv
+    runN    := 0
 
-if not na(above)
+if started
     // Предложить текущий бар в лучшие два. Делается ДО проверки стороны:
     // нога не кончилась, пока событие не подтверждено, и бар может закрыться
     // по ту сторону EMA27, напечатав при этом экстремум дальше прежнего.
@@ -137,7 +142,7 @@ if not na(above)
             int   pIdx = idx1
             float pVal = val1
             bool  iso  = false
-            if isoAtr > 0 and not na(val2) and math.abs(val1 - val2) > isoAtr * atr1
+            if isoAtr > 0 and idx2 >= 0 and not na(val2) and math.abs(val1 - val2) > isoAtr * atr1
                 // Максимум оторван от второго: соседи до него не дотянулись.
                 pIdx := idx2
                 pVal := val2
@@ -163,21 +168,21 @@ if not na(above)
             idx1  := bar_index
             val1  := above ? high : low
             atr1  := atrv
-            idx2  := na
+            idx2  := -1
             val2  := na
             runN  := 0
 
 // ═══════════════════════════ ПРЯМОУГОЛЬНИКИ ══════════════════════════════
 // Свинг на баре k подтверждается на k+w — заглядывания нет.
 
-var int   shi   = na
+var int   shi   = -1
 var float shp   = na
-var int   sli   = na
+var int   sli   = -1
 var float slp   = na
 var bool  inBox = false
 var float bTop  = na
 var float bBot  = na
-var int   bStart = na
+var int   bStart = -1
 var box   bBox  = na
 var int   outN  = 0
 var int   nBox  = 0
@@ -209,10 +214,10 @@ if showBox
                 inBox := false
                 bBox  := na
                 outN  := 0
-                shi   := na
-                sli   := na
+                shi   := -1
+                sli   := -1
     else
-        if not na(shi) and not na(sli) and shp > slp and ema27 >= slp and ema27 <= shp
+        if shi >= 0 and sli >= 0 and shp > slp and ema27 >= slp and ema27 <= shp
             if close >= slp and close <= shp
                 inBox  := true
                 bTop   := shp
